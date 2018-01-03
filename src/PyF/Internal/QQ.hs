@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module PyF.QQ where
+module PyF.Internal.QQ where
 
 import Text.Megaparsec
 
@@ -24,7 +24,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 import Data.Monoid ((<>))
 
-import PyF.PythonSyntax
+import PyF.Internal.PythonSyntax
 
 f :: QuasiQuoter
 f = QuasiQuoter {

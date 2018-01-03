@@ -1,7 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module PyF.PythonSyntax where
+module PyF.Internal.PythonSyntax where
 
 import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
