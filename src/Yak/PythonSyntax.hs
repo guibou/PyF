@@ -28,9 +28,12 @@ import Data.Maybe (fromMaybe)
 import Control.Monad
 
 import qualified Data.Text.Lazy.Builder as Builder
-import qualified Data.Text.Lazy as Text
+
+import qualified Data.Text.Lazy as LText
+import qualified Data.Text as SText
 
 import Data.Monoid ((<>))
+import qualified Data.Char
 
 type Parser t = Parsec Void String t
 
@@ -285,25 +288,21 @@ padAndFormat (FormatMode pad prec t) = applyPadding pad =<< format prec t
 
 format :: Precision -> TQualifiedFormat -> Q Exp
 
--- default case type, precision must depends on the different sub types (string, int, float)
--- TODO: handle it.
-format (Precision _TODOi) (TNormal TypeDefault) = [| F.build |]
+format (Precision i) (TNormal TypeDefault) = [| genericPrecision i |]
 format PrecisionDefault (TNormal TypeDefault) = [| F.build |]
 
--- String types. TODO: handled clipping with precision
-format (Precision _TODOi) (TNormal Types) = [| F.build |]
-format PrecisionDefault (TNormal Types) = [| F.build |]
+-- String types.
+format PrecisionDefault (TNormal Types) = [| F.later defaultString |]
+format (Precision i) (TNormal Types) = [| laterTake i |] -- Precision is clipping
 
 -- integer types, precision should not exists
-format PrecisionDefault (TAlternate Typeb alt) = [| $(ifAlternate alt "0b") F.% F.bin |]
-format PrecisionDefault (TNormal Typed) = [| F.build |] -- TODO: check that it is a number
-format PrecisionDefault (TAlternate Typeo alt) = [| $(ifAlternate alt "0o") F.% F.oct |]
-format PrecisionDefault (TAlternate Typex alt) = [| $(ifAlternate alt "0x") F.% F.hex |]
-format PrecisionDefault (TAlternate TypeX alt) = [| $(ifAlternate alt "0x") F.% toUpper F.%. F.hex |]
-format PrecisionDefault (TNormal Typec) = error "Type Char is not handled"
-
--- There is number for integer and float, find a way to discriminate them TODO.
-format PrecisionDefault (TAlternate Typen _TODOalt) = error "Type n is not handled"
+-- TODO: the precision field is never used for these fields
+format _TODO (TAlternate Typeb alt) = [| $(ifAlternate alt "0b") F.% F.bin |]
+format _TODO (TNormal Typed) = [| F.build |] -- TODO: check that it is a number
+format _TODO (TAlternate Typeo alt) = [| $(ifAlternate alt "0o") F.% F.oct |]
+format _TODO (TAlternate Typex alt) = [| $(ifAlternate alt "0x") F.% F.hex |]
+format _TODO (TAlternate TypeX alt) = [| $(ifAlternate alt "0x") F.% toUpper F.%. F.hex |]
+format _TODO (TNormal Typec) = [| laterChar |]
 
 -- Floating point types
 -- TODO: NaN and Inf are bugged
@@ -313,24 +312,31 @@ format prec (TAlternate Typef _TODOalt) = [| F.mapf toScientific (F.scifmt Scien
 format prec (TAlternate TypeF _TODOalt) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
 format _prec (TAlternate Typeg _TODOalt) = error "type g is not handled"
 format _prec (TAlternate TypeG _TODOalt) = error "type G is not handled"
-format _prec (TAlternate Typen _TODOalt) = error "type n is not handled"
 format prec (TAlternate TypePercent _TODOalt) = [| F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
-format a b = fail (show (a, b))
+
+-- Float and Integer. TODO: find a way to discriminate them
+format _prec (TAlternate Typen _TODOalt) = error "type n is not handled"
 
 ifAlternate :: AlternateForm -> String -> Q Exp
 ifAlternate NormalForm _ = [| F.now (Builder.fromString "") |]
 ifAlternate AlternateForm s = [| F.now (Builder.fromString s) |]
 
-opLater :: (Text.Text -> Text.Text) -> F.Format r (Builder.Builder -> r)
+opLater :: (LText.Text -> LText.Text) -> F.Format r (Builder.Builder -> r)
 opLater op = F.later (Builder.fromLazyText . op . Builder.toLazyText)
 
+laterChar :: F.Format r (Int -> r)
+laterChar = F.later (Builder.fromLazyText . LText.singleton . Data.Char.chr)
+
+laterTake :: Integral i => i -> F.Format r (Builder.Builder -> r)
+laterTake i = opLater (LText.take (fromIntegral i))
+
 toUpper :: F.Format r (Builder.Builder -> r)
-toUpper = opLater Text.toUpper
+toUpper = opLater LText.toUpper
 
 alternateFloat :: AlternateForm -> F.Format r (Builder.Builder -> r)
 alternateFloat NormalForm = opLater id
 alternateFloat AlternateForm = opLater f
-  where f t = case Text.find (=='.') t of
+  where f t = case LText.find (=='.') t of
           Nothing -> t <> "."
           Just _ -> t
 
@@ -360,8 +366,37 @@ applyPadding (Padding i am ac) e = [| $(padFunc) i padChar F.%. $(pure e) |]
 class ToScientific t where
   toScientific :: t -> Scientific.Scientific
 
-instance {-# OVERLAPS #-} RealFloat t => ToScientific t where
-  toScientific = Scientific.fromFloatDigits
+instance ToScientific Float where toScientific = Scientific.fromFloatDigits
+instance ToScientific Double where toScientific = Scientific.fromFloatDigits
+instance ToScientific Scientific.Scientific where toScientific = id
 
-instance ToScientific Scientific.Scientific where
-  toScientific = id
+-- Generic Precision
+class GenericPrecision t where
+  genericPrecision :: Int -> F.Format r (t -> r)
+
+instance GenericPrecision Float where
+  genericPrecision i = F.fixed i
+
+instance GenericPrecision Double where
+  genericPrecision i = F.fixed i
+
+instance GenericPrecision [Char] where
+  genericPrecision i = laterTake i F.%. F.build
+
+instance GenericPrecision LText.Text where
+  genericPrecision i = laterTake i F.%. F.build
+
+instance GenericPrecision SText.Text where
+  genericPrecision i = laterTake i F.%. F.build
+
+class DefaultString t where
+  defaultString :: t -> Builder.Builder
+
+instance DefaultString [Char] where
+  defaultString = Builder.fromString
+
+instance DefaultString SText.Text where
+  defaultString = Builder.fromText
+
+instance DefaultString LText.Text where
+  defaultString = Builder.fromLazyText
