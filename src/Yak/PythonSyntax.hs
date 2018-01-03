@@ -8,6 +8,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE DataKinds, KindSignatures, TypeInType, StandaloneDeriving #-}
 
 module Yak.PythonSyntax where
 
@@ -70,9 +71,9 @@ replacementField = do
   pure (Replacement expr fmt)
 
 pattern DefaultFormatMode :: FormatMode
-pattern DefaultFormatMode = FormatMode PaddingDefault PrecisionDefault TypeDefault NormalForm
+pattern DefaultFormatMode = FormatMode PaddingDefault PrecisionDefault (TNormal TypeDefault)
 
-data FormatMode = FormatMode Padding Precision TypeFormat AlternateForm
+data FormatMode = FormatMode Padding Precision TQualifiedFormat
                 deriving (Show)
 
 data AlignMode = AlignLeft | AlignRight | AlignInside | AlignCenter | AlignDefault
@@ -103,26 +104,51 @@ precision       ::=  integer
 type            ::=  "b" | "c" | "d" | "e" | "E" | "f" | "F" | "g" | "G" | "n" | "o" | "s" | "x" | "X" | "%"
 -}
 
-data TypeFormat = TypeDefault
-                | Typeb -- Binary
-                | Typec -- Character
-                | Typed -- Decimal
-                | Typee -- exponential notation
-                | TypeE -- Exp notation
-                | Typef -- fixed point
-                | TypeF -- fixed point (Caps NAN and INF)
-                | Typeg -- General ?
-                | TypeG -- General
-                | Typen -- Number ?
-                | Typeo -- octal
-                | Types -- STRING
-                | Typex -- small hex
-                | TypeX -- big hex
-                | TypePercent
-                deriving (Show)
+data HasAlt = HasAlt | NoAlt
+
+data TypeFormat (haltAlt :: HasAlt) where
+  TypeDefault :: TypeFormat 'NoAlt
+  Typeb :: TypeFormat 'HasAlt -- Binary
+  Typec :: TypeFormat 'NoAlt -- Character
+  Typed :: TypeFormat 'NoAlt -- Decimal
+  Typee :: TypeFormat 'HasAlt -- exponential notation
+  TypeE :: TypeFormat 'HasAlt -- Exp notation
+  Typef :: TypeFormat 'HasAlt -- fixed point
+  TypeF :: TypeFormat 'HasAlt -- fixed point (Caps NAN and INF)
+  Typeg :: TypeFormat 'HasAlt -- General ?
+  TypeG :: TypeFormat 'HasAlt -- General
+  Typen :: TypeFormat 'HasAlt -- Number ?
+  Typeo :: TypeFormat 'HasAlt -- octal
+  Types :: TypeFormat 'NoAlt -- STRING
+  Typex :: TypeFormat 'HasAlt -- small hex
+  TypeX :: TypeFormat 'HasAlt -- big hex
+  TypePercent :: TypeFormat 'HasAlt -- percent
+
+deriving instance Show (TypeFormat t)
 
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
+
+data UnqualifiedTypeFormat = UnqualifiedHasAlt (TypeFormat 'HasAlt)
+                           | UnqualifiedNoAlt (TypeFormat 'NoAlt)
+                           deriving (Show)
+
+data TQualifiedFormat = TNormal (TypeFormat 'NoAlt)
+                      | TAlternate (TypeFormat 'HasAlt) AlternateForm
+                      deriving (Show)
+
+qualifyFormat :: AlternateForm -> UnqualifiedTypeFormat -> Maybe TQualifiedFormat
+qualifyFormat form (UnqualifiedHasAlt c) = Just $ TAlternate c form
+qualifyFormat NormalForm (UnqualifiedNoAlt c) = Just $ TNormal c
+qualifyFormat AlternateForm (UnqualifiedNoAlt _) = Nothing
+
+upgrade :: UnqualifiedTypeFormat -> TQualifiedFormat
+upgrade (UnqualifiedHasAlt c) = TAlternate c NormalForm
+upgrade (UnqualifiedNoAlt c) = TNormal c
+
+upgradeAlt :: UnqualifiedTypeFormat -> Maybe TQualifiedFormat
+upgradeAlt (UnqualifiedHasAlt c) = Just (TAlternate c AlternateForm)
+upgradeAlt (UnqualifiedNoAlt _) = Nothing
 
 -- Ignored for now: sign / grouping_option / 0 / sharp
 
@@ -140,9 +166,13 @@ format_spec = do
 
   _go <- optional grouping_option
   prec <- option PrecisionDefault (char '.' *> (Precision <$> precision))
-  t <- option TypeDefault type_
+  t <- option (UnqualifiedNoAlt TypeDefault) type_
 
-  pure (FormatMode padding prec t alternateForm)
+  let t' = qualifyFormat alternateForm t
+
+  case t' of
+    Just t'' -> pure (FormatMode padding prec t'')
+    Nothing -> fail "format qualifier broken with that format"
 
 alignment :: Parser (AlignChar, AlignMode)
 alignment = choice [
@@ -181,23 +211,23 @@ grouping_option = oneOf ("_," :: [Char])
 precision :: Parser Integer
 precision = integer
 
-type_ :: Parser TypeFormat
+type_ :: Parser UnqualifiedTypeFormat
 type_ = choice [
-  Typeb <$ char 'b',
-  Typec <$ char 'c',
-  Typed <$ char 'd',
-  Typee <$ char 'e',
-  TypeE <$ char 'E',
-  Typef <$ char 'f',
-  TypeF <$ char 'F',
-  Typeg <$ char 'g',
-  TypeG <$ char 'G',
-  Typen <$ char 'n',
-  Typeo <$ char 'o',
-  Types <$ char 's',
-  Typex <$ char 'x',
-  TypeX <$ char 'X',
-  TypePercent <$ char '%'
+  UnqualifiedHasAlt Typeb <$ char 'b',
+  UnqualifiedNoAlt Typec <$ char 'c',
+  UnqualifiedNoAlt Typed <$ char 'd',
+  UnqualifiedHasAlt Typee <$ char 'e',
+  UnqualifiedHasAlt TypeE <$ char 'E',
+  UnqualifiedHasAlt Typef <$ char 'f',
+  UnqualifiedHasAlt TypeF <$ char 'F',
+  UnqualifiedHasAlt Typeg <$ char 'g',
+  UnqualifiedHasAlt TypeG <$ char 'G',
+  UnqualifiedHasAlt Typen <$ char 'n',
+  UnqualifiedHasAlt Typeo <$ char 'o',
+  UnqualifiedNoAlt Types <$ char 's',
+  UnqualifiedHasAlt Typex <$ char 'x',
+  UnqualifiedHasAlt TypeX <$ char 'X',
+  UnqualifiedHasAlt TypePercent <$ char '%'
   ]
 
 {-
@@ -251,55 +281,45 @@ toFormat (Replacement _ y) = padAndFormat (fromMaybe DefaultFormatMode y)
 
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat DefaultFormatMode = [| F.build |]
-padAndFormat (FormatMode pad prec t alt) = applyPadding pad =<< format prec t alt
+padAndFormat (FormatMode pad prec t) = applyPadding pad =<< format prec t
 
-format :: Precision -> TypeFormat -> AlternateForm -> Q Exp
+format :: Precision -> TQualifiedFormat -> Q Exp
 
 -- default case type, precision must depends on the different sub types (string, int, float)
 -- TODO: handle it.
-format (Precision i) TypeDefault alt = assertNF alt $ [| F.build |]
-format PrecisionDefault TypeDefault alt = assertNF alt $ [| F.build |]
+format (Precision _TODOi) (TNormal TypeDefault) = [| F.build |]
+format PrecisionDefault (TNormal TypeDefault) = [| F.build |]
 
 -- String types. TODO: handled clipping with precision
-format (Precision i) Types alt = assertNF alt $ [| F.build |]
-format PrecisionDefault Types alt = assertNF alt $ [| F.build |]
+format (Precision _TODOi) (TNormal Types) = [| F.build |]
+format PrecisionDefault (TNormal Types) = [| F.build |]
 
 -- integer types, precision should not exists
-format PrecisionDefault Typeb alt = [| $(ifAlternate alt "0b") F.% F.bin |]
-format PrecisionDefault Typed alt = assertNF alt $ [| F.build |] -- TODO: check that it is a number
-format PrecisionDefault Typeo alt = [| $(ifAlternate alt "0o") F.% F.oct |]
-format PrecisionDefault Typex alt = [| $(ifAlternate alt "0x") F.% F.hex |]
-format PrecisionDefault TypeX alt = [| $(ifAlternate alt "0x") F.% toUpper F.%. F.hex |]
-format PrecisionDefault Typec _alt = error "Type Char is not handled"
+format PrecisionDefault (TAlternate Typeb alt) = [| $(ifAlternate alt "0b") F.% F.bin |]
+format PrecisionDefault (TNormal Typed) = [| F.build |] -- TODO: check that it is a number
+format PrecisionDefault (TAlternate Typeo alt) = [| $(ifAlternate alt "0o") F.% F.oct |]
+format PrecisionDefault (TAlternate Typex alt) = [| $(ifAlternate alt "0x") F.% F.hex |]
+format PrecisionDefault (TAlternate TypeX alt) = [| $(ifAlternate alt "0x") F.% toUpper F.%. F.hex |]
+format PrecisionDefault (TNormal Typec) = error "Type Char is not handled"
 
 -- There is number for integer and float, find a way to discriminate them TODO.
-format PrecisionDefault Typen _alt = error "Type n is not handled"
+format PrecisionDefault (TAlternate Typen _TODOalt) = error "Type n is not handled"
 
 -- Floating point types
 -- TODO: NaN and Inf are bugged
-format prec Typee alt = assertNFYet alt $ [| F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format prec TypeE alt = assertNFYet alt $ [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format prec Typef alt = assertNFYet alt $ [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format prec TypeF alt = assertNFYet alt $ [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format _prec Typeg _alt = error "type g is not handled"
-format _prec TypeG _alt = error "type G is not handled"
-format _prec Typen _alt = error "type n is not handled"
-format prec TypePercent alt = assertNFYet alt $ [| F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
-format a b c = fail (show (a, b, c))
+format prec (TAlternate Typee _TODOalt) = [| F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format prec (TAlternate TypeE _TODOalt) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format prec (TAlternate Typef _TODOalt) = [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format prec (TAlternate TypeF _TODOalt) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format _prec (TAlternate Typeg _TODOalt) = error "type g is not handled"
+format _prec (TAlternate TypeG _TODOalt) = error "type G is not handled"
+format _prec (TAlternate Typen _TODOalt) = error "type n is not handled"
+format prec (TAlternate TypePercent _TODOalt) = [| F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
+format a b = fail (show (a, b))
 
 ifAlternate :: AlternateForm -> String -> Q Exp
 ifAlternate NormalForm _ = [| F.now (Builder.fromString "") |]
 ifAlternate AlternateForm s = [| F.now (Builder.fromString s) |]
-
--- TODO: remove it
-assertNF :: AlternateForm -> t -> t
-assertNF NormalForm b = b
-assertNF AlternateForm _ = error "this formater does not support alternate form"
-
--- TODO: handle them
-assertNFYet :: AlternateForm -> t -> t
-assertNFYet NormalForm b = b
-assertNFYet AlternateForm _ = error "this formater does not support alternate form (Yet)"
 
 opLater :: (Text.Text -> Text.Text) -> F.Format r (Builder.Builder -> r)
 opLater op = F.later (Builder.fromLazyText . op . Builder.toLazyText)
