@@ -34,6 +34,8 @@ import qualified Data.Text as SText
 
 import Data.Monoid ((<>))
 import qualified Data.Char
+import qualified Data.Set as Set -- For fancyFailure
+import qualified Data.List.NonEmpty as NonEmpty
 
 type Parser t = Parsec Void String t
 
@@ -42,9 +44,12 @@ type Parser t = Parsec Void String t
 - Better parsing of integer
 - Recursive replacement field, so "{string:.{precision}} can be parsed
 - f_expression / conversion
-- Ignored for now: sign / grouping_option / 0
-- n / g / G
-- =
+- Not (Yet) implemented:
+     - fields: sign / grouping_option / 0
+     - types: n / g / G
+     - alignement: =
+     - #: for floating points
+     - floating point rendering of NaN and Inf are bugged
 -}
 
 
@@ -146,64 +151,98 @@ data TypeFormat =
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
 
+unhandled :: Parser t -> String -> Parser ()
+unhandled p err = do
+  isP <- optional p
+
+  case isP of
+    Nothing -> pure ()
+    Just _ -> lastCharFailed err
+
+lastCharFailed :: String -> Parser t
+lastCharFailed err = do
+  (SourcePos name line col) <- getPosition
+
+  -- This is right as long as there is not line break in the string
+  setPosition (SourcePos name line (mkPos (unPos col - 1)))
+  fancyFailure (Set.singleton (ErrorFail err))
+
 format_spec :: Parser FormatMode
 format_spec = do
-  (ac, am) <- option (AlignCharDefault, AlignDefault) alignment
-  _s <- optional sign
+  al <- option (Right (AlignCharDefault, AlignDefault)) alignment
+
+  (ac, am) <- case al of
+    Left err -> lastCharFailed err
+    Right v -> pure v
+
+  unhandled sign "'Sign field' is not handled for now. Please remove it."
   alternateForm <- option NormalForm (AlternateForm <$ char '#')
-  _zero <- optional (char '0')
+  unhandled (char '0') "'0' is not handled for now. Please remove it."
   w <- optional width
 
   let padding = case w of
         Just p -> Padding p am ac
         Nothing -> PaddingDefault
 
-  _go <- optional grouping_option
+  unhandled grouping_option "'Grouping option' field is not handled for now. Please remove it."
   prec <- option PrecisionDefault (char '.' *> (Precision <$> precision))
   t <- optional type_
 
   case t of
     Nothing -> pure (FormatMode padding (DefaultF prec))
-    Just flag -> pure (FormatMode padding (evalFlag flag prec alternateForm))
+    Just flag -> case evalFlag flag prec alternateForm of
+      Right fmt -> pure (FormatMode padding fmt)
+      Left typeError -> do
+        lastCharFailed typeError
 
-evalFlag :: TypeFlag -> Precision -> AlternateForm -> TypeFormat
-evalFlag Flagb prec alt = BinaryF alt
-evalFlag Flagc prec alt = CharacterF
-evalFlag Flagd prec alt = DecimalF
-evalFlag Flage prec alt = ExponentialF prec alt
-evalFlag FlagE prec alt = ExponentialCapsF prec alt
-evalFlag Flagf prec alt = FixedF prec alt
-evalFlag FlagF prec alt = FixedCapsF prec alt
-evalFlag Flagg prec alt = error "Type 'g' not handled"
-evalFlag FlagG prec alt = error "Type 'G' not handled"
-evalFlag Flagn prec alt = error "Type 'n' not handled"
-evalFlag Flago prec alt = OctalF alt
-evalFlag Flags prec alt = StringF prec
-evalFlag Flagx prec alt = HexF alt
-evalFlag FlagX prec alt = HexCapsF alt
-evalFlag FlagPercent prec alt = PercentF prec alt
+evalFlag :: TypeFlag -> Precision -> AlternateForm -> Either String TypeFormat
+evalFlag Flagb prec alt = failIfPrec prec =<< failIfAlt alt (BinaryF alt)
+evalFlag Flagc prec alt = failIfPrec prec =<< failIfAlt alt CharacterF
+evalFlag Flagd prec alt = failIfPrec prec =<< failIfAlt alt DecimalF
+evalFlag Flage prec alt = Right (ExponentialF prec alt)
+evalFlag FlagE prec alt = Right (ExponentialCapsF prec alt)
+evalFlag Flagf prec alt = Right (FixedF prec alt)
+evalFlag FlagF prec alt = Right (FixedCapsF prec alt)
+evalFlag Flagg _prec _alt = Left ("Type 'g' not handled (yet). " <> errgGn)
+evalFlag FlagG _prec _alt = Left ("Type 'G' not handled (yet). " <> errgGn)
+evalFlag Flagn _prec _alt = Left ("Type 'n' not handled (yet). " <> errgGn)
+evalFlag Flago prec alt = failIfPrec prec $ OctalF alt
+evalFlag Flags prec alt = failIfAlt alt $ StringF prec
+evalFlag Flagx prec alt = failIfPrec prec $ HexF alt
+evalFlag FlagX prec alt = failIfPrec prec $ HexCapsF alt
+evalFlag FlagPercent prec alt = Right (PercentF prec alt)
 
+errgGn :: String
+errgGn = "Use one of {'b', 'c', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}."
 
-alignment :: Parser (AlignChar, AlignMode)
+failIfPrec :: Precision -> TypeFormat -> Either String TypeFormat
+failIfPrec PrecisionDefault i = Right i
+failIfPrec (Precision i) _ = Left (F.formatToString ("Type incompatible with precision (." F.% F.int F.% "), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.") i)
+
+failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
+failIfAlt NormalForm i = Right i
+failIfAlt _ _ = Left "Type incompatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
+
+alignment :: Parser (Either String (AlignChar, AlignMode))
 alignment = choice [
     try $ do
         c <- fill
         mode <- align
-        pure (AlignChar c, mode)
+        pure ((\m -> (AlignChar c, m)) <$> mode)
     , do
         mode <- align
-        pure (AlignCharDefault, mode)
+        pure ((\m -> (AlignCharDefault, m)) <$> mode)
     ]
 
 fill :: Parser Char
 fill = anyChar
 
-align :: Parser AlignMode
+align :: Parser (Either String AlignMode)
 align = choice [
-  AlignLeft <$ char '<',
-  AlignRight <$ char '>',
-  error "Align '=' mode not handled (yet)" <$ char '=',
-  AlignCenter <$ char '^'
+  Right AlignLeft <$ char '<',
+  Right AlignRight <$ char '>',
+  Right AlignCenter <$ char '^',
+  Left "Align mode '=' is not handled yet" <$ char '='
   ]
 
 sign :: Parser Char
@@ -252,9 +291,25 @@ f = QuasiQuoter {
 
 -- Be Careful: empty format string
 toExp:: String -> Q Exp
-toExp s = case parseMaybe result s of
-    Nothing -> fail "yo, des rabins"
-    Just items -> do
+toExp s = do
+  filename <- loc_filename <$> location
+  (line, col) <- loc_start <$> location
+
+  let change_log "<interactive>" currentState = currentState
+      change_log _ currentState = let
+        (SourcePos sName _ _) NonEmpty.:| xs = statePos currentState
+        in currentState {statePos = (SourcePos sName (mkPos line) (mkPos col)) NonEmpty.:| xs}
+
+  case parse (updateParserState (change_log filename) >> result) filename s of
+    Left err -> do
+
+      if filename == "<interactive>"
+        then do
+          fail (parseErrorPretty' s err)
+        else do
+          fileContent <- runIO (readFile filename)
+          fail (parseErrorPretty' fileContent err)
+    Right items -> do
       fmtItems <- goFormat items
       foldM goArgs (AppE (VarE 'F.format) fmtItems) items
 
