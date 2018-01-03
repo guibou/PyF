@@ -6,7 +6,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
+
 module Yak.PythonSyntax where
 
 import Text.Megaparsec
@@ -27,7 +29,10 @@ import Control.Monad
 import qualified Data.Text.Lazy.Builder as Builder
 import qualified Data.Text.Lazy as Text
 
+import Data.Monoid ((<>))
+
 type Parser t = Parsec Void String t
+
 
 {-
 f_string          ::=  (literal_char | "{{" | "}}" | replacement_field)*
@@ -65,9 +70,9 @@ replacementField = do
   pure (Replacement expr fmt)
 
 pattern DefaultFormatMode :: FormatMode
-pattern DefaultFormatMode = FormatMode PaddingDefault PrecisionDefault TypeDefault
+pattern DefaultFormatMode = FormatMode PaddingDefault PrecisionDefault TypeDefault NormalForm
 
-data FormatMode = FormatMode Padding Precision TypeFormat
+data FormatMode = FormatMode Padding Precision TypeFormat AlternateForm
                 deriving (Show)
 
 data AlignMode = AlignLeft | AlignRight | AlignInside | AlignCenter | AlignDefault
@@ -116,13 +121,16 @@ data TypeFormat = TypeDefault
                 | TypePercent
                 deriving (Show)
 
+data AlternateForm = AlternateForm | NormalForm
+  deriving (Show)
+
 -- Ignored for now: sign / grouping_option / 0 / sharp
 
 format_spec :: Parser FormatMode
 format_spec = do
   (ac, am) <- option (AlignCharDefault, AlignDefault) alignment
   _s <- optional sign
-  _sharp <- optional (char '#')
+  alternateForm <- option NormalForm (AlternateForm <$ char '#')
   _zero <- optional (char '0')
   w <- optional width
 
@@ -134,7 +142,7 @@ format_spec = do
   prec <- option PrecisionDefault (char '.' *> (Precision <$> precision))
   t <- option TypeDefault type_
 
-  pure (FormatMode padding prec t)
+  pure (FormatMode padding prec t alternateForm)
 
 alignment :: Parser (AlignChar, AlignMode)
 alignment = choice [
@@ -246,36 +254,62 @@ format DefaultFormatMode = [| F.build |]
 
 -- default case type, padding is generic, but precision depends on the different sub types (string, int, float)
 -- TODO: handle it.
-format (FormatMode pad (Precision i) TypeDefault) = [| $(padnow pad)|]
-format (FormatMode pad PrecisionDefault TypeDefault) = [| $(padnow pad)|]
+format (FormatMode pad (Precision i) TypeDefault alt) = assertNF alt $ [| $(padnow pad)|]
+format (FormatMode pad PrecisionDefault TypeDefault alt) = assertNF alt $ [| $(padnow pad)|]
 
 -- String types. TODO: handled clipping with precision
-format (FormatMode pad (Precision i) Types) = [| $(padnow pad)|]
-format (FormatMode pad PrecisionDefault Types) = [| $(padnow pad) |]
+format (FormatMode pad (Precision i) Types alt) = assertNF alt $ [| $(padnow pad)|]
+format (FormatMode pad PrecisionDefault Types alt) = assertNF alt $ [| $(padnow pad) |]
 
 -- integer types, precision should not exists
-format (FormatMode pad PrecisionDefault Typeb) = [| $(padnow pad) F.%. F.bin |]
-format (FormatMode pad PrecisionDefault Typed) = [| $(padnow pad) |]
-format (FormatMode pad PrecisionDefault Typeo) = [| $(padnow pad) F.%. F.oct |]
-format (FormatMode pad PrecisionDefault Typex) = [| $(padnow pad) F.%. F.hex |]
-format (FormatMode pad PrecisionDefault TypeX) = [| $(padnow pad) F.%. toUpper F.%. F.hex |]
-format (FormatMode pad PrecisionDefault Typec) = undefined
-format (FormatMode pad PrecisionDefault Typen) = undefined
+format (FormatMode pad PrecisionDefault Typeb alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0b") F.% F.bin)  |]
+format (FormatMode pad PrecisionDefault Typed alt) = assertNF alt $ [| $(padnow pad) |]
+format (FormatMode pad PrecisionDefault Typeo alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0o") F.% F.oct) |]
+format (FormatMode pad PrecisionDefault Typex alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0x") F.% F.hex) |]
+format (FormatMode pad PrecisionDefault TypeX alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0x") F.% toUpper F.%. F.hex) |]
+format (FormatMode _pad PrecisionDefault Typec _alt) = error "Type Char is not handled"
+
+-- There is number for integer and float, find a way to discriminate them TODO.
+format (FormatMode _pad PrecisionDefault Typen _alt) = error "Type n is not handled"
 
 -- Floating point types
 -- TODO: NaN and Inf are bugged
-format (FormatMode pad prec Typee) = [| $(padnow pad) F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (FormatMode pad prec TypeE) = [| $(padnow pad) F.%. toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (FormatMode pad prec Typef) = [| $(padnow pad) F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (FormatMode pad prec TypeF) = [| $(padnow pad) F.%. toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (FormatMode pad prec Typeg) = undefined
-format (FormatMode pad prec TypeG) = undefined
-format (FormatMode pad prec Typen) = undefined
-format (FormatMode pad prec TypePercent) = [| ($(padnow pad) F.%. F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec))) F.% "%" |]
-format f = fail (show f)
+format (FormatMode pad prec Typee alt) = assertNFYet alt $ [| $(padnow pad) F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format (FormatMode pad prec TypeE alt) = assertNFYet alt $ [| $(padnow pad) F.%. toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format (FormatMode pad prec Typef alt) = assertNFYet alt $ [| $(padnow pad) F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format (FormatMode pad prec TypeF alt) = assertNFYet alt $ [| $(padnow pad) F.%. toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format (FormatMode _pad _prec Typeg _alt) = error "type g is not handled"
+format (FormatMode _pad _prec TypeG _alt) = error "type G is not handled"
+format (FormatMode _pad _prec Typen _alt) = error "type n is not handled"
+format (FormatMode pad prec TypePercent alt) = assertNFYet alt $ [| ($(padnow pad) F.%. F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec))) F.% "%" |]
+format fmt = fail (show fmt)
+
+ifAlternate :: AlternateForm -> String -> Q Exp
+ifAlternate NormalForm _ = [| F.now (Builder.fromString "") |]
+ifAlternate AlternateForm s = [| F.now (Builder.fromString s) |]
+
+-- TODO: remove it
+assertNF :: AlternateForm -> t -> t
+assertNF NormalForm b = b
+assertNF AlternateForm _ = error "this formater does not support alternate form"
+
+-- TODO: handle them
+assertNFYet :: AlternateForm -> t -> t
+assertNFYet NormalForm b = b
+assertNFYet AlternateForm _ = error "this formater does not support alternate form (Yet)"
+
+opLater :: (Text.Text -> Text.Text) -> F.Format r (Builder.Builder -> r)
+opLater op = F.later (Builder.fromLazyText . op . Builder.toLazyText)
 
 toUpper :: F.Format r (Builder.Builder -> r)
-toUpper = F.later (Builder.fromLazyText . Text.toUpper . Builder.toLazyText)
+toUpper = opLater Text.toUpper
+
+alternateFloat :: AlternateForm -> F.Format r (Builder.Builder -> r)
+alternateFloat NormalForm = opLater id
+alternateFloat AlternateForm = opLater f
+  where f t = case Text.find (=='.') t of
+          Nothing -> t <> "."
+          Just _ -> t
 
 precToMaybe :: Precision -> Q Exp
 precToMaybe p = [| Just $(precToInt p) |] -- Default precision from python
