@@ -107,10 +107,10 @@ data TypeFormat =
   | BinaryF AlternateForm -- Binary
   | CharacterF -- Character
   | DecimalF -- Decimal
-  | ExponentialF Precision AlternateForm -- exponential notation
-  | ExponentialCapsF Precision AlternateForm -- exponentiel notation CAPS
-  | FixedF Precision AlternateForm -- fixed point
-  | FixedCapsF Precision AlternateForm -- fixed point CAPS
+  | ExponentialF Precision {- AlternateForm -} -- exponential notation (Alt not handled)
+  | ExponentialCapsF Precision {- AlternateForm -} -- exponentiel notation CAPS (Alt not handled)
+  | FixedF Precision {- AlternateForm -} -- fixed point (Alt not handled)
+  | FixedCapsF Precision {- AlternateForm -} -- fixed point CAPS (Alt not handled)
   -- | GeneralF Precision AlternateForm -- General (Not Yet handled)
   -- | GeneralOrExponentialCapsF Precision AlternateForm -- General Switch to E (Not yet handled)
   -- | NumberF Precision AlternateForm -- Number (Not Yet handled)
@@ -118,7 +118,7 @@ data TypeFormat =
   | StringF Precision -- string
   | HexF AlternateForm -- small hex
   | HexCapsF AlternateForm -- big hex
-  | PercentF Precision AlternateForm -- percent
+  | PercentF Precision {- AlternateForm -} -- percent (Alt not handled)
   deriving (Show)
 
 data AlternateForm = AlternateForm | NormalForm
@@ -172,10 +172,10 @@ evalFlag :: TypeFlag -> Precision -> AlternateForm -> Either String TypeFormat
 evalFlag Flagb prec alt = failIfPrec prec =<< failIfAlt alt (BinaryF alt)
 evalFlag Flagc prec alt = failIfPrec prec =<< failIfAlt alt CharacterF
 evalFlag Flagd prec alt = failIfPrec prec =<< failIfAlt alt DecimalF
-evalFlag Flage prec alt = Right (ExponentialF prec alt)
-evalFlag FlagE prec alt = Right (ExponentialCapsF prec alt)
-evalFlag Flagf prec alt = Right (FixedF prec alt)
-evalFlag FlagF prec alt = Right (FixedCapsF prec alt)
+evalFlag Flage prec alt = unhandledAlt alt (ExponentialF prec)
+evalFlag FlagE prec alt = unhandledAlt alt (ExponentialCapsF prec)
+evalFlag Flagf prec alt = unhandledAlt alt (FixedF prec)
+evalFlag FlagF prec alt = unhandledAlt alt (FixedCapsF prec)
 evalFlag Flagg _prec _alt = Left ("Type 'g' not handled (yet). " ++ errgGn)
 evalFlag FlagG _prec _alt = Left ("Type 'G' not handled (yet). " ++ errgGn)
 evalFlag Flagn _prec _alt = Left ("Type 'n' not handled (yet). " ++ errgGn)
@@ -183,7 +183,7 @@ evalFlag Flago prec alt = failIfPrec prec $ OctalF alt
 evalFlag Flags prec alt = failIfAlt alt $ StringF prec
 evalFlag Flagx prec alt = failIfPrec prec $ HexF alt
 evalFlag FlagX prec alt = failIfPrec prec $ HexCapsF alt
-evalFlag FlagPercent prec alt = Right (PercentF prec alt)
+evalFlag FlagPercent prec alt = unhandledAlt alt (PercentF prec)
 
 errgGn :: String
 errgGn = "Use one of {'b', 'c', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}."
@@ -195,6 +195,10 @@ failIfPrec (Precision i) _ = Left ("Type incompatible with precision (." ++ show
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i
 failIfAlt _ _ = Left "Type incompatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
+
+unhandledAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
+unhandledAlt NormalForm i = Right i
+unhandledAlt _ _ = Left "Type not yet compatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
 
 alignment :: Parser (Either String (AlignChar, AlignMode))
 alignment = choice [

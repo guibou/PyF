@@ -100,11 +100,11 @@ format (CharacterF) = [| laterChar |]
 
 -- Floating point types
 -- TODO: NaN and Inf are bugged
-format (ExponentialF prec alt) = [| F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (ExponentialCapsF prec alt) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (FixedF prec alt) = [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (FixedCapsF prec alt) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (PercentF prec alt) = [| F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
+format (ExponentialF prec) = [| F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format (ExponentialCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format (FixedF prec) = [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format (FixedCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format (PercentF prec) = [| F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
 
 ifAlternate :: AlternateForm -> String -> Q Exp
 ifAlternate NormalForm _ = [| F.now (Builder.fromString "") |]
