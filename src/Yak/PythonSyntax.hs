@@ -247,42 +247,45 @@ fofo s0 s1 = InfixE (Just s0) (VarE '(F.%)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = [| F.now (Builder.fromString x) |]
-toFormat (Replacement _ y) = format (fromMaybe DefaultFormatMode y)
+toFormat (Replacement _ y) = padAndFormat (fromMaybe DefaultFormatMode y)
 
-format :: FormatMode -> Q Exp
-format DefaultFormatMode = [| F.build |]
+padAndFormat :: FormatMode -> Q Exp
+padAndFormat DefaultFormatMode = [| F.build |]
+padAndFormat (FormatMode pad prec t alt) = applyPadding pad =<< format prec t alt
 
--- default case type, padding is generic, but precision depends on the different sub types (string, int, float)
+format :: Precision -> TypeFormat -> AlternateForm -> Q Exp
+
+-- default case type, precision must depends on the different sub types (string, int, float)
 -- TODO: handle it.
-format (FormatMode pad (Precision i) TypeDefault alt) = assertNF alt $ [| $(padnow pad)|]
-format (FormatMode pad PrecisionDefault TypeDefault alt) = assertNF alt $ [| $(padnow pad)|]
+format (Precision i) TypeDefault alt = assertNF alt $ [| F.build |]
+format PrecisionDefault TypeDefault alt = assertNF alt $ [| F.build |]
 
 -- String types. TODO: handled clipping with precision
-format (FormatMode pad (Precision i) Types alt) = assertNF alt $ [| $(padnow pad)|]
-format (FormatMode pad PrecisionDefault Types alt) = assertNF alt $ [| $(padnow pad) |]
+format (Precision i) Types alt = assertNF alt $ [| F.build |]
+format PrecisionDefault Types alt = assertNF alt $ [| F.build |]
 
 -- integer types, precision should not exists
-format (FormatMode pad PrecisionDefault Typeb alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0b") F.% F.bin)  |]
-format (FormatMode pad PrecisionDefault Typed alt) = assertNF alt $ [| $(padnow pad) |]
-format (FormatMode pad PrecisionDefault Typeo alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0o") F.% F.oct) |]
-format (FormatMode pad PrecisionDefault Typex alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0x") F.% F.hex) |]
-format (FormatMode pad PrecisionDefault TypeX alt) = [| $(padnow pad) F.%. ($(ifAlternate alt "0x") F.% toUpper F.%. F.hex) |]
-format (FormatMode _pad PrecisionDefault Typec _alt) = error "Type Char is not handled"
+format PrecisionDefault Typeb alt = [| $(ifAlternate alt "0b") F.% F.bin |]
+format PrecisionDefault Typed alt = assertNF alt $ [| F.build |] -- TODO: check that it is a number
+format PrecisionDefault Typeo alt = [| $(ifAlternate alt "0o") F.% F.oct |]
+format PrecisionDefault Typex alt = [| $(ifAlternate alt "0x") F.% F.hex |]
+format PrecisionDefault TypeX alt = [| $(ifAlternate alt "0x") F.% toUpper F.%. F.hex |]
+format PrecisionDefault Typec _alt = error "Type Char is not handled"
 
 -- There is number for integer and float, find a way to discriminate them TODO.
-format (FormatMode _pad PrecisionDefault Typen _alt) = error "Type n is not handled"
+format PrecisionDefault Typen _alt = error "Type n is not handled"
 
 -- Floating point types
 -- TODO: NaN and Inf are bugged
-format (FormatMode pad prec Typee alt) = assertNFYet alt $ [| $(padnow pad) F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (FormatMode pad prec TypeE alt) = assertNFYet alt $ [| $(padnow pad) F.%. toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (FormatMode pad prec Typef alt) = assertNFYet alt $ [| $(padnow pad) F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (FormatMode pad prec TypeF alt) = assertNFYet alt $ [| $(padnow pad) F.%. toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (FormatMode _pad _prec Typeg _alt) = error "type g is not handled"
-format (FormatMode _pad _prec TypeG _alt) = error "type G is not handled"
-format (FormatMode _pad _prec Typen _alt) = error "type n is not handled"
-format (FormatMode pad prec TypePercent alt) = assertNFYet alt $ [| ($(padnow pad) F.%. F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec))) F.% "%" |]
-format fmt = fail (show fmt)
+format prec Typee alt = assertNFYet alt $ [| F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format prec TypeE alt = assertNFYet alt $ [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format prec Typef alt = assertNFYet alt $ [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format prec TypeF alt = assertNFYet alt $ [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format _prec Typeg _alt = error "type g is not handled"
+format _prec TypeG _alt = error "type G is not handled"
+format _prec Typen _alt = error "type n is not handled"
+format prec TypePercent alt = assertNFYet alt $ [| F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
+format a b c = fail (show (a, b, c))
 
 ifAlternate :: AlternateForm -> String -> Q Exp
 ifAlternate NormalForm _ = [| F.now (Builder.fromString "") |]
@@ -318,9 +321,9 @@ precToInt :: Precision -> Q Exp
 precToInt PrecisionDefault = [| 6 |] -- Default precision from python
 precToInt (Precision i) = [| i |]
 
-padnow :: Padding -> Q Exp
-padnow PaddingDefault = [| F.left 0 '0' |] -- HACK: no padding is a 0 padding ?
-padnow (Padding i am ac) = [| $(padFunc) i padChar |]
+applyPadding :: Padding -> Exp -> Q Exp
+applyPadding PaddingDefault e = pure e
+applyPadding (Padding i am ac) e = [| $(padFunc) i padChar F.%. $(pure e) |]
   where
     padFunc = pure $ VarE $ case am of
           AlignDefault -> 'F.left
@@ -332,7 +335,6 @@ padnow (Padding i am ac) = [| $(padFunc) i padChar |]
     padChar = case ac of
           AlignCharDefault -> ' '
           AlignChar c -> c
-
 
 -- To Scientific
 class ToScientific t where
