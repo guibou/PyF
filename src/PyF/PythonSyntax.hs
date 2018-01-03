@@ -10,7 +10,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE DataKinds, KindSignatures, TypeInType, StandaloneDeriving #-}
 
-module Yak.PythonSyntax where
+module PyF.PythonSyntax where
 
 import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
