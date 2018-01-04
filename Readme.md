@@ -124,6 +124,7 @@ For now, the only generated output is a lazy `Text` from `Data.Text.Lazy`. I'm s
 - Floating point rendering of `NaN` and `Infinity` are not supported for the moment.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
 - Python support arbitrary python expression in the formatting options, I'm not sure we should...
+- Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones
 
 ### Difference
 
