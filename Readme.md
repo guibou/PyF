@@ -107,9 +107,13 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - However, if the interpolated name is not of a compatible type (or
   too polymorphic), you will get an awful error.
 
-# Difference with the Python Syntax
+## Output
 
-## Not supported
+For now, the only generated output is a lazy `Text` from `Data.Text.Lazy`. I'm still wondering if a polymorphic solution is better than a monomorphic solution with different quasiquoters name.
+
+## Difference with the Python Syntax
+
+### Not supported
 
 - Number `n` formatter is not supported
 - Alternative `#` forms for all floating point representations are not supported. Theses forms allow the result of the conversion to always contain a decimal-point character.
@@ -121,7 +125,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
 - Python support arbitrary python expression in the formatting options, I'm not sure we should...
 
-## Difference
+### Difference
 
 - Exponential formatters *e* and *E* formats the exponent with less digits. For example `0.2` formatted as `.1e` gives `2.0e-1` instead of `2.0e-01` in python.
 - Centering puts more char on the right than on the left. For example `hello` formatted as `+10s` gives `+++hello++` instead of `++hello+++`.
