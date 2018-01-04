@@ -23,6 +23,8 @@ import qualified Data.Char
 import qualified Data.List.NonEmpty as NonEmpty
 
 import Data.Monoid ((<>))
+import qualified Data.Word as Word
+import qualified Data.Int as Int
 
 import PyF.Internal.PythonSyntax
 
@@ -77,22 +79,22 @@ toFormat (Raw x) = [| F.now (Builder.fromString x) |]
 toFormat (Replacement _ y) = padAndFormat (fromMaybe DefaultFormatMode y)
 
 padAndFormat :: FormatMode -> Q Exp
-padAndFormat DefaultFormatMode = [| F.build |]
+padAndFormat DefaultFormatMode = [| genericDefault |]
 padAndFormat (FormatMode pad t) = applyPadding pad =<< format t
 
 format :: TypeFormat -> Q Exp
 
 -- Default cases
 format (DefaultF prec) = case prec of
-  PrecisionDefault -> [| F.build |]
+  PrecisionDefault -> [| genericDefault |]
   Precision i -> [| genericPrecision i |] -- Precision is clipping
 -- String types
 format (StringF prec) = case prec of
   PrecisionDefault -> [| F.later defaultString |]
-  Precision i -> [| laterTake i |] -- Precision is clipping
+  Precision i -> [| laterTake i F.%. F.later defaultString |] -- Precision is clipping
 -- Integer types
 format (BinaryF alt) = [| $(ifAlternate alt "0b") F.% F.bin |]
-format (DecimalF) = [| F.build |] -- TODO: check that it is a number
+format (DecimalF) = [| F.int |]
 format (OctalF alt) = [| $(ifAlternate alt "0o") F.% F.oct |]
 format (HexF alt) = [| $(ifAlternate alt "0x") F.% F.hex |]
 format (HexCapsF alt) = [| $(ifAlternate alt "0x") F.% toUpper F.%. F.hex |]
@@ -104,7 +106,7 @@ format (ExponentialF prec) = [| F.mapf toScientific (F.scifmt Scientific.Exponen
 format (ExponentialCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
 format (FixedF prec) = [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
 format (FixedCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (PercentF prec) = [| F.mapf (*100) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
+format (PercentF prec) = [| F.mapf ((*100) . toScientific) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
 
 ifAlternate :: AlternateForm -> String -> Q Exp
 ifAlternate NormalForm _ = [| F.now (Builder.fromString "") |]
@@ -177,6 +179,7 @@ instance GenericPrecision LText.Text where
 instance GenericPrecision SText.Text where
   genericPrecision i = laterTake i F.%. F.build
 
+-- Default String
 class DefaultString t where
   defaultString :: t -> Builder.Builder
 
@@ -188,3 +191,28 @@ instance DefaultString SText.Text where
 
 instance DefaultString LText.Text where
   defaultString = Builder.fromLazyText
+
+-- Generic Default
+class GenericDefault t where
+  genericDefault :: F.Format r (t -> r)
+
+instance GenericDefault Float where genericDefault = F.shortest
+instance GenericDefault Double where genericDefault = F.shortest
+
+instance GenericDefault [Char] where genericDefault = F.build
+instance GenericDefault LText.Text where genericDefault = F.build
+instance GenericDefault SText.Text where genericDefault = F.build
+
+instance GenericDefault Int.Int8 where genericDefault = F.build
+instance GenericDefault Int.Int16 where genericDefault = F.build
+instance GenericDefault Int.Int32 where genericDefault = F.build
+instance GenericDefault Int.Int64 where genericDefault = F.build
+
+instance GenericDefault Word.Word8 where genericDefault = F.build
+instance GenericDefault Word.Word16 where genericDefault = F.build
+instance GenericDefault Word.Word32 where genericDefault = F.build
+instance GenericDefault Word.Word64 where genericDefault = F.build
+
+instance GenericDefault Word where genericDefault = F.build
+instance GenericDefault Int where genericDefault = F.build
+instance GenericDefault Integer where genericDefault = F.build

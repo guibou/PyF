@@ -22,7 +22,7 @@ type Parser t = Parsec Void String t
      - types: n / g / G
      - alignement: =
      - #: for floating points
-     - floating point rendering of NaN and Inf are bugged
+     - floating point rendering of NaN and Inf are not well defined...
 -}
 
 
@@ -169,7 +169,7 @@ format_spec = do
         lastCharFailed typeError
 
 evalFlag :: TypeFlag -> Precision -> AlternateForm -> Either String TypeFormat
-evalFlag Flagb prec alt = failIfPrec prec =<< failIfAlt alt (BinaryF alt)
+evalFlag Flagb prec alt = failIfPrec prec (BinaryF alt)
 evalFlag Flagc prec alt = failIfPrec prec =<< failIfAlt alt CharacterF
 evalFlag Flagd prec alt = failIfPrec prec =<< failIfAlt alt DecimalF
 evalFlag Flage prec alt = unhandledAlt alt (ExponentialF prec)
@@ -216,8 +216,8 @@ fill = anyChar
 
 align :: Parser (Either String AlignMode)
 align = choice [
-  Right AlignLeft <$ char '<',
-  Right AlignRight <$ char '>',
+  Right AlignRight <$ char '<',
+  Right AlignLeft <$ char '>',
   Right AlignCenter <$ char '^',
   Left "Align mode '=' is not handled yet" <$ char '='
   ]
