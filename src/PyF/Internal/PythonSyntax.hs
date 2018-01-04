@@ -19,7 +19,7 @@ type Parser t = Parsec Void String t
 - f_expression / conversion
 - Not (Yet) implemented:
      - fields: sign / grouping_option / 0
-     - types: n / g / G
+     - types: n
      - alignement: =
      - #: for floating points
      - floating point rendering of NaN and Inf are not well defined...
