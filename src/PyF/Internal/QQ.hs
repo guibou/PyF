@@ -128,8 +128,8 @@ toUpper = opLater LText.toUpper
 
 alternateFloat :: AlternateForm -> F.Format r (Builder.Builder -> r)
 alternateFloat NormalForm = opLater id
-alternateFloat AlternateForm = opLater f
-  where f t = case LText.find (=='.') t of
+alternateFloat AlternateForm = opLater func
+  where func t = case LText.find (=='.') t of
           Nothing -> t <> "."
           Just _ -> t
 
