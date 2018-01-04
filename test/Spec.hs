@@ -71,7 +71,7 @@ spec = do
       it "alt" $ [f|{anInt:#x}|] `shouldBe` "0x7b"
     describe "hex caps" $ do
       it "simple" $ [f|{anInt:X}|] `shouldBe` "7B"
-      it "alt" $ [f|{anInt:#X}|] `shouldBe` "0x7B"
+      it "alt" $ [f|{anInt:#X}|] `shouldBe` "0X7B"
     describe "percent" $ do
       it "simple" $ [f|{aFloat:%}|] `shouldBe` "23.400000%"
       it "precision" $ [f|{aFloat:.2%}|] `shouldBe` "23.40%"

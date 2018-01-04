@@ -97,7 +97,7 @@ format (BinaryF alt) = [| $(ifAlternate alt "0b") F.% F.bin |]
 format (DecimalF) = [| F.int |]
 format (OctalF alt) = [| $(ifAlternate alt "0o") F.% F.oct |]
 format (HexF alt) = [| $(ifAlternate alt "0x") F.% F.hex |]
-format (HexCapsF alt) = [| $(ifAlternate alt "0x") F.% toUpper F.%. F.hex |]
+format (HexCapsF alt) = [| $(ifAlternate alt "0X") F.% toUpper F.%. F.hex |]
 format (CharacterF) = [| laterChar |]
 
 -- Floating point types
