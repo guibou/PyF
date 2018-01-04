@@ -135,6 +135,16 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Improve the error reporting with more Parsec annotation
 - Improve the issue with type inference
 
+# Build / test
+
+Should work with `stack build; stack test`, and also with:
+
+```shell
+nix-shell
+cabal new-build
+cabal test
+```
+
 # Conclusion
 
 For complex tasks, I use *Formatting* (or any great library). But for most of my simple formatting task, I was really missing a simple and non verbose library. The mini formating language of python is simple enough for a few cases.
