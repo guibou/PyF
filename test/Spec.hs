@@ -40,6 +40,20 @@ spec = do
     describe "exponentiel caps" $ do
       it "simple" $ [f|{aFloat:E}|] `shouldBe` "2.340000E-1"
       it "precision" $ [f|{aFloat:.1E}|] `shouldBe` "2.3E-1"
+    describe "general" $ do
+      let smallF = 123.02 :: Double
+          bigF = 1234567890.23 :: Double
+      it "simple small" $ [f|{smallF:g}|] `shouldBe` "123.020000"
+      it "precision small" $ [f|{smallF:.1g}|] `shouldBe` "123.0"
+      it "simple big" $ [f|{bigF:g}|] `shouldBe` "1.234568e9"
+      it "precision big" $ [f|{bigF:.1g}|] `shouldBe` "1.2e9"
+    describe "general caps" $ do
+      let smallF = 123.02 :: Double
+          bigF = 1234567890.23 :: Double
+      it "simple small" $ [f|{smallF:G}|] `shouldBe` "123.020000"
+      it "precision small" $ [f|{smallF:.1G}|] `shouldBe` "123.0"
+      it "simple big" $ [f|{bigF:G}|] `shouldBe` "1.234568E9"
+      it "precision big" $ [f|{bigF:.1G}|] `shouldBe` "1.2E9"
     describe "fixed" $ do
       it "simple" $ [f|{aFloat:f}|] `shouldBe` "0.234000"
       it "precision" $ [f|{aFloat:.1f}|] `shouldBe` "0.2"

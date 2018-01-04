@@ -111,8 +111,8 @@ data TypeFormat =
   | ExponentialCapsF Precision {- AlternateForm -} -- exponentiel notation CAPS (Alt not handled)
   | FixedF Precision {- AlternateForm -} -- fixed point (Alt not handled)
   | FixedCapsF Precision {- AlternateForm -} -- fixed point CAPS (Alt not handled)
-  -- | GeneralF Precision AlternateForm -- General (Not Yet handled)
-  -- | GeneralOrExponentialCapsF Precision AlternateForm -- General Switch to E (Not yet handled)
+  | GeneralF Precision {- AlternateForm -} -- General (Alt Not Yet handled)
+  | GeneralCapsF Precision {- AlternateForm -} -- General Switch to E (Alt Not yet handled)
   -- | NumberF Precision AlternateForm -- Number (Not Yet handled)
   | OctalF AlternateForm -- octal
   | StringF Precision -- string
@@ -176,8 +176,8 @@ evalFlag Flage prec alt = unhandledAlt alt (ExponentialF prec)
 evalFlag FlagE prec alt = unhandledAlt alt (ExponentialCapsF prec)
 evalFlag Flagf prec alt = unhandledAlt alt (FixedF prec)
 evalFlag FlagF prec alt = unhandledAlt alt (FixedCapsF prec)
-evalFlag Flagg _prec _alt = Left ("Type 'g' not handled (yet). " ++ errgGn)
-evalFlag FlagG _prec _alt = Left ("Type 'G' not handled (yet). " ++ errgGn)
+evalFlag Flagg prec alt = unhandledAlt alt (GeneralF prec)
+evalFlag FlagG prec alt = unhandledAlt alt (GeneralCapsF prec)
 evalFlag Flagn _prec _alt = Left ("Type 'n' not handled (yet). " ++ errgGn)
 evalFlag Flago prec alt = failIfPrec prec $ OctalF alt
 evalFlag Flags prec alt = failIfAlt alt $ StringF prec

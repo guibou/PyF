@@ -106,6 +106,8 @@ format (ExponentialF prec) = [| F.mapf toScientific (F.scifmt Scientific.Exponen
 format (ExponentialCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
 format (FixedF prec) = [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
 format (FixedCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format (GeneralF prec) = [| F.mapf toScientific (F.scifmt Scientific.Generic $(precToMaybe prec)) |]
+format (GeneralCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Generic $(precToMaybe prec)) |]
 format (PercentF prec) = [| F.mapf ((*100) . toScientific) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
 
 ifAlternate :: AlternateForm -> String -> Q Exp
