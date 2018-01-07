@@ -82,33 +82,42 @@ padAndFormat :: FormatMode -> Q Exp
 padAndFormat DefaultFormatMode = [| genericDefault |]
 padAndFormat (FormatMode pad t) = applyPadding pad =<< format t
 
-format :: TypeFormat -> Q Exp
+genericDefaultSign :: SignField -> Q Exp
+genericDefaultSign Negative = [| genericDefault |]
+genericDefaultSign Positive = [| genericDefaultWithSign '+' |]
+genericDefaultSign Space = [| genericDefaultWithSign ' ' |]
 
+genericPrecisionSign :: SignField -> Q Exp
+genericPrecisionSign Negative = [| genericPrecision |]
+genericPrecisionSign Positive = [| genericDefaultPrecisionWithSign '+' |]
+genericPrecisionSign Space = [| genericDefaultPrecisionWithSign ' ' |]
+
+format :: TypeFormat -> Q Exp
 -- Default cases
-format (DefaultF prec) = case prec of
-  PrecisionDefault -> [| genericDefault |]
-  Precision i -> [| genericPrecision i |] -- Precision is clipping
+format (DefaultF prec s) = case prec of
+  PrecisionDefault -> [| $(genericDefaultSign s) |]
+  Precision i -> [| $(genericPrecisionSign s) i |] -- Precision is clipping
 -- String types
 format (StringF prec) = case prec of
   PrecisionDefault -> [| F.later defaultString |]
   Precision i -> [| laterTake i F.%. F.later defaultString |] -- Precision is clipping
 -- Integer types
-format (BinaryF alt) = [| $(ifAlternate alt "0b") F.% F.bin |]
-format (DecimalF) = [| F.int |]
-format (OctalF alt) = [| $(ifAlternate alt "0o") F.% F.oct |]
-format (HexF alt) = [| $(ifAlternate alt "0x") F.% F.hex |]
-format (HexCapsF alt) = [| $(ifAlternate alt "0X") F.% toUpper F.%. F.hex |]
+format (BinaryF alt s) = formatSign s =<< [| $(ifAlternate alt "0b") F.% F.bin |]
+format (DecimalF s) = formatSign s =<< [| F.int |]
+format (OctalF alt s) = formatSign s =<< [| $(ifAlternate alt "0o") F.% F.oct |]
+format (HexF alt s) = formatSign s =<< [| $(ifAlternate alt "0x") F.% F.hex |]
+format (HexCapsF alt s) = formatSign s =<< [| $(ifAlternate alt "0X") F.% toUpper F.%. F.hex |]
 format (CharacterF) = [| laterChar |]
 
 -- Floating point types
 -- TODO: NaN and Inf are bugged
-format (ExponentialF prec) = [| F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (ExponentialCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
-format (FixedF prec) = [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (FixedCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
-format (GeneralF prec) = [| F.mapf toScientific (F.scifmt Scientific.Generic $(precToMaybe prec)) |]
-format (GeneralCapsF prec) = [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Generic $(precToMaybe prec)) |]
-format (PercentF prec) = [| F.mapf ((*100) . toScientific) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
+format (ExponentialF prec s) = formatSign s =<< [| F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format (ExponentialCapsF prec s) = formatSign s =<< [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Exponent $(precToMaybe prec)) |]
+format (FixedF prec s) = formatSign s =<< [| F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format (FixedCapsF prec s) = formatSign s =<< [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Fixed $(precToMaybe prec)) |]
+format (GeneralF prec s) = formatSign s =<< [| F.mapf toScientific (F.scifmt Scientific.Generic $(precToMaybe prec)) |]
+format (GeneralCapsF prec s) = formatSign s =<< [| toUpper F.%. F.mapf toScientific (F.scifmt Scientific.Generic $(precToMaybe prec)) |]
+format (PercentF prec s) = formatSign s =<< [| F.mapf ((*100) . toScientific) (F.scifmt Scientific.Fixed $(precToMaybe prec)) F.% "%" |]
 
 ifAlternate :: AlternateForm -> String -> Q Exp
 ifAlternate NormalForm _ = [| F.now (Builder.fromString "") |]
@@ -125,6 +134,16 @@ laterTake i = opLater (LText.take (fromIntegral i))
 
 toUpper :: F.Format r (Builder.Builder -> r)
 toUpper = opLater LText.toUpper
+
+formatSign :: SignField -> Exp -> Q Exp
+formatSign Negative e = pure e
+formatSign Positive e = [| F.later (addSignIfPositive '+') F.%. $(pure e) |]
+formatSign Space e = [| F.later (addSignIfPositive ' ') F.%. $(pure e) |]
+
+addSignIfPositive :: Char -> Builder.Builder -> Builder.Builder
+addSignIfPositive c b
+  | LText.index (Builder.toLazyText b) 0 == '-' = b
+  | otherwise = Builder.singleton c <> b
 
 alternateFloat :: AlternateForm -> F.Format r (Builder.Builder -> r)
 alternateFloat NormalForm = opLater id
@@ -218,3 +237,32 @@ instance GenericDefault Word.Word64 where genericDefault = F.build
 instance GenericDefault Word where genericDefault = F.build
 instance GenericDefault Int where genericDefault = F.build
 instance GenericDefault Integer where genericDefault = F.build
+
+-- Instance genericSigned
+class GenericDefaultWithSign t where
+  genericDefaultWithSign :: Char -> F.Format r (t -> r)
+
+instance GenericDefaultWithSign Float where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Double where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+
+instance GenericDefaultWithSign Int.Int8 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Int.Int16 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Int.Int32 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Int.Int64 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+
+instance GenericDefaultWithSign Word.Word8 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Word.Word16 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Word.Word32 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Word.Word64 where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+
+instance GenericDefaultWithSign Word where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Int where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+instance GenericDefaultWithSign Integer where genericDefaultWithSign c = F.later (addSignIfPositive c) F.%. genericDefault
+
+-- GenericPrecisionWithSign
+class GenericPrecisionWithSign t where
+  genericDefaultPrecisionWithSign :: Char -> Int -> F.Format r (t -> r)
+
+instance GenericPrecisionWithSign Float where genericDefaultPrecisionWithSign c i = F.later (addSignIfPositive c) F.%. genericPrecision i
+instance GenericPrecisionWithSign Double where genericDefaultPrecisionWithSign c i = F.later (addSignIfPositive c) F.%. genericPrecision i
+

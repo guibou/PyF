@@ -8,6 +8,8 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char
 import Data.Void (Void)
 
+import Data.Maybe (fromMaybe)
+
 import qualified Data.Set as Set -- For fancyFailure
 
 type Parser t = Parsec Void String t
@@ -18,7 +20,7 @@ type Parser t = Parsec Void String t
 - Recursive replacement field, so "{string:.{precision}} can be parsed
 - f_expression / conversion
 - Not (Yet) implemented:
-     - fields: sign / grouping_option / 0
+     - fields: grouping_option / 0
      - types: n
      - alignement: =
      - #: for floating points
@@ -62,7 +64,7 @@ replacementField = do
   pure (Replacement expr fmt)
 
 pattern DefaultFormatMode :: FormatMode
-pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault)
+pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Negative)
 
 data FormatMode = FormatMode Padding TypeFormat
                 deriving (Show)
@@ -103,25 +105,28 @@ data TypeFlag = Flagb | Flagc | Flagd | Flage | FlagE | Flagf | FlagF | Flagg | 
   deriving (Show)
 
 data TypeFormat =
-    DefaultF Precision -- Default
-  | BinaryF AlternateForm -- Binary
+    DefaultF Precision SignField -- Default
+  | BinaryF AlternateForm SignField -- Binary
   | CharacterF -- Character
-  | DecimalF -- Decimal
-  | ExponentialF Precision {- AlternateForm -} -- exponential notation (Alt not handled)
-  | ExponentialCapsF Precision {- AlternateForm -} -- exponentiel notation CAPS (Alt not handled)
-  | FixedF Precision {- AlternateForm -} -- fixed point (Alt not handled)
-  | FixedCapsF Precision {- AlternateForm -} -- fixed point CAPS (Alt not handled)
-  | GeneralF Precision {- AlternateForm -} -- General (Alt Not Yet handled)
-  | GeneralCapsF Precision {- AlternateForm -} -- General Switch to E (Alt Not yet handled)
-  -- | NumberF Precision AlternateForm -- Number (Not Yet handled)
-  | OctalF AlternateForm -- octal
+  | DecimalF SignField -- Decimal
+  | ExponentialF Precision {- AlternateForm -} SignField -- exponential notation (Alt not handled)
+  | ExponentialCapsF Precision {- AlternateForm -} SignField -- exponentiel notation CAPS (Alt not handled)
+  | FixedF Precision {- AlternateForm -} SignField -- fixed point (Alt not handled)
+  | FixedCapsF Precision {- AlternateForm -} SignField -- fixed point CAPS (Alt not handled)
+  | GeneralF Precision {- AlternateForm -} SignField -- General (Alt Not Yet handled)
+  | GeneralCapsF Precision {- AlternateForm -} SignField -- General Switch to E (Alt Not yet handled)
+  -- | NumberF Precision AlternateForm SignField -- Number (Not Yet handled)
+  | OctalF AlternateForm SignField -- octal
   | StringF Precision -- string
-  | HexF AlternateForm -- small hex
-  | HexCapsF AlternateForm -- big hex
-  | PercentF Precision {- AlternateForm -} -- percent (Alt not handled)
+  | HexF AlternateForm SignField -- small hex
+  | HexCapsF AlternateForm SignField -- big hex
+  | PercentF Precision {- AlternateForm -} SignField -- percent (Alt not handled)
   deriving (Show)
 
 data AlternateForm = AlternateForm | NormalForm
+  deriving (Show)
+
+data SignField = Positive | Negative | Space
   deriving (Show)
 
 unhandled :: Parser t -> String -> Parser ()
@@ -148,7 +153,7 @@ format_spec = do
     Left err -> lastCharFailed err
     Right v -> pure v
 
-  unhandled sign "'Sign field' is not handled for now. Please remove it."
+  s <- optional sign
   alternateForm <- option NormalForm (AlternateForm <$ char '#')
   unhandled (char '0') "'0' is not handled for now. Please remove it."
   w <- optional width
@@ -162,28 +167,33 @@ format_spec = do
   t <- optional type_
 
   case t of
-    Nothing -> pure (FormatMode padding (DefaultF prec))
-    Just flag -> case evalFlag flag prec alternateForm of
+    Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Negative s)))
+    Just flag -> case evalFlag flag prec alternateForm s of
       Right fmt -> pure (FormatMode padding fmt)
       Left typeError -> do
         lastCharFailed typeError
 
-evalFlag :: TypeFlag -> Precision -> AlternateForm -> Either String TypeFormat
-evalFlag Flagb prec alt = failIfPrec prec (BinaryF alt)
-evalFlag Flagc prec alt = failIfPrec prec =<< failIfAlt alt CharacterF
-evalFlag Flagd prec alt = failIfPrec prec =<< failIfAlt alt DecimalF
-evalFlag Flage prec alt = unhandledAlt alt (ExponentialF prec)
-evalFlag FlagE prec alt = unhandledAlt alt (ExponentialCapsF prec)
-evalFlag Flagf prec alt = unhandledAlt alt (FixedF prec)
-evalFlag FlagF prec alt = unhandledAlt alt (FixedCapsF prec)
-evalFlag Flagg prec alt = unhandledAlt alt (GeneralF prec)
-evalFlag FlagG prec alt = unhandledAlt alt (GeneralCapsF prec)
-evalFlag Flagn _prec _alt = Left ("Type 'n' not handled (yet). " ++ errgGn)
-evalFlag Flago prec alt = failIfPrec prec $ OctalF alt
-evalFlag Flags prec alt = failIfAlt alt $ StringF prec
-evalFlag Flagx prec alt = failIfPrec prec $ HexF alt
-evalFlag FlagX prec alt = failIfPrec prec $ HexCapsF alt
-evalFlag FlagPercent prec alt = unhandledAlt alt (PercentF prec)
+evalFlag :: TypeFlag -> Precision -> AlternateForm -> Maybe SignField -> Either String TypeFormat
+evalFlag Flagb prec alt s = failIfPrec prec (BinaryF alt (defSign s))
+evalFlag Flagc prec alt s = failIfS s =<< failIfPrec prec =<< failIfAlt alt CharacterF
+evalFlag Flagd prec alt s = failIfPrec prec =<< failIfAlt alt (DecimalF (defSign s))
+evalFlag Flage prec alt s = unhandledAlt alt (ExponentialF prec (defSign s))
+evalFlag FlagE prec alt s = unhandledAlt alt (ExponentialCapsF prec (defSign s))
+evalFlag Flagf prec alt s = unhandledAlt alt (FixedF prec (defSign s))
+evalFlag FlagF prec alt s = unhandledAlt alt (FixedCapsF prec (defSign s))
+evalFlag Flagg prec alt s = unhandledAlt alt (GeneralF prec (defSign s))
+evalFlag FlagG prec alt s = unhandledAlt alt (GeneralCapsF prec (defSign s))
+evalFlag Flagn _prec _alt _s = Left ("Type 'n' not handled (yet). " ++ errgGn)
+evalFlag Flago prec alt s = failIfPrec prec $ OctalF alt (defSign s)
+evalFlag Flags prec alt s = failIfS s =<< (failIfAlt alt $ StringF prec)
+evalFlag Flagx prec alt s = failIfPrec prec $ HexF alt (defSign s)
+evalFlag FlagX prec alt s = failIfPrec prec $ HexCapsF alt (defSign s)
+evalFlag FlagPercent prec alt s = unhandledAlt alt (PercentF prec (defSign s))
+
+defSign :: Maybe SignField -> SignField
+defSign Nothing = Negative
+defSign (Just s) = s
+
 
 errgGn :: String
 errgGn = "Use one of {'b', 'c', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}."
@@ -195,6 +205,16 @@ failIfPrec (Precision i) _ = Left ("Type incompatible with precision (." ++ show
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i
 failIfAlt _ _ = Left "Type incompatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
+
+failIfS :: Maybe SignField -> TypeFormat -> Either String TypeFormat
+failIfS Nothing i = Right i
+failIfS (Just s) _ = Left ("Type incompatible with sign field (" ++ [toSignField s] ++ "), use any of {'b', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the sign field.")
+
+toSignField :: SignField -> Char
+toSignField Positive = '+'
+toSignField Negative = '-'
+toSignField Space = ' '
+
 
 unhandledAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 unhandledAlt NormalForm i = Right i
@@ -222,8 +242,12 @@ align = choice [
   Left "Align mode '=' is not handled yet" <$ char '='
   ]
 
-sign :: Parser Char
-sign = oneOf ("+- " :: [Char])
+sign :: Parser SignField
+sign = choice
+  [Positive <$ char '+',
+   Negative <$ char '-',
+   Space <$ char ' '
+  ]
 
 width :: Parser Integer
 width = integer

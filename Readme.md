@@ -117,7 +117,6 @@ For now, the only generated output is a lazy `Text` from `Data.Text.Lazy`. I'm s
 
 - Number `n` formatter is not supported
 - Alternative `#` forms for all floating point representations are not supported. Theses forms allow the result of the conversion to always contain a decimal-point character.
-- Sign field is not supported. This adds the sign `+` in front of positives numbers.
 - grouping_option field is not supported. This will allows to group digits together, such as `100,234,123.03`.
 - 0 field is not supported.
 - Alignment with `=` is not supported. It allows padding chars to appears between a sign and a number, such as `-     100`.

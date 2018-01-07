@@ -12,6 +12,9 @@ main = hspec spec
 anInt :: Int
 anInt = 123
 
+anIntNeg :: Int
+anIntNeg = -123
+
 aString :: String
 aString = "hello"
 
@@ -27,13 +30,18 @@ spec = do
       it "string" $ [f|{aString}|] `shouldBe` "hello"
       it "float precision" $ [f|{aFloat:.1}|] `shouldBe` "0.2"
       it "string precision" $ [f|{aString:.1}|] `shouldBe` "h"
+      it "sign +" $ [f|{aFloat:+}|] `shouldBe` "+0.234"
+      it "sign space" $ [f|{aFloat: }|] `shouldBe` " 0.234"
+      it "sign neg" $ [f|{anIntNeg:+}|] `shouldBe` "-123"
     describe "binary" $ do
       it "simple" $ [f|{anInt:b}|] `shouldBe` "1111011"
       it "alt" $ [f|{anInt:#b}|] `shouldBe` "0b1111011"
+      it "sign" $ [f|{anInt:+#b}|] `shouldBe` "+0b1111011"
     describe "character" $ do
       it "simple" $ [f|{anInt:c}|] `shouldBe` "{"
     describe "decimal" $ do
       it "simple" $ [f|{anInt:d}|] `shouldBe` "123"
+      it "sign" $ [f|{anInt:+d}|] `shouldBe` "+123"
     describe "exponentiel" $ do
       it "simple" $ [f|{aFloat:e}|] `shouldBe` "2.340000e-1"
       it "precision" $ [f|{aFloat:.1e}|] `shouldBe` "2.3e-1"
