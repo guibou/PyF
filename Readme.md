@@ -1,6 +1,6 @@
 *PyF* is a Haskell library for string interpolation and formatting.
 
-Internally, the formatting is done using the [Formatting](https://hackage.haskell.org/package/formatting) library, however *PyF* provides a quasiquotation with a mini language inspired from Python to ease the construction of format string.
+*PyF* exposes a quasiquoter `f` for the [Formatting](https://hackage.haskell.org/package/formatting) library. The quasiquotation introduces string interpolation and formatting with a mini language inspired from printf / Python to ease the construction of format string.
 
 # Quick Start
 
@@ -17,9 +17,10 @@ The following *Formatting* example:
 can be written as:
 
 ```haskell
+>>> import PyF
 >>> name = "Dave"
 >>> age = 54
->>> [f|Person's name is {name}, age is {age:x}|]
+>>> format [f|Person's name is {name}, age is {age:x}|]
 "Person's name is Dave, age is 36"
 ```
 
@@ -27,51 +28,69 @@ This needs the `QuasiQuotes` and `OverloadedStrings` extensions enabled.
 
 Variables are referenced by `{variableName:formatingOptions}` where `formatingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the python documentation, but the [Test file](https://github.com/guibou/PyF/blob/master/test/Spec.hs) as well as this readme contain many examples:
 
-# padding
+## padding
 
 ```haskell
 >>> name = "Guillaume"
->>> [f|{name:<11}|]
+>>> format [f|{name:<11}|]
 "Guillaume  "
 >>> name = "Guillaume"
->>> [f|{name:>11}|]
+>>> format [f|{name:>11}|]
 "  Guillaume"
 >>> name = "Guillaume"
->>> [f|{name:|^13}|]
+>>> format [f|{name:|^13}|]
 "||Guillaume||"
 ```
 
-# Float rounding
+## Float rounding
 
 ```haskell
->>> [f|{pi:.2}|]
+>>> format [f|{pi:.2}|]
 "3.14"
 ```
 
-# Binary / Octal / Hex representation (with or without prefix)
+## Binary / Octal / Hex representation (with or without prefix)
 
 ```haskell
 >>> v = 31
->>> [f|Binary: {v:#b}|]
+>>> format [f|Binary: {v:#b}|]
 "Binary: 0b11111"
->>> [f|Octal (no prefix): {age:o}|]
+>>> format [f|Octal (no prefix): {age:o}|]
 "Octal (no prefix): 37"
->>> [f|Hexa (caps and prefix): {age:#X}|]
+>>> format [f|Hexa (caps and prefix): {age:#X}|]
 "Hexa (caps and prefix): 0x1F"
 ```
 
-# Combined
+## Combined
 
 ```haskell
->>> [f|{pi:~>5.2}|]
+>>> format [f|{pi:~>5.2}|]
 "~~3.14"
+```
+
+`PyF` reexport most of `Formatting` runners, such as `format`, `sformat`, `formatToString`, ...
+
+# Other quasi quoters
+
+*PyF* main entry point is `f` but for convenience some other quasiquoters are provided:
+
+- `f(StrictText|LazyText|String|Builder|IO)` directly call the underlying `Formatting` runner and produce the specified type.
+- `f'` use type inference to deduce the type.
+
+For example:
+
+```haskell
+>>> [f'|hello {pi.2}|] :: String
+"hello 3.14"
+>>> :type [fString|hello|]
+[Char]
 ```
 
 # Caveats
 
 ## Type inference
 
-Type inference is broken in most cases if your variables are too polymorphic (such as simple literals). Most of the time a type annotation solve the issue.
+Type inference with numeric literals can be unreliable if your variables are too polymorphic. A type annotation or the extension `ExtendedDefaultRules` will help.
 
 ```haskell
 >>> v = 10 :: Double
@@ -106,10 +125,6 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 
 - However, if the interpolated name is not of a compatible type (or
   too polymorphic), you will get an awful error.
-
-## Output
-
-For now, the only generated output is a lazy `Text` from `Data.Text.Lazy`. I'm still wondering if a polymorphic solution is better than a monomorphic solution with different quasiquoters name.
 
 ## Difference with the Python Syntax
 
