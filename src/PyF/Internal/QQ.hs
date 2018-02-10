@@ -9,11 +9,9 @@ import Text.Megaparsec
 import qualified Formatting as F
 import qualified Data.Scientific as Scientific
 
-import           Language.Haskell.TH.Quote (QuasiQuoter(..))
 import           Language.Haskell.TH
 
 import Data.Maybe (fromMaybe)
-import Control.Monad
 
 import qualified Data.Text.Lazy.Builder as Builder
 
@@ -27,16 +25,6 @@ import qualified Data.Word as Word
 import qualified Data.Int as Int
 
 import PyF.Internal.PythonSyntax
-
-f :: QuasiQuoter
-f = QuasiQuoter {
-    quoteExp = toExp
-  , quotePat = err "pattern"
-  , quoteType = err "type"
-  , quoteDec = err "declaration"
-  }
-  where
-    err name = error ("Data.String.Interpolate.i: This QuasiQuoter can not be used as a " ++ name ++ "!")
 
 -- Be Careful: empty format string
 toExp:: String -> Q Exp
@@ -58,13 +46,7 @@ toExp s = do
         else do
           fileContent <- runIO (readFile filename)
           fail (parseErrorPretty' fileContent err)
-    Right items -> do
-      fmtItems <- goFormat items
-      foldM goArgs (AppE (VarE 'F.format) fmtItems) items
-
-goArgs :: Exp -> Item -> Q Exp
-goArgs currentApp (Raw _) = pure currentApp
-goArgs currentApp (Replacement x _) = pure $ AppE currentApp (VarE (mkName x))
+    Right items -> goFormat items
 
 goFormat :: [Item] -> Q Exp
 goFormat items = foldl1 fofo <$> (mapM toFormat items)
@@ -76,7 +58,9 @@ fofo s0 s1 = InfixE (Just s0) (VarE '(F.%)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = [| F.now (Builder.fromString x) |]
-toFormat (Replacement _ y) = padAndFormat (fromMaybe DefaultFormatMode y)
+toFormat (Replacement x y) = do
+  formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
+  pure (AppE (VarE 'F.now) ((VarE 'F.bprint) `AppE` formatExpr `AppE` (VarE (mkName x))))
 
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat DefaultFormatMode = [| genericDefault |]
