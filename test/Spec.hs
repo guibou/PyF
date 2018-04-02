@@ -1,10 +1,10 @@
+{-# OPTIONS -Wno-type-defaults #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 import PyF
 
 import Test.Hspec
-import Data.Text.Lazy as Text
 
 main :: IO ()
 main = hspec spec
