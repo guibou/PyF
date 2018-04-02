@@ -69,7 +69,7 @@ First argument inside the curly braces can be a valid haskell expression, for ex
 >>> format [f|2pi = {2* pi:.2}|]
 6.28
 >>> format [f|tail "hello" = {tail "hello":->6}|]
---ello
+"tail \"hello\" = --ello"
 ```
 
 However the expression must not contain `}` or `:` characters.
