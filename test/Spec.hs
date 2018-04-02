@@ -1,6 +1,7 @@
 {-# OPTIONS -Wno-type-defaults #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ExtendedDefaultRules #-}
 
 import PyF
 
@@ -49,15 +50,15 @@ spec = do
       it "simple" $ [fString|{aFloat:E}|] `shouldBe` "2.340000E-1"
       it "precision" $ [fString|{aFloat:.1E}|] `shouldBe` "2.3E-1"
     describe "general" $ do
-      let smallF = 123.02 :: Double
-          bigF = 1234567890.23 :: Double
+      let smallF = 123.02
+          bigF = 1234567890.23
       it "simple small" $ [fString|{smallF:g}|] `shouldBe` "123.020000"
       it "precision small" $ [fString|{smallF:.1g}|] `shouldBe` "123.0"
       it "simple big" $ [fString|{bigF:g}|] `shouldBe` "1.234568e9"
       it "precision big" $ [fString|{bigF:.1g}|] `shouldBe` "1.2e9"
     describe "general caps" $ do
-      let smallF = 123.02 :: Double
-          bigF = 1234567890.23 :: Double
+      let smallF = 123.02
+          bigF = 1234567890.23
       it "simple small" $ [fString|{smallF:G}|] `shouldBe` "123.020000"
       it "precision small" $ [fString|{smallF:.1G}|] `shouldBe` "123.0"
       it "simple big" $ [fString|{bigF:G}|] `shouldBe` "1.234568E9"
@@ -96,9 +97,9 @@ spec = do
   describe "complex" $ do
     it "works with many things at once" $
       let
-        name = "Guillaume" :: String
-        age = 31 :: Int
-        euroToFrancs = 6.55957 :: Double
+        name = "Guillaume"
+        age = 31
+        euroToFrancs = 6.55957
       in
         [fString|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
 
