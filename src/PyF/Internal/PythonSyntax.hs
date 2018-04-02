@@ -8,6 +8,8 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char
 import Data.Void (Void)
 
+import qualified Data.Char
+
 import Data.Maybe (fromMaybe)
 
 import qualified Data.Set as Set -- For fancyFailure
@@ -47,10 +49,20 @@ result :: Parser [Item]
 result = many (rawString <|> escapedParenthesis <|> replacementField)
 
 rawString :: Parser Item
-rawString = Raw <$> some (noneOf ("{}" :: [Char]))
+rawString = Raw . escapeChars <$> some (noneOf ("{}" :: [Char]))
 
 escapedParenthesis :: Parser Item
 escapedParenthesis = Raw <$> (string "{{" <|> string "}}")
+
+{- | Replace escape chars with their value
+>>> escapeChars "hello \\n"
+"hello \n"
+-}
+escapeChars :: String -> String
+escapeChars "" = ""
+escapeChars s = case Data.Char.readLitChar s of
+                  [] -> ""
+                  ((c, xs):_) -> c : escapeChars xs
 
 replacementField :: Parser Item
 replacementField = do

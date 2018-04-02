@@ -165,7 +165,6 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Code quality (documentation and tests, we can copy the python tests)
 - Improve the error reporting with more Parsec annotation
 - Improve the issue with type inference
-- Handle basic haskell string escape sequences (such as `\n` and friends)
 - Improve the parser for sub-expression (handle the `:` and `}` cases if possible).
 
 # Build / test

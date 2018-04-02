@@ -110,3 +110,7 @@ spec = do
   describe "sub expressions" $ do
     it "works" $ do
       [fString|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
+
+  describe "escape strings" $ do
+    it "works" $ do
+      [fString|hello \n\b|] `shouldBe` "hello \n\b"
