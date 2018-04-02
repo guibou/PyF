@@ -61,6 +61,19 @@ Variables are referenced by `{variableName:formatingOptions}` where `formatingOp
 "Hexa (caps and prefix): 0x1F"
 ```
 
+## Subexpression
+
+First argument inside the curly braces can be a valid haskell expression, for example:
+
+```haskell
+>>> format [f|2pi = {2* pi:.2}|]
+6.28
+>>> format [f|tail "hello" = {tail "hello":->6}|]
+--ello
+```
+
+However the expression must not contain `}` or `:` characters.
+
 ## Combined
 
 ```haskell
@@ -137,7 +150,6 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Alignment with `=` is not supported. It allows padding chars to appears between a sign and a number, such as `-     100`.
 - Floating point rendering of `NaN` and `Infinity` are not supported for the moment.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
-- Python support arbitrary python expression in the formatting options, I'm not sure we should...
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones
 
 ### Difference
@@ -153,6 +165,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Code quality (documentation and tests, we can copy the python tests)
 - Improve the error reporting with more Parsec annotation
 - Improve the issue with type inference
+- Improve the parser for sub-expression (handle the `:` and `}` cases if possible).
 
 # Build / test
 

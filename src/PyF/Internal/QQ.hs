@@ -24,6 +24,8 @@ import Data.Monoid ((<>))
 import qualified Data.Word as Word
 import qualified Data.Int as Int
 
+import Language.Haskell.Meta.Parse (parseExp)
+
 import PyF.Internal.PythonSyntax
 
 -- Be Careful: empty format string
@@ -60,7 +62,10 @@ toFormat :: Item -> Q Exp
 toFormat (Raw x) = [| F.now (Builder.fromString x) |]
 toFormat (Replacement x y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
-  pure (AppE (VarE 'F.now) ((VarE 'F.bprint) `AppE` formatExpr `AppE` (VarE (mkName x))))
+
+  case parseExp x of
+    Right expr -> pure (AppE (VarE 'F.now) ((VarE 'F.bprint) `AppE` formatExpr `AppE` expr))
+    Left err -> fail err
 
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat DefaultFormatMode = [| genericDefault |]

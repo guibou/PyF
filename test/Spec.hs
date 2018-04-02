@@ -106,3 +106,7 @@ spec = do
 
   describe "error reporting" $ do
     pure () -- TODO: find a way to test error reporting
+
+  describe "sub expressions" $ do
+    it "works" $ do
+      [fString|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
