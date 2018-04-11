@@ -145,7 +145,6 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 
 - Number `n` formatter is not supported
 - Alternative `#` forms for all floating point representations are not supported. Theses forms allow the result of the conversion to always contain a decimal-point character.
-- grouping_option field is not supported. This will allows to group digits together, such as `100,234,123.03`.
 - 0 field is not supported.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones
@@ -154,6 +153,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 
 - Exponential formatters *e* and *E* formats the exponent with less digits. For example `0.2` formatted as `.1e` gives `2.0e-1` instead of `2.0e-01` in python.
 - General formaters *g* and *G* behaves a bit differently. Precision influence the number of significant digits instead of the number of the magnitude at which the representation changes between fixed and exponential.
+- Grouping options allows grouping with an `_` for floating point, python only allows `,`.
 
 # TODO
 

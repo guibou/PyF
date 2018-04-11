@@ -81,9 +81,9 @@ replacementField = do
   pure (Replacement expr fmt)
 
 pattern DefaultFormatMode :: FormatMode
-pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Minus)
+pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Minus) Nothing
 
-data FormatMode = FormatMode Padding TypeFormat
+data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
                 deriving (Show)
 
 data Padding = PaddingDefault
@@ -157,7 +157,8 @@ format_spec = do
   unhandled (char '0') "'0' is not handled for now. Please remove it."
   w <- optional width
 
-  unhandled grouping_option "'Grouping option' field is not handled for now. Please remove it."
+  grouping <- optional grouping_option
+
   prec <- option PrecisionDefault (char '.' *> (Precision <$> precision))
   t <- optional type_
 
@@ -168,9 +169,9 @@ format_spec = do
         Nothing -> PaddingDefault
 
   case t of
-    Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Minus s)))
+    Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Minus s)) grouping)
     Just flag -> case evalFlag flag prec alternateForm s of
-      Right fmt -> pure (FormatMode padding fmt)
+      Right fmt -> pure (FormatMode padding fmt grouping)
       Left typeError -> do
         lastCharFailed typeError
 

@@ -115,7 +115,13 @@ spec = do
         it "infinite F" $ [fString|{1/0:F}|] `shouldBe` "INF"
         it "infinite G" $ [fString|{1/0:G}|] `shouldBe` "INF"
         it "infinite E" $ [fString|{1/0:E}|] `shouldBe` "INF"
-
+    describe "Grouping" $ do
+        it "groups int" $ [fString|{123456789:,d}|] `shouldBe` "123,456,789"
+        it "groups int with _" $ [fString|{123456789:_d}|] `shouldBe` "123_456_789"
+        it "groups float" $ [fString|{123456789.234:,f}|] `shouldBe` "123,456,789.234000"
+        it "groups bin" $ [fString|{123456789:_b}|] `shouldBe` "111_0101_1011_1100_1101_0001_0101"
+        it "groups hex" $ [fString|{123456789:_x}|] `shouldBe` "75b_cd15"
+        it "groups oct" $ [fString|{123456789:_o}|] `shouldBe` "7_2674_6425"
   describe "complex" $ do
     it "works with many things at once" $
       let
