@@ -17,6 +17,7 @@ import qualified Data.Char
 import Data.Maybe (fromMaybe)
 
 import qualified Data.Set as Set -- For fancyFailure
+import PyF.Formatters
 
 type Parser t = Parsec Void String t
 
@@ -80,25 +81,14 @@ replacementField = do
   pure (Replacement expr fmt)
 
 pattern DefaultFormatMode :: FormatMode
-pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Negative)
+pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Minus)
 
 data FormatMode = FormatMode Padding TypeFormat
                 deriving (Show)
 
-data AlignMode = AlignLeft
-               | AlignRight
-              -- | AlignInside -- Not handled (Yet ?)
-               | AlignCenter
-               | AlignDefault
-               deriving (Show)
-
 data Padding = PaddingDefault
-             | Padding Integer AlignMode AlignChar
+             | Padding Integer AlignMode Char
              deriving (Show)
-
-data AlignChar = AlignCharDefault
-               | AlignChar Char
-               deriving (Show)
 
 data Precision = PrecisionDefault
                | Precision Integer
@@ -121,28 +111,25 @@ data TypeFlag = Flagb | Flagc | Flagd | Flage | FlagE | Flagf | FlagF | Flagg | 
   deriving (Show)
 
 data TypeFormat =
-    DefaultF Precision SignField -- Default
-  | BinaryF AlternateForm SignField -- Binary
+    DefaultF Precision SignMode -- Default
+  | BinaryF AlternateForm SignMode -- Binary
   | CharacterF -- Character
-  | DecimalF SignField -- Decimal
-  | ExponentialF Precision {- AlternateForm -} SignField -- exponential notation (Alt not handled)
-  | ExponentialCapsF Precision {- AlternateForm -} SignField -- exponentiel notation CAPS (Alt not handled)
-  | FixedF Precision {- AlternateForm -} SignField -- fixed point (Alt not handled)
-  | FixedCapsF Precision {- AlternateForm -} SignField -- fixed point CAPS (Alt not handled)
-  | GeneralF Precision {- AlternateForm -} SignField -- General (Alt Not Yet handled)
-  | GeneralCapsF Precision {- AlternateForm -} SignField -- General Switch to E (Alt Not yet handled)
-  -- | NumberF Precision AlternateForm SignField -- Number (Not Yet handled)
-  | OctalF AlternateForm SignField -- octal
+  | DecimalF SignMode -- Decimal
+  | ExponentialF Precision {- AlternateForm -} SignMode -- exponential notation (Alt not handled)
+  | ExponentialCapsF Precision {- AlternateForm -} SignMode -- exponentiel notation CAPS (Alt not handled)
+  | FixedF Precision {- AlternateForm -} SignMode -- fixed point (Alt not handled)
+  | FixedCapsF Precision {- AlternateForm -} SignMode -- fixed point CAPS (Alt not handled)
+  | GeneralF Precision {- AlternateForm -} SignMode -- General (Alt Not Yet handled)
+  | GeneralCapsF Precision {- AlternateForm -} SignMode -- General Switch to E (Alt Not yet handled)
+  -- | NumberF Precision AlternateForm SignMode -- Number (Not Yet handled)
+  | OctalF AlternateForm SignMode -- octal
   | StringF Precision -- string
-  | HexF AlternateForm SignField -- small hex
-  | HexCapsF AlternateForm SignField -- big hex
-  | PercentF Precision {- AlternateForm -} SignField -- percent (Alt not handled)
+  | HexF AlternateForm SignMode -- small hex
+  | HexCapsF AlternateForm SignMode -- big hex
+  | PercentF Precision {- AlternateForm -} SignMode -- percent (Alt not handled)
   deriving (Show)
 
 data AlternateForm = AlternateForm | NormalForm
-  deriving (Show)
-
-data SignField = Positive | Negative | Space
   deriving (Show)
 
 unhandled :: Parser t -> String -> Parser ()
@@ -163,33 +150,44 @@ lastCharFailed err = do
 
 format_spec :: Parser FormatMode
 format_spec = do
-  al <- option (Right (AlignCharDefault, AlignDefault)) alignment
-
-  (ac, am) <- case al of
-    Left err -> lastCharFailed err
-    Right v -> pure v
-
+  al <- optional alignment
   s <- optional sign
   alternateForm <- option NormalForm (AlternateForm <$ char '#')
+
   unhandled (char '0') "'0' is not handled for now. Please remove it."
   w <- optional width
-
-  let padding = case w of
-        Just p -> Padding p am ac
-        Nothing -> PaddingDefault
 
   unhandled grouping_option "'Grouping option' field is not handled for now. Please remove it."
   prec <- option PrecisionDefault (char '.' *> (Precision <$> precision))
   t <- optional type_
 
+  let (alignMode, alignChar) = defaultAlignFromType al t
+
+  let padding = case w of
+        Just p -> Padding p alignChar alignMode
+        Nothing -> PaddingDefault
+
   case t of
-    Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Negative s)))
+    Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Minus s)))
     Just flag -> case evalFlag flag prec alternateForm s of
       Right fmt -> pure (FormatMode padding fmt)
       Left typeError -> do
         lastCharFailed typeError
 
-evalFlag :: TypeFlag -> Precision -> AlternateForm -> Maybe SignField -> Either String TypeFormat
+defaultAlignFromType :: Maybe (Maybe Char, AlignMode) -> Maybe TypeFlag -> (Char, AlignMode)
+defaultAlignFromType (Just (Just c, mode)) _ = (c, mode)
+defaultAlignFromType (Just (Nothing, mode)) _ = (' ', mode)
+defaultAlignFromType Nothing Nothing = (' ', error "I don't know yet")
+defaultAlignFromType Nothing (Just t)
+  | isNumber t = (' ', AlignRight)
+  | otherwise = (' ', AlignLeft)
+
+isNumber :: TypeFlag -> Bool
+isNumber Flagc = False
+isNumber Flags = False
+isNumber _ = True
+
+evalFlag :: TypeFlag -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
 evalFlag Flagb prec alt s = failIfPrec prec (BinaryF alt (defSign s))
 evalFlag Flagc prec alt s = failIfS s =<< failIfPrec prec =<< failIfAlt alt CharacterF
 evalFlag Flagd prec alt s = failIfPrec prec =<< failIfAlt alt (DecimalF (defSign s))
@@ -206,8 +204,8 @@ evalFlag Flagx prec alt s = failIfPrec prec $ HexF alt (defSign s)
 evalFlag FlagX prec alt s = failIfPrec prec $ HexCapsF alt (defSign s)
 evalFlag FlagPercent prec alt s = unhandledAlt alt (PercentF prec (defSign s))
 
-defSign :: Maybe SignField -> SignField
-defSign Nothing = Negative
+defSign :: Maybe SignMode -> SignMode
+defSign Nothing = Minus
 defSign (Just s) = s
 
 
@@ -222,46 +220,46 @@ failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i
 failIfAlt _ _ = Left "Type incompatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
 
-failIfS :: Maybe SignField -> TypeFormat -> Either String TypeFormat
+failIfS :: Maybe SignMode -> TypeFormat -> Either String TypeFormat
 failIfS Nothing i = Right i
-failIfS (Just s) _ = Left ("Type incompatible with sign field (" ++ [toSignField s] ++ "), use any of {'b', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the sign field.")
+failIfS (Just s) _ = Left ("Type incompatible with sign field (" ++ [toSignMode s] ++ "), use any of {'b', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the sign field.")
 
-toSignField :: SignField -> Char
-toSignField Positive = '+'
-toSignField Negative = '-'
-toSignField Space = ' '
+toSignMode :: SignMode -> Char
+toSignMode Plus = '+'
+toSignMode Minus = '-'
+toSignMode Space = ' '
 
 
 unhandledAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 unhandledAlt NormalForm i = Right i
 unhandledAlt _ _ = Left "Type not yet compatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
 
-alignment :: Parser (Either String (AlignChar, AlignMode))
+alignment :: Parser (Maybe Char, AlignMode)
 alignment = choice [
     try $ do
         c <- fill
         mode <- align
-        pure ((\m -> (AlignChar c, m)) <$> mode)
+        pure (Just c, mode)
     , do
         mode <- align
-        pure ((\m -> (AlignCharDefault, m)) <$> mode)
+        pure (Nothing, mode)
     ]
 
 fill :: Parser Char
 fill = anyChar
 
-align :: Parser (Either String AlignMode)
+align :: Parser AlignMode
 align = choice [
-  Right AlignRight <$ char '<',
-  Right AlignLeft <$ char '>',
-  Right AlignCenter <$ char '^',
-  Left "Align mode '=' is not handled yet" <$ char '='
+  AlignRight <$ char '<',
+  AlignLeft <$ char '>',
+  AlignCenter <$ char '^',
+  AlignInside <$ char '='
   ]
 
-sign :: Parser SignField
+sign :: Parser SignMode
 sign = choice
-  [Positive <$ char '+',
-   Negative <$ char '-',
+  [Plus <$ char '+',
+   Minus <$ char '-',
    Space <$ char ' '
   ]
 
@@ -298,5 +296,4 @@ type_ = choice [
 
 
   -- TODO: remove !
-deriving instance Lift SignField
 deriving instance Lift Precision

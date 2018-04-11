@@ -3,7 +3,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 
-module PyF.Internal.QQ where
+module PyF.Internal.QQ (
+  toExp)
+where
 
 import Text.Megaparsec
 
@@ -67,13 +69,11 @@ toFormat (Replacement x y) = do
     Right expr -> pure (AppE (VarE 'F.now) (VarE 'Builder.fromString `AppE` (formatExpr `AppE` expr)))
     Left err -> fail err
 
-changeSign Positive = Formatters.Plus
-changeSign Negative = Formatters.Minus
-changeSign Space = Formatters.Space
-
+changePrec :: Precision -> Maybe Int
 changePrec PrecisionDefault = Just 6
 changePrec (Precision n) = Just (fromIntegral n)
 
+changePrec' :: Precision -> Maybe Int
 changePrec' PrecisionDefault = Nothing
 changePrec' (Precision n) = Just (fromIntegral n)
 
@@ -82,48 +82,38 @@ changePrec' (Precision n) = Just (fromIntegral n)
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat (FormatMode padding tf) = case tf of
   -- Integrals
-  BinaryF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Binary) (changeSign s) newPadding Nothing |]
-  BinaryF NormalForm s -> [| Formatters.formatIntegral Formatters.Binary (changeSign s) newPadding Nothing |]
+  BinaryF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Binary) s newPadding Nothing |]
+  BinaryF NormalForm s -> [| Formatters.formatIntegral Formatters.Binary s newPadding Nothing |]
   CharacterF -> [| Formatters.formatIntegral Formatters.Character Formatters.Minus newPadding Nothing |]
-  DecimalF s -> [| Formatters.formatIntegral Formatters.Decimal (changeSign s) newPadding Nothing |]
-  HexF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Hexa) (changeSign s) newPadding Nothing |]
-  HexF NormalForm s -> [| Formatters.formatIntegral Formatters.Hexa (changeSign s) newPadding Nothing |]
-  OctalF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Octal) (changeSign s) newPadding Nothing |]
-  OctalF NormalForm s -> [| Formatters.formatIntegral Formatters.Octal (changeSign s) newPadding Nothing |]
-  HexCapsF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Upper (Formatters.Alternate Formatters.Hexa)) (changeSign s) newPadding Nothing |]
-  HexCapsF NormalForm s -> [| Formatters.formatIntegral (Formatters.Upper (Formatters.Hexa)) (changeSign s) newPadding Nothing |]
+  DecimalF s -> [| Formatters.formatIntegral Formatters.Decimal s newPadding Nothing |]
+  HexF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Hexa) s newPadding Nothing |]
+  HexF NormalForm s -> [| Formatters.formatIntegral Formatters.Hexa s newPadding Nothing |]
+  OctalF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Octal) s newPadding Nothing |]
+  OctalF NormalForm s -> [| Formatters.formatIntegral Formatters.Octal s newPadding Nothing |]
+  HexCapsF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Upper (Formatters.Alternate Formatters.Hexa)) s newPadding Nothing |]
+  HexCapsF NormalForm s -> [| Formatters.formatIntegral (Formatters.Upper (Formatters.Hexa)) s newPadding Nothing |]
 
   -- Floating
-  ExponentialF prec s -> [| Formatters.formatFractional (Formatters.Exponent) (changeSign s) newPadding Nothing (changePrec prec) |]
-  ExponentialCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Exponent)) (changeSign s) newPadding Nothing (changePrec prec) |]
-  GeneralF prec s -> [| Formatters.formatFractional (Formatters.Generic) (changeSign s) newPadding Nothing (changePrec prec) |]
-  GeneralCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Generic)) (changeSign s) newPadding Nothing (changePrec prec) |]
-  FixedF prec s -> [| Formatters.formatFractional (Formatters.Fixed) (changeSign s) newPadding Nothing (changePrec prec) |]
-  FixedCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Fixed)) (changeSign s) newPadding Nothing (changePrec prec) |]
-  PercentF prec s -> [| Formatters.formatFractional (Formatters.Percent) (changeSign s) newPadding Nothing (changePrec prec) |]
+  ExponentialF prec s -> [| Formatters.formatFractional (Formatters.Exponent) s newPadding Nothing (changePrec prec) |]
+  ExponentialCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Exponent)) s newPadding Nothing (changePrec prec) |]
+  GeneralF prec s -> [| Formatters.formatFractional (Formatters.Generic) s newPadding Nothing (changePrec prec) |]
+  GeneralCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Generic)) s newPadding Nothing (changePrec prec) |]
+  FixedF prec s -> [| Formatters.formatFractional (Formatters.Fixed) s newPadding Nothing (changePrec prec) |]
+  FixedCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Fixed)) s newPadding Nothing (changePrec prec) |]
+  PercentF prec s -> [| Formatters.formatFractional (Formatters.Percent) s newPadding Nothing (changePrec prec) |]
 
   -- Default / String
-  DefaultF prec sign -> [| \v ->
+  DefaultF prec s -> [| \v ->
       case categorise v of
-        Integral i -> Formatters.formatIntegral Formatters.Decimal (changeSign sign) newPadding Nothing i
-        Fractional f -> Formatters.formatFractional Formatters.Generic (changeSign sign) newPadding Nothing (changePrec' prec) f
+        Integral i -> Formatters.formatIntegral Formatters.Decimal s newPadding Nothing i
+        Fractional f -> Formatters.formatFractional Formatters.Generic s newPadding Nothing (changePrec' prec) f
         StringType f -> Formatters.formatString newPadding (changePrec' prec) f
                          |]
   StringF prec -> [| Formatters.formatString newPadding (changePrec' prec) |]
   where
     newPadding = case padding of
       PaddingDefault -> Nothing
-      (Padding i alignMode alignChar) -> Just (i, padMode, padC)
-        where
-          padMode = case alignMode of
-            AlignRight -> Formatters.PadRight
-            AlignLeft -> Formatters.PadLeft
-            AlignCenter -> Formatters.PadMiddle
-            AlignDefault -> Formatters.PadRight
-
-          padC = case alignChar of
-                   AlignCharDefault -> ' '
-                   AlignChar c -> c
+      (Padding i alignMode alignChar) -> Just (i, alignMode, alignChar)
 
 data FormattingType where
   StringType :: String -> FormattingType

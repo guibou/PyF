@@ -93,6 +93,12 @@ spec = do
         it "left" $ [fString|{aString:-<10}|] `shouldBe` "hello-----"
         it "right" $ [fString|{aString:->10}|] `shouldBe` "-----hello"
         it "center" $ [fString|{aString:-^10}|] `shouldBe` "--hello---"
+      describe "inside" $ do
+        it "inside" $ [fString|{anInt:=+10}|] `shouldBe` "+      123"
+        it "inside" $ [fString|{anInt:=10}|] `shouldBe` "       123"
+        it "inside" $ [fString|{- anInt:=10}|] `shouldBe` "-      123"
+        it "inside" $ [fString|{- anInt:|= 10}|] `shouldBe` "-||||||123"
+        it "inside" $ [fString|{anInt:|= 10}|] `shouldBe` " ||||||123"
 
   describe "complex" $ do
     it "works with many things at once" $

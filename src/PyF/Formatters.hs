@@ -1,7 +1,15 @@
 {-# LANGUAGE DataKinds, KindSignatures, GADTs, ViewPatterns, OverloadedStrings, StandaloneDeriving, LambdaCase #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveLift #-}
-module PyF.Formatters where
+module PyF.Formatters
+  ( formatString
+  , formatIntegral
+  , formatFractional
+  , Format(..)
+  , SignMode(..)
+  , AlignMode(..)
+)
+where
 
 import Data.Monoid ((<>))
 import Data.List (intercalate)
@@ -9,14 +17,19 @@ import Data.Char (toUpper, chr)
 import Data.Bifunctor (bimap)
 import qualified Numeric
 import Language.Haskell.TH.Syntax
+
 -- ADT for API
-
-data SignFmt = Plus | Minus | Space
+data SignMode = Plus | Minus | Space
   deriving (Show)
 
-data Padding = PadLeft | PadRight | PadMiddle | PadSign
+data AlignMode
+  = AlignLeft
+  | AlignRight
+  | AlignInside
+  | AlignCenter
   deriving (Show)
 
+--
 data AltStatus = CanAlt | NoAlt
 data UpperStatus = CanUpper | NoUpper
 data FormatType = Fractional | Integral
@@ -101,8 +114,8 @@ group (IntegralRepr s str) (Just (size, c)) = IntegralRepr s (groupIntercalate c
 group (FractionalRepr s a b) (Just (size, c)) = FractionalRepr s (groupIntercalate c size a) b
 group i _ = i
 
-padAndSign :: String -> SignFmt -> Maybe (Int, Padding, Char) -> Repr -> String
-padAndSign prefix sign padding repr = leftPadding <> prefixStr <> middlePadding <> content <> rightPadding
+padAndSign :: String -> SignMode -> Maybe (Int, AlignMode, Char) -> Repr -> String
+padAndSign prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignMode <> content <> rightAlignMode
   where
     (signStr, content) = case repr of
       IntegralRepr s str -> (formatSign s sign, str)
@@ -112,15 +125,15 @@ padAndSign prefix sign padding repr = leftPadding <> prefixStr <> middlePadding 
     prefixStr = signStr <> prefix
 
     len = length prefixStr + length content
-    (leftPadding, rightPadding, middlePadding) = case padding of
+    (leftAlignMode, rightAlignMode, middleAlignMode) = case padding of
       Nothing -> ("", "", "")
       Just (pad, padMode, padC) -> let
         padNeeded = max 0 (pad - len)
         in case padMode of
-             PadLeft -> (replicate padNeeded padC, "", "")
-             PadRight -> ("", replicate padNeeded padC, "")
-             PadMiddle -> (replicate (padNeeded `div` 2) padC, replicate (padNeeded - padNeeded `div` 2) padC, "")
-             PadSign -> ("", "", replicate padNeeded padC)
+             AlignLeft -> (replicate padNeeded padC, "", "")
+             AlignRight -> ("", replicate padNeeded padC, "")
+             AlignCenter -> (replicate (padNeeded `div` 2) padC, replicate (padNeeded - padNeeded `div` 2) padC, "")
+             AlignInside -> ("", "", replicate padNeeded padC)
 
 -- Generic
 data Repr
@@ -133,7 +146,7 @@ data Repr
 data Sign = Negative | Positive
   deriving (Show)
 
-formatSign :: Sign -> SignFmt -> String
+formatSign :: Sign -> SignMode -> String
 formatSign Positive Plus = "+"
 formatSign Positive Minus = ""
 formatSign Positive Space = " "
@@ -147,13 +160,13 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- Final formatters
 
-formatIntegral :: (Show i, Integral i) => Format t t' 'Integral -> SignFmt -> Maybe (Int, Padding, Char) -> Maybe (Int, Char) -> i -> String
+formatIntegral :: (Show i, Integral i) => Format t t' 'Integral -> SignMode -> Maybe (Int, AlignMode, Char) -> Maybe (Int, Char) -> i -> String
 formatIntegral f sign padding grouping i = padAndSign (prefixIntegral f) sign padding (group (reprIntegral f i) grouping)
 
-formatFractional :: (RealFloat f) => Format t t' 'Fractional -> SignFmt -> Maybe (Int, Padding, Char) -> Maybe (Int, Char) -> Maybe Int -> f -> String
+formatFractional :: (RealFloat f) => Format t t' 'Fractional -> SignMode -> Maybe (Int, AlignMode, Char) -> Maybe (Int, Char) -> Maybe Int -> f -> String
 formatFractional f sign padding grouping precision i = padAndSign "" sign padding (group (reprFractional f precision i) grouping)
 
-formatString :: Maybe (Int, Padding, Char) -> Maybe Int -> String -> String
+formatString :: Maybe (Int, AlignMode, Char) -> Maybe Int -> String -> String
 formatString Nothing Nothing s = s
 formatString Nothing (Just i) s = take i s
 formatString (Just (padSize, padMode, padC)) size s = padLeft <> str <> padRight
@@ -162,14 +175,14 @@ formatString (Just (padSize, padMode, padC)) size s = padLeft <> str <> padRight
 
     paddingLength = max 0 (padSize - length str)
     (padLeft, padRight) = case padMode of
-         PadLeft -> (replicate paddingLength padC, "")
-         PadRight -> ("", replicate paddingLength padC)
-         PadMiddle -> (replicate (paddingLength `div` 2) padC, replicate (paddingLength - paddingLength `div` 2) padC)
-         PadSign -> error "Cannot pad with padSign a string"
+         AlignLeft -> (replicate paddingLength padC, "")
+         AlignRight -> ("", replicate paddingLength padC)
+         AlignCenter -> (replicate (paddingLength `div` 2) padC, replicate (paddingLength - paddingLength `div` 2) padC)
+         AlignInside -> error "Cannot pad inside a string"
 -- TODO
 {-
 the .
 -}
 
-deriving instance Lift Padding
-deriving instance Lift SignFmt
+deriving instance Lift AlignMode
+deriving instance Lift SignMode
