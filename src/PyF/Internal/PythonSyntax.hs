@@ -1,7 +1,11 @@
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveLift #-}
 
 module PyF.Internal.PythonSyntax where
+
+import Language.Haskell.TH.Syntax
 
 import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -292,3 +296,7 @@ type_ = choice [
   FlagPercent <$ char '%'
   ]
 
+
+  -- TODO: remove !
+deriving instance Lift SignField
+deriving instance Lift Precision

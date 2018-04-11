@@ -155,7 +155,6 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 ### Difference
 
 - Exponential formatters *e* and *E* formats the exponent with less digits. For example `0.2` formatted as `.1e` gives `2.0e-1` instead of `2.0e-01` in python.
-- Centering puts more char on the right than on the left. For example `hello` formatted as `+10s` gives `+++hello++` instead of `++hello+++`.
 - General formaters *g* and *G* behaves a bit differently. Precision influence the number of significant digits instead of the number of the magnitude at which the representation changes between fixed and exponential.
 
 # TODO

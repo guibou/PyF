@@ -88,11 +88,11 @@ spec = do
       describe "default char" $ do
         it "left" $ [fString|{aString:<10}|] `shouldBe` "hello     "
         it "right" $ [fString|{aString:>10}|] `shouldBe` "     hello"
-        it "center" $ [fString|{aString:^10}|] `shouldBe` "   hello  "
+        it "center" $ [fString|{aString:^10}|] `shouldBe` "  hello   "
       describe "a char" $ do
         it "left" $ [fString|{aString:-<10}|] `shouldBe` "hello-----"
         it "right" $ [fString|{aString:->10}|] `shouldBe` "-----hello"
-        it "center" $ [fString|{aString:-^10}|] `shouldBe` "---hello--"
+        it "center" $ [fString|{aString:-^10}|] `shouldBe` "--hello---"
 
   describe "complex" $ do
     it "works with many things at once" $
