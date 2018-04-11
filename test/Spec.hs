@@ -99,6 +99,22 @@ spec = do
         it "inside" $ [fString|{- anInt:=10}|] `shouldBe` "-      123"
         it "inside" $ [fString|{- anInt:|= 10}|] `shouldBe` "-||||||123"
         it "inside" $ [fString|{anInt:|= 10}|] `shouldBe` " ||||||123"
+    describe "NaN" $ do
+        it "nan" $ [fString|{0/0}|] `shouldBe` "nan"
+        it "nan f" $ [fString|{0/0:f}|] `shouldBe` "nan"
+        it "nan e" $ [fString|{0/0:e}|] `shouldBe` "nan"
+        it "nan g" $ [fString|{0/0:g}|] `shouldBe` "nan"
+        it "nan F" $ [fString|{0/0:F}|] `shouldBe` "NAN"
+        it "nan G" $ [fString|{0/0:G}|] `shouldBe` "NAN"
+        it "nan E" $ [fString|{0/0:E}|] `shouldBe` "NAN"
+    describe "Infinite" $ do
+        it "infinite" $ [fString|{1/0}|] `shouldBe` "inf"
+        it "infinite f" $ [fString|{1/0:f}|] `shouldBe` "inf"
+        it "infinite e" $ [fString|{1/0:e}|] `shouldBe` "inf"
+        it "infinite g" $ [fString|{1/0:g}|] `shouldBe` "inf"
+        it "infinite F" $ [fString|{1/0:F}|] `shouldBe` "INF"
+        it "infinite G" $ [fString|{1/0:G}|] `shouldBe` "INF"
+        it "infinite E" $ [fString|{1/0:E}|] `shouldBe` "INF"
 
   describe "complex" $ do
     it "works with many things at once" $

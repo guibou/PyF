@@ -147,7 +147,6 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Alternative `#` forms for all floating point representations are not supported. Theses forms allow the result of the conversion to always contain a decimal-point character.
 - grouping_option field is not supported. This will allows to group digits together, such as `100,234,123.03`.
 - 0 field is not supported.
-- Floating point rendering of `NaN` and `Infinity` are not supported for the moment.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones
 
