@@ -109,6 +109,8 @@ reprFractional :: (RealFloat f) => Format t t' 'Fractional -> Maybe Int -> f -> 
 reprFractional fmt precision f
   | isInfinite f = Infinite sign (upperIt "inf")
   | isNaN f = NaN (upperIt "nan")
+  | isNegativeZero f = let (FractionalRepr Positive aa bb) = reprFractional fmt precision (abs f)
+                       in FractionalRepr Negative aa bb
   | otherwise = FractionalRepr sign a b
   where
     upperIt s = case fmt of

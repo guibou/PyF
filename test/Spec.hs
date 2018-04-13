@@ -129,6 +129,14 @@ spec = do
         it "groups bin" $ [fString|{123456789:_b}|] `shouldBe` "111_0101_1011_1100_1101_0001_0101"
         it "groups hex" $ [fString|{123456789:_x}|] `shouldBe` "75b_cd15"
         it "groups oct" $ [fString|{123456789:_o}|] `shouldBe` "7_2674_6425"
+    describe "negative zero" $ do
+        let zero = - 0 :: Float
+        it "f" $ [fString|{zero:f}|] `shouldBe` "-0.000000"
+        it "e" $ [fString|{zero:e}|] `shouldBe` "-0.000000e0"
+        it "g" $ [fString|{zero:g}|] `shouldBe` "-0.000000"
+        it "F" $ [fString|{zero:F}|] `shouldBe` "-0.000000"
+        it "G" $ [fString|{zero:G}|] `shouldBe` "-0.000000"
+        it "E" $ [fString|{zero:E}|] `shouldBe` "-0.000000E0"
   describe "complex" $ do
     it "works with many things at once" $
       let
