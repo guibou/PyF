@@ -121,14 +121,18 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
 newPaddingForString :: Padding -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingForString padding = case padding of
     PaddingDefault -> Nothing
-    (Padding i (AnyAlign alignMode) alignChar) -> case Formatters.getAlignForString alignMode of
+    Padding i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
+    Padding i (Just (mc, AnyAlign a)) -> case Formatters.getAlignForString a of
       Nothing -> error "This align mode cannot be used for string formatter"
-      Just al -> pure (fromIntegral i, al, alignChar)
+      Just al -> pure (fromIntegral i, al, fromMaybe ' ' mc)
 
 newPadding :: Padding -> Maybe (Integer, AnyAlign, Char)
 newPadding padding = case padding of
     PaddingDefault -> Nothing
-    (Padding i alignMode alignChar) -> Just (i, alignMode, alignChar)
+    (Padding i al) -> case al of
+      Nothing -> Just (i, AnyAlign Formatters.AlignRight, ' ') -- Right align and space is default for any object, except string
+      Just (Nothing, a) -> Just (i, a, ' ')
+      Just (Just c, a) -> Just (i, a, c)
 
 formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
 formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i

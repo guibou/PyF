@@ -99,6 +99,13 @@ spec = do
         it "inside" $ [fString|{- anInt:=10}|] `shouldBe` "-      123"
         it "inside" $ [fString|{- anInt:|= 10}|] `shouldBe` "-||||||123"
         it "inside" $ [fString|{anInt:|= 10}|] `shouldBe` " ||||||123"
+      describe "default padding" $ do
+        it "floating" $ [fString|{1:10f}|] `shouldBe` "  1.000000"
+        it "integral" $ [fString|{1:10d}|] `shouldBe` "         1"
+        it "string" $ [fString|{"h":10s}|] `shouldBe` "h         "
+        it "default" $ [fString|{1:10}|] `shouldBe` "         1"
+        it "default" $ [fString|{1.0:10}|] `shouldBe` "       1.0"
+        it "default" $ [fString|{"h":10}|] `shouldBe` "h         "
     describe "NaN" $ do
         it "nan" $ [fString|{0/0}|] `shouldBe` "nan"
         it "nan f" $ [fString|{0/0:f}|] `shouldBe` "nan"

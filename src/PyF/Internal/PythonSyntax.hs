@@ -90,7 +90,7 @@ data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
                 deriving (Show)
 
 data Padding = PaddingDefault
-             | Padding Integer AnyAlign Char
+             | Padding Integer (Maybe (Maybe Char, AnyAlign))
              deriving (Show)
 
 data Precision = PrecisionDefault
@@ -165,10 +165,8 @@ format_spec = do
   prec <- option PrecisionDefault (char '.' *> (Precision <$> precision))
   t <- optional type_
 
-  let (alignMode, alignChar) = defaultAlignFromType al t
-
   let padding = case w of
-        Just p -> Padding p alignChar alignMode
+        Just p -> Padding p al
         Nothing -> PaddingDefault
 
   case t of
@@ -177,19 +175,6 @@ format_spec = do
       Right fmt -> pure (FormatMode padding fmt grouping)
       Left typeError -> do
         lastCharFailed typeError
-
-defaultAlignFromType :: Maybe (Maybe Char, AnyAlign) -> Maybe TypeFlag -> (Char, AnyAlign)
-defaultAlignFromType (Just (Just c, mode)) _ = (c, mode)
-defaultAlignFromType (Just (Nothing, mode)) _ = (' ', mode)
-defaultAlignFromType Nothing Nothing = (' ', error "I don't know yet")
-defaultAlignFromType Nothing (Just t)
-  | isNumber t = (' ', AnyAlign AlignRight)
-  | otherwise = (' ', AnyAlign AlignLeft)
-
-isNumber :: TypeFlag -> Bool
-isNumber Flagc = False
-isNumber Flags = False
-isNumber _ = True
 
 evalFlag :: TypeFlag -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
 evalFlag Flagb prec alt s = failIfPrec prec (BinaryF alt (defSign s))
