@@ -153,8 +153,8 @@ padAndSign prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignM
       Just (pad, padMode, padC) -> let
         padNeeded = max 0 (pad - len)
         in case padMode of
-             AlignLeft -> (replicate padNeeded padC, "", "")
-             AlignRight -> ("", replicate padNeeded padC, "")
+             AlignLeft -> ("", replicate padNeeded padC, "")
+             AlignRight -> (replicate padNeeded padC, "", "")
              AlignCenter -> (replicate (padNeeded `div` 2) padC, replicate (padNeeded - padNeeded `div` 2) padC, "")
              AlignInside -> ("", "", replicate padNeeded padC)
 
@@ -198,8 +198,8 @@ formatString (Just (padSize, padMode, padC)) size s = padLeft <> str <> padRight
 
     paddingLength = max 0 (padSize - length str)
     (padLeft, padRight) = case padMode of
-         AlignLeft -> (replicate paddingLength padC, "")
-         AlignRight -> ("", replicate paddingLength padC)
+         AlignLeft -> ("", replicate paddingLength padC)
+         AlignRight -> (replicate paddingLength padC, "")
          AlignCenter -> (replicate (paddingLength `div` 2) padC, replicate (paddingLength - paddingLength `div` 2) padC)
 -- TODO
 {-

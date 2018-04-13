@@ -254,8 +254,8 @@ fill = anyChar
 
 align :: Parser AnyAlign
 align = choice [
-  AnyAlign AlignRight <$ char '<',
-  AnyAlign AlignLeft <$ char '>',
+  AnyAlign AlignLeft <$ char '<',
+  AnyAlign AlignRight <$ char '>',
   AnyAlign AlignCenter <$ char '^',
   AnyAlign AlignInside <$ char '='
   ]
