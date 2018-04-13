@@ -136,19 +136,11 @@ newPadding padding = case padding of
 
 formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
 formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i
-formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = case alignMode of
-  Formatters.AlignLeft -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignLeft, c)) grouping i
-  Formatters.AlignRight -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignRight, c)) grouping i
-  Formatters.AlignCenter -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignCenter, c)) grouping i
-  Formatters.AlignInside -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignInside, c)) grouping i
+formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = Formatters.formatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
 
 formatAnyFractional :: (RealFloat i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
 formatAnyFractional f s Nothing grouping p i = Formatters.formatFractional f s Nothing grouping p i
-formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = case alignMode of
-  Formatters.AlignLeft -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignLeft, c)) grouping p i
-  Formatters.AlignRight -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignRight, c)) grouping p i
-  Formatters.AlignCenter -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignCenter, c)) grouping p i
-  Formatters.AlignInside -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignInside, c)) grouping p i
+formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
 
 data FormattingType where
   StringType :: String -> FormattingType
