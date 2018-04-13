@@ -5,6 +5,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TupleSections #-}
 
 module PyF.Internal.QQ (
   toExp)
@@ -81,8 +82,8 @@ changePrec' :: Precision -> Maybe Int
 changePrec' PrecisionDefault = Nothing
 changePrec' (Precision n) = Just (fromIntegral n)
 
-toGrp Nothing _ = Nothing
-toGrp (Just c) i = Just (i, c)
+toGrp :: Maybe b -> a -> Maybe (a, b)
+toGrp mb a = (a,) <$> mb
 
 -- Todo: Alternates for floating
 padAndFormat :: FormatMode -> Q Exp
