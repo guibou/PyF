@@ -115,7 +115,7 @@ A float: 10
 
 I took great care to provide clear error reporting, this means that:
 
-- No runtime error (or it is a bug)
+- Only one possible runtime exception (`error`), when using the `inner` padding with default type to format a string, for example `{"hello":=10}` will fail.
 - Any parsing error on the mini language results in a clear indication of the error, for example:
 
 ```haskell
@@ -157,6 +157,8 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 
 # TODO
 
+- Check with python that all examples are correct
+- Fix the only runtime error
 - Fix the unsupported formatters
 - Fix the small differences, the point of this library is to match the python syntax, so the differences should not exists.
 - Code quality (documentation and tests, we can copy the python tests)

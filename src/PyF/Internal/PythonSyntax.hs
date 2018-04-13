@@ -30,11 +30,9 @@ type Parser t = Parsec Void String t
 - Recursive replacement field, so "{string:.{precision}} can be parsed
 - f_expression / conversion
 - Not (Yet) implemented:
-     - fields: grouping_option / 0
+     - 0
      - types: n
-     - alignement: =
      - #: for floating points
-     - floating point rendering of NaN and Inf are not well defined...
 -}
 
 
