@@ -2,6 +2,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveLift #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE DataKinds #-}
 
 module PyF.Internal.PythonSyntax where
 
@@ -87,7 +90,7 @@ data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
                 deriving (Show)
 
 data Padding = PaddingDefault
-             | Padding Integer AlignMode Char
+             | Padding Integer AnyAlign Char
              deriving (Show)
 
 data Precision = PrecisionDefault
@@ -175,13 +178,13 @@ format_spec = do
       Left typeError -> do
         lastCharFailed typeError
 
-defaultAlignFromType :: Maybe (Maybe Char, AlignMode) -> Maybe TypeFlag -> (Char, AlignMode)
+defaultAlignFromType :: Maybe (Maybe Char, AnyAlign) -> Maybe TypeFlag -> (Char, AnyAlign)
 defaultAlignFromType (Just (Just c, mode)) _ = (c, mode)
 defaultAlignFromType (Just (Nothing, mode)) _ = (' ', mode)
 defaultAlignFromType Nothing Nothing = (' ', error "I don't know yet")
 defaultAlignFromType Nothing (Just t)
-  | isNumber t = (' ', AlignRight)
-  | otherwise = (' ', AlignLeft)
+  | isNumber t = (' ', AnyAlign AlignRight)
+  | otherwise = (' ', AnyAlign AlignLeft)
 
 isNumber :: TypeFlag -> Bool
 isNumber Flagc = False
@@ -235,7 +238,7 @@ unhandledAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 unhandledAlt NormalForm i = Right i
 unhandledAlt _ _ = Left "Type not yet compatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
 
-alignment :: Parser (Maybe Char, AlignMode)
+alignment :: Parser (Maybe Char, AnyAlign)
 alignment = choice [
     try $ do
         c <- fill
@@ -249,12 +252,12 @@ alignment = choice [
 fill :: Parser Char
 fill = anyChar
 
-align :: Parser AlignMode
+align :: Parser AnyAlign
 align = choice [
-  AlignRight <$ char '<',
-  AlignLeft <$ char '>',
-  AlignCenter <$ char '^',
-  AlignInside <$ char '='
+  AnyAlign AlignRight <$ char '<',
+  AnyAlign AlignLeft <$ char '>',
+  AnyAlign AlignCenter <$ char '^',
+  AnyAlign AlignInside <$ char '='
   ]
 
 sign :: Parser SignMode
@@ -298,3 +301,4 @@ type_ = choice [
 
   -- TODO: remove !
 deriving instance Lift Precision
+deriving instance Lift Padding

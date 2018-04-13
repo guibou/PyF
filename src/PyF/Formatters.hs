@@ -8,6 +8,10 @@ module PyF.Formatters
   , Format(..)
   , SignMode(..)
   , AlignMode(..)
+  , getAlignForString
+  , AlignForString(..)
+  , AnyAlign(..)
+  , FormatType(..)
 )
 where
 
@@ -22,12 +26,31 @@ import Language.Haskell.TH.Syntax
 data SignMode = Plus | Minus | Space
   deriving (Show)
 
-data AlignMode
-  = AlignLeft
-  | AlignRight
-  | AlignInside
-  | AlignCenter
+data AlignForString = AlignAll | AlignNumber
   deriving (Show)
+
+data AlignMode (k :: AlignForString) where
+  AlignLeft :: AlignMode 'AlignAll
+  AlignRight :: AlignMode 'AlignAll
+  AlignInside :: AlignMode 'AlignNumber
+  AlignCenter :: AlignMode 'AlignAll
+
+-- The generic version
+data AnyAlign where
+  AnyAlign :: AlignMode (k :: AlignForString) -> AnyAlign
+
+deriving instance Show AnyAlign
+deriving instance Lift AnyAlign
+
+-- I hate how a must list all cases, any solution ?
+-- o = Just o does not work
+getAlignForString :: AlignMode k -> Maybe (AlignMode 'AlignAll)
+getAlignForString AlignInside = Nothing
+getAlignForString AlignRight = Just AlignRight
+getAlignForString AlignCenter = Just AlignCenter
+getAlignForString AlignLeft = Just AlignLeft
+
+deriving instance Show (AlignMode k)
 
 --
 data AltStatus = CanAlt | NoAlt
@@ -114,7 +137,7 @@ group (IntegralRepr s str) (Just (size, c)) = IntegralRepr s (groupIntercalate c
 group (FractionalRepr s a b) (Just (size, c)) = FractionalRepr s (groupIntercalate c size a) b
 group i _ = i
 
-padAndSign :: String -> SignMode -> Maybe (Int, AlignMode, Char) -> Repr -> String
+padAndSign :: String -> SignMode -> Maybe (Int, AlignMode t, Char) -> Repr -> String
 padAndSign prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignMode <> content <> rightAlignMode
   where
     (signStr, content) = case repr of
@@ -160,13 +183,13 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- Final formatters
 
-formatIntegral :: (Show i, Integral i) => Format t t' 'Integral -> SignMode -> Maybe (Int, AlignMode, Char) -> Maybe (Int, Char) -> i -> String
+formatIntegral :: (Show i, Integral i) => Format t t' 'Integral -> SignMode -> Maybe (Int, AlignMode k, Char) -> Maybe (Int, Char) -> i -> String
 formatIntegral f sign padding grouping i = padAndSign (prefixIntegral f) sign padding (group (reprIntegral f i) grouping)
 
-formatFractional :: (RealFloat f) => Format t t' 'Fractional -> SignMode -> Maybe (Int, AlignMode, Char) -> Maybe (Int, Char) -> Maybe Int -> f -> String
+formatFractional :: (RealFloat f) => Format t t' 'Fractional -> SignMode -> Maybe (Int, AlignMode k, Char) -> Maybe (Int, Char) -> Maybe Int -> f -> String
 formatFractional f sign padding grouping precision i = padAndSign "" sign padding (group (reprFractional f precision i) grouping)
 
-formatString :: Maybe (Int, AlignMode, Char) -> Maybe Int -> String -> String
+formatString :: Maybe (Int, AlignMode 'AlignAll, Char) -> Maybe Int -> String -> String
 formatString Nothing Nothing s = s
 formatString Nothing (Just i) s = take i s
 formatString (Just (padSize, padMode, padC)) size s = padLeft <> str <> padRight
@@ -178,11 +201,10 @@ formatString (Just (padSize, padMode, padC)) size s = padLeft <> str <> padRight
          AlignLeft -> (replicate paddingLength padC, "")
          AlignRight -> ("", replicate paddingLength padC)
          AlignCenter -> (replicate (paddingLength `div` 2) padC, replicate (paddingLength - paddingLength `div` 2) padC)
-         AlignInside -> error "Cannot pad inside a string"
 -- TODO
 {-
 the .
 -}
 
-deriving instance Lift AlignMode
+deriving instance Lift (AlignMode k)
 deriving instance Lift SignMode

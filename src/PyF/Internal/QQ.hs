@@ -1,7 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 
 module PyF.Internal.QQ (
   toExp)
@@ -29,6 +32,7 @@ import Language.Haskell.Meta.Parse (parseExp)
 
 import PyF.Internal.PythonSyntax
 import qualified PyF.Formatters as Formatters
+import PyF.Formatters (AnyAlign(..))
 
 -- Be Careful: empty format string
 toExp:: String -> Q Exp
@@ -84,38 +88,63 @@ toGrp (Just c) i = Just (i, c)
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat (FormatMode padding tf grouping) = case tf of
   -- Integrals
-  BinaryF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Binary) s newPadding (toGrp grouping 4) |]
-  BinaryF NormalForm s -> [| Formatters.formatIntegral Formatters.Binary s newPadding (toGrp grouping 4) |]
-  CharacterF -> [| Formatters.formatIntegral Formatters.Character Formatters.Minus newPadding Nothing |]
-  DecimalF s -> [| Formatters.formatIntegral Formatters.Decimal s newPadding (toGrp grouping 3) |]
-  HexF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Hexa) s newPadding (toGrp grouping 4) |]
-  HexF NormalForm s -> [| Formatters.formatIntegral Formatters.Hexa s newPadding (toGrp grouping 4) |]
-  OctalF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Alternate Formatters.Octal) s newPadding (toGrp grouping 4) |]
-  OctalF NormalForm s -> [| Formatters.formatIntegral Formatters.Octal s newPadding (toGrp grouping 4) |]
-  HexCapsF AlternateForm s -> [| Formatters.formatIntegral (Formatters.Upper (Formatters.Alternate Formatters.Hexa)) s newPadding (toGrp grouping 4) |]
-  HexCapsF NormalForm s -> [| Formatters.formatIntegral (Formatters.Upper (Formatters.Hexa)) s newPadding (toGrp grouping 4) |]
+  BinaryF AlternateForm s -> [| formatAnyIntegral (Formatters.Alternate Formatters.Binary) s (newPadding padding) (toGrp grouping 4) |]
+  BinaryF NormalForm s -> [| formatAnyIntegral Formatters.Binary s (newPadding padding) (toGrp grouping 4) |]
+  CharacterF -> [| formatAnyIntegral Formatters.Character Formatters.Minus (newPadding padding) Nothing |]
+  DecimalF s -> [| formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) |]
+  HexF AlternateForm s -> [| formatAnyIntegral (Formatters.Alternate Formatters.Hexa) s (newPadding padding) (toGrp grouping 4) |]
+  HexF NormalForm s -> [| formatAnyIntegral Formatters.Hexa s (newPadding padding) (toGrp grouping 4) |]
+  OctalF AlternateForm s -> [| formatAnyIntegral (Formatters.Alternate Formatters.Octal) s (newPadding padding) (toGrp grouping 4) |]
+  OctalF NormalForm s -> [| formatAnyIntegral Formatters.Octal s (newPadding padding) (toGrp grouping 4) |]
+  HexCapsF AlternateForm s -> [| formatAnyIntegral (Formatters.Upper (Formatters.Alternate Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
+  HexCapsF NormalForm s -> [| formatAnyIntegral (Formatters.Upper (Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
 
   -- Floating
-  ExponentialF prec s -> [| Formatters.formatFractional (Formatters.Exponent) s newPadding (toGrp grouping 3) (changePrec prec) |]
-  ExponentialCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Exponent)) s newPadding (toGrp grouping 3) (changePrec prec) |]
-  GeneralF prec s -> [| Formatters.formatFractional (Formatters.Generic) s newPadding (toGrp grouping 3) (changePrec prec) |]
-  GeneralCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Generic)) s newPadding (toGrp grouping 3) (changePrec prec) |]
-  FixedF prec s -> [| Formatters.formatFractional (Formatters.Fixed) s newPadding (toGrp grouping 3) (changePrec prec) |]
-  FixedCapsF prec s -> [| Formatters.formatFractional (Formatters.Upper (Formatters.Fixed)) s newPadding (toGrp grouping 3) (changePrec prec) |]
-  PercentF prec s -> [| Formatters.formatFractional (Formatters.Percent) s newPadding (toGrp grouping 3) (changePrec prec) |]
+  ExponentialF prec s -> [| formatAnyFractional (Formatters.Exponent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  ExponentialCapsF prec s -> [| formatAnyFractional (Formatters.Upper (Formatters.Exponent)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  GeneralF prec s -> [| formatAnyFractional (Formatters.Generic) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  GeneralCapsF prec s -> [| formatAnyFractional (Formatters.Upper (Formatters.Generic)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  FixedF prec s -> [| formatAnyFractional (Formatters.Fixed) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  FixedCapsF prec s -> [| formatAnyFractional (Formatters.Upper (Formatters.Fixed)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  PercentF prec s -> [| formatAnyFractional (Formatters.Percent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
 
   -- Default / String
   DefaultF prec s -> [| \v ->
       case categorise v of
-        Integral i -> Formatters.formatIntegral Formatters.Decimal s newPadding (toGrp grouping 3) i
-        Fractional f -> Formatters.formatFractional Formatters.Generic s newPadding (toGrp grouping 3) (changePrec' prec) f
-        StringType f -> Formatters.formatString newPadding (changePrec' prec) f
+        Integral i -> formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) i
+        Fractional f -> formatAnyFractional Formatters.Generic s (newPadding padding) (toGrp grouping 3) (changePrec' prec) f
+        StringType f -> Formatters.formatString (newPaddingForString padding) (changePrec' prec) f
                          |]
-  StringF prec -> [| Formatters.formatString newPadding (changePrec' prec) |]
-  where
-    newPadding = case padding of
-      PaddingDefault -> Nothing
-      (Padding i alignMode alignChar) -> Just (i, alignMode, alignChar)
+  StringF prec -> [| Formatters.formatString pad (changePrec' prec) |]
+    where pad = newPaddingForString padding
+
+newPaddingForString :: Padding -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
+newPaddingForString padding = case padding of
+    PaddingDefault -> Nothing
+    (Padding i (AnyAlign alignMode) alignChar) -> case Formatters.getAlignForString alignMode of
+      Nothing -> error "This align mode cannot be used for string formatter"
+      Just al -> pure (fromIntegral i, al, alignChar)
+
+newPadding :: Padding -> Maybe (Integer, AnyAlign, Char)
+newPadding padding = case padding of
+    PaddingDefault -> Nothing
+    (Padding i alignMode alignChar) -> Just (i, alignMode, alignChar)
+
+formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
+formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i
+formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = case alignMode of
+  Formatters.AlignLeft -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignLeft, c)) grouping i
+  Formatters.AlignRight -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignRight, c)) grouping i
+  Formatters.AlignCenter -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignCenter, c)) grouping i
+  Formatters.AlignInside -> Formatters.formatIntegral f s (Just (fromIntegral padSize, Formatters.AlignInside, c)) grouping i
+
+formatAnyFractional :: (RealFloat i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
+formatAnyFractional f s Nothing grouping p i = Formatters.formatFractional f s Nothing grouping p i
+formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = case alignMode of
+  Formatters.AlignLeft -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignLeft, c)) grouping p i
+  Formatters.AlignRight -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignRight, c)) grouping p i
+  Formatters.AlignCenter -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignCenter, c)) grouping p i
+  Formatters.AlignInside -> Formatters.formatFractional f s (Just (fromIntegral padSize, Formatters.AlignInside, c)) grouping p i
 
 data FormattingType where
   StringType :: String -> FormattingType
