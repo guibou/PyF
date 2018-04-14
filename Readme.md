@@ -1,14 +1,14 @@
 *PyF* is a Haskell library for string interpolation and formatting.
 
-*PyF* exposes a quasiquoter `f` for the [Formatting](https://hackage.haskell.org/package/formatting) library. The quasiquotation introduces string interpolation and formatting with a mini language inspired from printf / Python to ease the construction of format string.
+*PyF* exposes a quasiquoter `f` for the [Formatting](https://hackage.haskell.org/package/formatting) library. The quasiquotation introduces string interpolation and formatting with a mini language inspired from printf and Python.
 
 # Quick Start
-
-You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session.
 
 The following *Formatting* example:
 
 ```haskell
+>>> import Formatting
+
 >>> name = "Dave"
 >>> age = 54
 
@@ -19,29 +19,50 @@ The following *Formatting* example:
 can be written as:
 
 ```haskell
+>>> import Formatting
 >>> import PyF
+
 >>> name = "Dave"
 >>> age = 54
+
 >>> format [f|Person's name is {name}, age is {age:x}|]
 "Person's name is Dave, age is 36"
 ```
 
-This needs the `QuasiQuotes` and `OverloadedStrings` extensions enabled.
+The formatting mini language can represents:
 
-Variables are referenced by `{variableName:formatingOptions}` where `formatingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the python documentation, but the [Test file](https://github.com/guibou/PyF/blob/master/test/Spec.hs) as well as this readme contain many examples:
+- Numbers with different representations (fixed point, general representation, binary, hexadecimal, octal)
+- Padding, with the choice of padding char, alignment (left, right, around, between sign and number)
+- Sign handling, to display or not the `+` for positive number
+- Number grouping
+- Floating point representation
+- The interpolated value can be any Haskell expression
 
-## padding
+You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session.
+
+Expression to be formatted are referenced by `{expression:formatingOptions}` where `formatingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the python documentation, but the [Test file](https://github.com/guibou/PyF/blob/master/test/Spec.hs) as well as this readme contain many examples.
+
+# More Examples
+
+## Padding
+
+Left `<` / Right `>` / Around `^` padding:
 
 ```haskell
 >>> name = "Guillaume"
 >>> format [f|{name:<11}|]
 "Guillaume  "
->>> name = "Guillaume"
 >>> format [f|{name:>11}|]
 "  Guillaume"
->>> name = "Guillaume"
 >>> format [f|{name:|^13}|]
 "||Guillaume||"
+```
+
+Padding inside `=` the sign:
+
+```haskell
+>>> [fString|{-pi:=10.3}|]
+"-    3.142"
 ```
 
 ## Float rounding
@@ -63,9 +84,32 @@ Variables are referenced by `{variableName:formatingOptions}` where `formatingOp
 "Hexa (caps and prefix): 0x1F"
 ```
 
-## Subexpression
+## Grouping
 
-First argument inside the curly braces can be a valid haskell expression, for example:
+Using `,` or `_`.
+
+```haskell
+>>> [fString|{10 ^ 9 - 1:,}|]
+"999,999,999"
+>>> [fString|{2 ^ 32  -1:_b}|]
+"1111_1111_1111_1111_1111_1111_1111_1111"
+```
+
+## Sign handling
+
+Using `+` to display the positive sign (if any) or ` ` to display a space instead:
+
+```haskell
+>>> [fString|{pi:+.3}|]
+"+3.142"
+>>> [fString|{pi: .3}|]
+" 3.142"
+```
+
+
+## Sub-expressions
+
+First argument inside the curly braces can be a valid Haskell expression, for example:
 
 ```haskell
 >>> format [f|2pi = {2* pi:.2}|]
@@ -78,19 +122,21 @@ However the expression must not contain `}` or `:` characters.
 
 ## Combined
 
+Most options can be combined. This generally leads to totally unreadable format string ;)
+
 ```haskell
 >>> format [f|{pi:~>5.2}|]
 "~~3.14"
 ```
 
-`PyF` reexport most of `Formatting` runners, such as `format`, `sformat`, `formatToString`, ...
-
-# Other quasi quoters
+# Other quasiquoters
 
 *PyF* main entry point is `f` but for convenience some other quasiquoters are provided:
 
 - `f(StrictText|LazyText|String|Builder|IO)` directly call the underlying `Formatting` runner and produce the specified type.
 - `f'` use type inference to deduce the type.
+
+`PyF` reexport most of `Formatting` runners, such as `format`, `sformat`, `formatToString`, ...
 
 For example:
 
@@ -115,7 +161,7 @@ A float: 10
 
 ## Error reporting
 
-Template haskell is generally known to give devellopers a lot of
+Template haskell is generally known to give developers a lot of
 frustration when it comes to error message, dumping an unreadable
 piece of generated code.
 
@@ -199,31 +245,39 @@ And
 
 ### Difference
 
-- Exponential formatters *e* and *E* formats the exponent with less digits. For example `0.2` formatted as `.1e` gives `2.0e-1` instead of `2.0e-01` in python.
-- General formaters *g* and *G* behaves a bit differently. Precision influence the number of significant digits instead of the number of the magnitude at which the representation changes between fixed and exponential.
+- Exponential formatters `e` and `E` formats the exponent with less digits. For example `0.2` formatted as `.1e` gives `2.0e-1` instead of `2.0e-01` in python.
+- General formatters *g* and *G* behaves a bit differently. Precision influence the number of significant digits instead of the number of the magnitude at which the representation changes between fixed and exponential.
 - Grouping options allows grouping with an `_` for floating point, python only allows `,`.
+
+# Build / test
+
+Should work with `stack build; stack test`, and with `cabal` and (optionally) `nix`:
+
+```shell
+nix-shell # Optional, if you use nix
+cabal new-build
+cabal new-test
+```
 
 # TODO
 
 - Check with python that all examples are correct
 - Fix the unsupported formatters
-- Fix the small differences, the point of this library is to match the python syntax, so the differences should not exists.
 - Code quality (documentation and tests, we can copy the python tests)
 - Improve the error reporting with more Parsec annotation
 - Improve the parser for sub-expression (handle the `:` and `}` cases if possible).
+- Allow extension to others type / custom formatters (for date for example)
 
-# Build / test
+# Library note
 
-Should work with `stack build; stack test`, and also with:
+`PyF.Formatters` exposes two functions to format numbers. They are type-safe (as much as possible) and comes with a combination of formatting options not seen in other formatting libraries:
 
-```shell
-nix-shell
-cabal new-build
-cabal test
+```haskell
+>>> formatIntegral Binary Plus (Just (20, AlignInside, '~')) (Just (4, ',')) 255
+"+~~~~~~~~~~1111,1111"
 ```
 
 # Conclusion
 
-For complex tasks, I use *Formatting* (or any great library). But for most of my simple formatting task, I was really missing a simple and non verbose library. The mini formating language of python is simple enough for a few cases.
-
 Don't hesitate to make any suggestion, I'll be more than happy to work on it.
+
