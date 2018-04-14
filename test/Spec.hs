@@ -2,146 +2,148 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
-
-import PyF
+{-# LANGUAGE TemplateHaskell #-}
 
 import Test.Hspec
+
+import PyF
+import SpecUtils
+
+{-
+   - Normal tests are done using the recommanded API: [fString|.....|]
+   - Test with $(checkExample formatString result) are checked against the python reference implementation. Result is provided as documentation.
+   - Test with $(checkExampleDiff formatString result) are not checked against the python reference implementation. This is known (and documented) differences.
+   - Test with $(check formatString) are only tested against the python reference implementation.
+-}
 
 main :: IO ()
 main = hspec spec
 
-anInt :: Int
-anInt = 123
-
-anIntNeg :: Int
-anIntNeg = -123
-
-aString :: String
-aString = "hello"
-
-aFloat :: Double
-aFloat = 0.234
-
 spec :: Spec
 spec = do
-  describe "types" $ do
+  describe "simple with external variable" $ do
+    let
+      anInt = 123
+      aFloat = 0.234
+      aString = "hello"
+    it "int" $ [fString|{anInt}|] `shouldBe` "123"
+    it "float" $ [fString|{aFloat}|] `shouldBe` "0.234"
+    it "string" $ [fString|{aString}|] `shouldBe` "hello"
+  describe "only expression" $ do
     describe "default" $ do
-      it "int" $ [fString|{anInt}|] `shouldBe` "123"
-      it "float" $ [fString|{aFloat}|] `shouldBe` "0.234"
-      it "string" $ [fString|{aString}|] `shouldBe` "hello"
-      it "float precision" $ [fString|{aFloat:.1}|] `shouldBe` "0.2"
-      it "string precision" $ [fString|{aString:.1}|] `shouldBe` "h"
-      it "sign +" $ [fString|{aFloat:+}|] `shouldBe` "+0.234"
-      it "sign space" $ [fString|{aFloat: }|] `shouldBe` " 0.234"
-      it "sign neg" $ [fString|{anIntNeg:+}|] `shouldBe` "-123"
+      it "int" $(checkExample "{123}" "123")
+      it "float" $(checkExample "{0.234}" "0.234")
+      it "string" $(checkExample "{\"hello\"}" "hello")
+      it "float precision" $(checkExample "{0.234:.1}" "0.2")
+      it "string precision" $(checkExample "{\"hello\":.1}" "h")
+      it "sign +" $(checkExample "{0.234:+}" "+0.234")
+      it "sign space" $(checkExample "{0.234: }" " 0.234")
+      it "sign neg" $(checkExample "{-123:+}" "-123")
     describe "binary" $ do
-      it "simple" $ [fString|{anInt:b}|] `shouldBe` "1111011"
-      it "alt" $ [fString|{anInt:#b}|] `shouldBe` "0b1111011"
-      it "sign" $ [fString|{anInt:+#b}|] `shouldBe` "+0b1111011"
+      it "simple" $(checkExample "{123:b}" "1111011")
+      it "alt" $(checkExample "{123:#b}" "0b1111011")
+      it "sign" $(checkExample "{123:+#b}" "+0b1111011")
     describe "character" $ do
-      it "simple" $ [fString|{anInt:c}|] `shouldBe` "{"
+      it "simple" $(checkExample "{123:c}" "{")
     describe "decimal" $ do
-      it "simple" $ [fString|{anInt:d}|] `shouldBe` "123"
-      it "sign" $ [fString|{anInt:+d}|] `shouldBe` "+123"
+      it "simple" $(checkExample "{123:d}" "123")
+      it "sign" $(checkExample "{123:+d}" "+123")
     describe "exponentiel" $ do
-      it "simple" $ [fString|{aFloat:e}|] `shouldBe` "2.340000e-1"
-      it "precision" $ [fString|{aFloat:.1e}|] `shouldBe` "2.3e-1"
+      it "simple" $(checkExampleDiff "{0.234:e}" "2.340000e-1")
+      it "precision" $(checkExampleDiff "{0.234:.1e}" "2.3e-1")
     describe "exponentiel caps" $ do
-      it "simple" $ [fString|{aFloat:E}|] `shouldBe` "2.340000E-1"
-      it "precision" $ [fString|{aFloat:.1E}|] `shouldBe` "2.3E-1"
+      it "simple" $(checkExampleDiff "{0.234:E}" "2.340000E-1")
+      it "precision" $(checkExampleDiff "{0.234:.1E}" "2.3E-1")
     describe "general" $ do
-      let smallF = 123.02
-          bigF = 1234567890.23
-      it "simple small" $ [fString|{smallF:g}|] `shouldBe` "123.020000"
-      it "precision small" $ [fString|{smallF:.1g}|] `shouldBe` "123.0"
-      it "simple big" $ [fString|{bigF:g}|] `shouldBe` "1.234568e9"
-      it "precision big" $ [fString|{bigF:.1g}|] `shouldBe` "1.2e9"
+      it "simple small" $(checkExampleDiff "{123.02:g}" "123.020000")
+      it "precision small" $(checkExampleDiff "{123.02:.1g}" "123.0")
+      it "simple big" $(checkExampleDiff "{1234567890.23:g}" "1.234568e9")
+      it "precision big" $(checkExampleDiff "{1234567890.23:.1g}" "1.2e9")
     describe "general caps" $ do
-      let smallF = 123.02
-          bigF = 1234567890.23
-      it "simple small" $ [fString|{smallF:G}|] `shouldBe` "123.020000"
-      it "precision small" $ [fString|{smallF:.1G}|] `shouldBe` "123.0"
-      it "simple big" $ [fString|{bigF:G}|] `shouldBe` "1.234568E9"
-      it "precision big" $ [fString|{bigF:.1G}|] `shouldBe` "1.2E9"
+      it "simple small" $(checkExampleDiff "{123.02:G}" "123.020000")
+      it "precision small" $(checkExampleDiff "{123.02:.1G}" "123.0")
+      it "simple big" $(checkExampleDiff "{1234567890.23:G}" "1.234568E9")
+      it "precision big" $(checkExampleDiff "{1234567890.23:.1G}" "1.2E9")
     describe "fixed" $ do
-      it "simple" $ [fString|{aFloat:f}|] `shouldBe` "0.234000"
-      it "precision" $ [fString|{aFloat:.1f}|] `shouldBe` "0.2"
+      it "simple" $(checkExample "{0.234:f}" "0.234000")
+      it "precision" $(checkExample "{0.234:.1f}" "0.2")
     describe "fixed caps" $ do
-      it "simple" $ [fString|{aFloat:F}|] `shouldBe` "0.234000"
-      it "precision" $ [fString|{aFloat:.1F}|] `shouldBe` "0.2"
+      it "simple" $(checkExample "{0.234:F}" "0.234000")
+      it "precision" $(checkExample "{0.234:.1F}" "0.2")
     describe "octal" $ do
-      it "simple" $ [fString|{anInt:o}|] `shouldBe` "173"
-      it "alt" $ [fString|{anInt:#o}|] `shouldBe` "0o173"
+      it "simple" $(checkExample "{123:o}" "173")
+      it "alt" $(checkExample "{123:#o}" "0o173")
     describe "string" $ do
-      it "string" $ [fString|{aString:s}|] `shouldBe` "hello"
-      it "precision" $ [fString|{aString:.2s}|] `shouldBe` "he"
+      it "string" $(checkExample "{\"hello\":s}" "hello")
+      it "precision" $(checkExample "{\"hello\":.2s}" "he")
     describe "hex" $ do
-      it "simple" $ [fString|{anInt:x}|] `shouldBe` "7b"
-      it "alt" $ [fString|{anInt:#x}|] `shouldBe` "0x7b"
+      it "simple" $(checkExample "{123:x}" "7b")
+      it "alt" $(checkExample "{123:#x}" "0x7b")
     describe "hex caps" $ do
-      it "simple" $ [fString|{anInt:X}|] `shouldBe` "7B"
-      it "alt" $ [fString|{anInt:#X}|] `shouldBe` "0X7B"
+      it "simple" $(checkExample "{123:X}" "7B")
+      it "alt" $(checkExample "{123:#X}" "0X7B")
     describe "percent" $ do
-      it "simple" $ [fString|{aFloat:%}|] `shouldBe` "23.400000%"
-      it "precision" $ [fString|{aFloat:.2%}|] `shouldBe` "23.40%"
+      it "simple" $(checkExample "{0.234:%}" "23.400000%")
+      it "precision" $(checkExample "{0.234:.2%}" "23.40%")
     describe "padding" $ do
       describe "default char" $ do
-        it "left" $ [fString|{aString:<10}|] `shouldBe` "hello     "
-        it "right" $ [fString|{aString:>10}|] `shouldBe` "     hello"
-        it "center" $ [fString|{aString:^10}|] `shouldBe` "  hello   "
+        it "left" $(checkExample "{\"hello\":<10}" "hello     ")
+        it "right" $(checkExample "{\"hello\":>10}" "     hello")
+        it "center" $(checkExample "{\"hello\":^10}" "  hello   ")
       describe "a char" $ do
-        it "left" $ [fString|{aString:-<10}|] `shouldBe` "hello-----"
-        it "right" $ [fString|{aString:->10}|] `shouldBe` "-----hello"
-        it "center" $ [fString|{aString:-^10}|] `shouldBe` "--hello---"
+        it "left" $(checkExample "{\"hello\":-<10}" "hello-----")
+        it "right" $(checkExample "{\"hello\":->10}" "-----hello")
+        it "center" $(checkExample "{\"hello\":-^10}" "--hello---")
       describe "inside" $ do
-        it "inside" $ [fString|{anInt:=+10}|] `shouldBe` "+      123"
-        it "inside" $ [fString|{anInt:=10}|] `shouldBe` "       123"
-        it "inside" $ [fString|{- anInt:=10}|] `shouldBe` "-      123"
-        it "inside" $ [fString|{- anInt:|= 10}|] `shouldBe` "-||||||123"
-        it "inside" $ [fString|{anInt:|= 10}|] `shouldBe` " ||||||123"
+        it "inside" $(checkExample "{123:=+10}" "+      123")
+        it "inside" $(checkExample "{123:=10}" "       123")
+        it "inside" $(checkExample "{- 123:=10}" "-      123")
+        it "inside" $(checkExample "{- 123:|= 10}" "-||||||123")
+        it "inside" $(checkExample "{123:|= 10}" " ||||||123")
       describe "default padding" $ do
-        it "floating" $ [fString|{1:10f}|] `shouldBe` "  1.000000"
-        it "integral" $ [fString|{1:10d}|] `shouldBe` "         1"
-        it "string" $ [fString|{"h":10s}|] `shouldBe` "h         "
-        it "default" $ [fString|{1:10}|] `shouldBe` "         1"
-        it "default" $ [fString|{1.0:10}|] `shouldBe` "       1.0"
-        it "default" $ [fString|{"h":10}|] `shouldBe` "h         "
+        it "floating" $(checkExample "{1:10f}" "  1.000000")
+        it "integral" $(checkExample "{1:10d}" "         1")
+        it "string" $(checkExample "{\"h\":10s}" "h         ")
+        it "default" $(checkExample "{1:10}" "         1")
+        it "default" $(checkExample "{1.0:10}" "       1.0")
+        it "default" $(checkExample "{\"h\":10}" "h         ")
     describe "NaN" $ do
-        it "nan" $ [fString|{0/0}|] `shouldBe` "nan"
-        it "nan f" $ [fString|{0/0:f}|] `shouldBe` "nan"
-        it "nan e" $ [fString|{0/0:e}|] `shouldBe` "nan"
-        it "nan g" $ [fString|{0/0:g}|] `shouldBe` "nan"
-        it "nan F" $ [fString|{0/0:F}|] `shouldBe` "NAN"
-        it "nan G" $ [fString|{0/0:G}|] `shouldBe` "NAN"
-        it "nan E" $ [fString|{0/0:E}|] `shouldBe` "NAN"
+        let nan = 0.0 / 0
+        it "nan" $(checkExample "{nan}" "nan")
+        it "nan f" $(checkExample "{nan:f}" "nan")
+        it "nan e" $(checkExample "{nan:e}" "nan")
+        it "nan g" $(checkExample "{nan:g}" "nan")
+        it "nan F" $(checkExample "{nan:F}" "NAN")
+        it "nan G" $(checkExample "{nan:G}" "NAN")
+        it "nan E" $(checkExample "{nan:E}" "NAN")
     describe "Infinite" $ do
-        it "infinite" $ [fString|{1/0}|] `shouldBe` "inf"
-        it "infinite f" $ [fString|{1/0:f}|] `shouldBe` "inf"
-        it "infinite e" $ [fString|{1/0:e}|] `shouldBe` "inf"
-        it "infinite g" $ [fString|{1/0:g}|] `shouldBe` "inf"
-        it "infinite F" $ [fString|{1/0:F}|] `shouldBe` "INF"
-        it "infinite G" $ [fString|{1/0:G}|] `shouldBe` "INF"
-        it "infinite E" $ [fString|{1/0:E}|] `shouldBe` "INF"
+        let inf = 1.0 / 0
+        it "infinite" $(checkExample "{inf}" "inf")
+        it "infinite f" $(checkExample "{inf:f}" "inf")
+        it "infinite e" $(checkExample "{inf:e}" "inf")
+        it "infinite g" $(checkExample "{inf:g}" "inf")
+        it "infinite F" $(checkExample "{inf:F}" "INF")
+        it "infinite G" $(checkExample "{inf:G}" "INF")
+        it "infinite E" $(checkExample "{inf:E}" "INF")
     describe "Grouping" $ do
-        it "groups int" $ [fString|{123456789:,d}|] `shouldBe` "123,456,789"
-        it "groups int with _" $ [fString|{123456789:_d}|] `shouldBe` "123_456_789"
-        it "groups float" $ [fString|{123456789.234:,f}|] `shouldBe` "123,456,789.234000"
-        it "groups bin" $ [fString|{123456789:_b}|] `shouldBe` "111_0101_1011_1100_1101_0001_0101"
-        it "groups hex" $ [fString|{123456789:_x}|] `shouldBe` "75b_cd15"
-        it "groups oct" $ [fString|{123456789:_o}|] `shouldBe` "7_2674_6425"
+        it "groups int" $(checkExample "{123456789:,d}" "123,456,789")
+        it "groups int with _" $(checkExample "{123456789:_d}" "123_456_789")
+        it "groups float" $(checkExample "{123456789.234:,f}" "123,456,789.234000")
+        it "groups bin" $(checkExample "{123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
+        it "groups hex" $(checkExample "{123456789:_x}" "75b_cd15")
+        it "groups oct" $(checkExample "{123456789:_o}" "7_2674_6425")
     describe "negative zero" $ do
-        let zero = - 0 :: Float
-        it "f" $ [fString|{zero:f}|] `shouldBe` "-0.000000"
-        it "e" $ [fString|{zero:e}|] `shouldBe` "-0.000000e0"
-        it "g" $ [fString|{zero:g}|] `shouldBe` "-0.000000"
-        it "F" $ [fString|{zero:F}|] `shouldBe` "-0.000000"
-        it "G" $ [fString|{zero:G}|] `shouldBe` "-0.000000"
-        it "E" $ [fString|{zero:E}|] `shouldBe` "-0.000000E0"
+        it "f" $(checkExample "{-0.0:f}" "-0.000000")
+        it "e" $(checkExampleDiff "{-0.0:e}" "-0.000000e0")
+        it "g" $(checkExampleDiff "{-0.0:g}" "-0.000000")
+        it "F" $(checkExample "{-0.0:F}" "-0.000000")
+        it "G" $(checkExampleDiff "{-0.0:G}" "-0.000000")
+        it "E" $(checkExampleDiff "{-0.0:E}" "-0.000000E0")
     describe "0" $ do
-        it "works" $ [fString|{123:010}|] `shouldBe` "0000000123"
-        it "works with sign" $ [fString|{-123:010}|] `shouldBe` "-000000123"
-        it "accept mode override" $ [fString|{-123:<010}|] `shouldBe` "-123000000"
-        it "accept mode and char override" $ [fString|{-123:.<010}|] `shouldBe` "-123......"
+        it "works" $(checkExample "{123:010}" "0000000123")
+        it "works with sign" $(checkExample "{-123:010}" "-000000123")
+        it "accept mode override" $(checkExample "{-123:<010}" "-123000000")
+        it "accept mode and char override" $(checkExample "{-123:.<010}" "-123......")
   describe "complex" $ do
     it "works with many things at once" $
       let

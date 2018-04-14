@@ -243,6 +243,8 @@ And
 
 ## Difference with the Python Syntax
 
+The implementation is unit-tested against the reference python implementation (python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
+
 ### Not supported
 
 - Number `n` formatter is not supported
@@ -268,9 +270,8 @@ cabal new-test
 
 # TODO
 
-- Check with python that all examples are correct
 - Fix the unsupported formatters
-- Code quality (documentation and tests, we can copy the python tests)
+- Code quality (documentation and tests. I want automated tests ala quickcheck)
 - Improve the error reporting with more Parsec annotation
 - Improve the parser for sub-expression (handle the `:` and `}` cases if possible).
 - Allow extension to others type / custom formatters (for date for example)
