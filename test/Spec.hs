@@ -137,6 +137,11 @@ spec = do
         it "F" $ [fString|{zero:F}|] `shouldBe` "-0.000000"
         it "G" $ [fString|{zero:G}|] `shouldBe` "-0.000000"
         it "E" $ [fString|{zero:E}|] `shouldBe` "-0.000000E0"
+    describe "0" $ do
+        it "works" $ [fString|{123:010}|] `shouldBe` "0000000123"
+        it "works with sign" $ [fString|{-123:010}|] `shouldBe` "-000000123"
+        it "accept mode override" $ [fString|{-123:<010}|] `shouldBe` "-123000000"
+        it "accept mode and char override" $ [fString|{-123:.<010}|] `shouldBe` "-123......"
   describe "complex" $ do
     it "works with many things at once" $
       let

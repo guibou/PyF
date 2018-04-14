@@ -133,14 +133,6 @@ data TypeFormat =
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
 
-unhandled :: Parser t -> String -> Parser ()
-unhandled p err = do
-  isP <- optional p
-
-  case isP of
-    Nothing -> pure ()
-    Just _ -> lastCharFailed err
-
 lastCharFailed :: String -> Parser t
 lastCharFailed err = do
   (SourcePos name line col) <- getPosition
@@ -149,13 +141,21 @@ lastCharFailed err = do
   setPosition (SourcePos name line (mkPos (unPos col - 1)))
   fancyFailure (Set.singleton (ErrorFail err))
 
+overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
+overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)
+overrideAlignmentIfZero True (Just (Nothing, al)) = Just (Just '0', al)
+overrideAlignmentIfZero _ v = v
+
 format_spec :: Parser FormatMode
 format_spec = do
-  al <- optional alignment
+  al' <- optional alignment
   s <- optional sign
   alternateForm <- option NormalForm (AlternateForm <$ char '#')
 
-  unhandled (char '0') "'0' is not handled for now. Please remove it."
+  hasZero <- option False (True <$ char '0')
+
+  let al = overrideAlignmentIfZero hasZero al'
+
   w <- optional width
 
   grouping <- optional grouping_option

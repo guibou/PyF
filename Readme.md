@@ -106,6 +106,14 @@ Using `+` to display the positive sign (if any) or ` ` to display a space instea
 " 3.142"
 ```
 
+## 0
+
+Preceding the width with a `0` enables sign-aware zero-padding, this is equivalent to inside `=` padding with a fill char of `0`.
+
+```haskell
+>>> [fString{-10:010}|]
+-000000010
+```
 
 ## Sub-expressions
 
@@ -239,7 +247,6 @@ And
 
 - Number `n` formatter is not supported
 - Alternative `#` forms for all floating point representations are not supported. Theses forms allow the result of the conversion to always contain a decimal-point character.
-- 0 field is not supported.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones
 
