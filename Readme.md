@@ -29,7 +29,7 @@ can be written as:
 "Person's name is Dave, age is 36"
 ```
 
-The formatting mini language can represents:
+The formatting mini language can represent:
 
 - Numbers with different representations (fixed point, general representation, binary, hexadecimal, octal)
 - Padding, with the choice of padding char, alignment (left, right, around, between sign and number)
