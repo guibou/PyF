@@ -49,11 +49,15 @@ spec = do
       it "simple" $(checkExample "{123:d}" "123")
       it "sign" $(checkExample "{123:+d}" "+123")
     describe "exponentiel" $ do
-      it "simple" $(checkExampleDiff "{0.234:e}" "2.340000e-1")
-      it "precision" $(checkExampleDiff "{0.234:.1e}" "2.3e-1")
+      it "simple > 1" $(checkExample "{234.0:e}" "2.340000e+02")
+      it "precision > 1" $(checkExample "{234.0:.1e}" "2.3e+02")
+      it "simple < 1" $(checkExample "{0.234:e}" "2.340000e-01")
+      it "precision < 1 " $(checkExample "{0.234:.1e}" "2.3e-01")
     describe "exponentiel caps" $ do
-      it "simple" $(checkExampleDiff "{0.234:E}" "2.340000E-1")
-      it "precision" $(checkExampleDiff "{0.234:.1E}" "2.3E-1")
+      it "simple > 1" $(checkExample "{234.0:E}" "2.340000E+02")
+      it "precision > 1" $(checkExample "{234.0:.1E}" "2.3E+02")
+      it "simple < 1" $(checkExample "{0.234:E}" "2.340000E-01")
+      it "precision < 1 " $(checkExample "{0.234:.1E}" "2.3E-01")
     describe "general" $ do
       it "simple small" $(checkExampleDiff "{123.02:g}" "123.020000")
       it "precision small" $(checkExampleDiff "{123.02:.1g}" "123.0")
@@ -134,11 +138,11 @@ spec = do
         it "groups oct" $(checkExample "{123456789:_o}" "7_2674_6425")
     describe "negative zero" $ do
         it "f" $(checkExample "{-0.0:f}" "-0.000000")
-        it "e" $(checkExampleDiff "{-0.0:e}" "-0.000000e0")
+        it "e" $(checkExample "{-0.0:e}" "-0.000000e+00")
         it "g" $(checkExampleDiff "{-0.0:g}" "-0.000000")
         it "F" $(checkExample "{-0.0:F}" "-0.000000")
         it "G" $(checkExampleDiff "{-0.0:G}" "-0.000000")
-        it "E" $(checkExampleDiff "{-0.0:E}" "-0.000000E0")
+        it "E" $(checkExample "{-0.0:E}" "-0.000000E+00")
     describe "0" $ do
         it "works" $(checkExample "{123:010}" "0000000123")
         it "works with sign" $(checkExample "{-123:010}" "-000000123")

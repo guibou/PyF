@@ -254,7 +254,6 @@ The implementation is unit-tested against the reference python implementation (p
 
 ### Difference
 
-- Exponential formatters `e` and `E` formats the exponent with less digits. For example `0.2` formatted as `.1e` gives `2.0e-1` instead of `2.0e-01` in python.
 - General formatters *g* and *G* behaves a bit differently. Precision influence the number of significant digits instead of the number of the magnitude at which the representation changes between fixed and exponential.
 - Grouping options allows grouping with an `_` for floating point, python only allows `,`.
 

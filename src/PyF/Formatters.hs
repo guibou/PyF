@@ -123,7 +123,7 @@ reprFractional fmt precision f
     format :: Format t t' 'Fractional -> (String, String)
     format = \case
       Fixed -> splitFractional (Numeric.showFFloatAlt precision iAbs "")
-      Exponent -> splitFractional (Numeric.showEFloat precision iAbs "")
+      Exponent -> pythoniseExponent <$> splitFractional (Numeric.showEFloat precision iAbs "")
       Generic -> splitFractional (Numeric.showGFloatAlt precision iAbs "")
       Percent -> (<>"%") <$> splitFractional (Numeric.showFFloatAlt precision (iAbs * 100) "")
       Alternate fmt' -> format fmt'
@@ -131,6 +131,15 @@ reprFractional fmt precision f
 
     splitFractional :: String -> (String, String)
     splitFractional s = drop 1 <$> break (=='.') s
+
+    pythoniseExponent :: String -> String
+    pythoniseExponent fracPart = let (fpart, e) = break (=='e') fracPart
+                                 in case e of
+      'e':'-':n -> fpart ++ "e-" ++ pad n
+      'e':n -> fpart ++ "e+" ++ pad n
+      _ -> error $ "unreachable (I hope so...) when pythonising exponent: " ++ e
+      where pad n@[_] = '0':n
+            pad n = n
 
 -- Cases Integral / Fractional
 
