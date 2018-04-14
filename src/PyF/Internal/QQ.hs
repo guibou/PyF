@@ -6,6 +6,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module PyF.Internal.QQ (
   toExp)
@@ -34,6 +37,8 @@ import Language.Haskell.Meta.Parse (parseExp)
 import PyF.Internal.PythonSyntax
 import qualified PyF.Formatters as Formatters
 import PyF.Formatters (AnyAlign(..))
+import Data.Proxy
+import GHC.TypeLits
 
 -- Be Careful: empty format string
 toExp:: String -> Q Exp
@@ -111,11 +116,20 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
 
   -- Default / String
   DefaultF prec s -> [| \v ->
-      case categorise v of
+      case categorise (Proxy :: Proxy $(typeAllowed)) v of
         Integral i -> formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) i
         Fractional f -> formatAnyFractional Formatters.Generic s (newPadding padding) (toGrp grouping 3) (changePrec' prec) f
         StringType f -> Formatters.formatString (newPaddingForString padding) (changePrec' prec) f
                          |]
+   where
+     typeAllowed :: Q Type
+     typeAllowed = case padding of
+       PaddingDefault -> [t| EnableForString |]
+       Padding _ Nothing -> [t| EnableForString |]
+       Padding _ (Just (_, AnyAlign a)) -> case Formatters.getAlignForString a of
+         Nothing -> [t| DisableForString |]
+         Just _ -> [t| EnableForString |]
+
   StringF prec -> [| Formatters.formatString pad (changePrec' prec) |]
     where pad = newPaddingForString padding
 
@@ -124,7 +138,7 @@ newPaddingForString padding = case padding of
     PaddingDefault -> Nothing
     Padding i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
     Padding i (Just (mc, AnyAlign a)) -> case Formatters.getAlignForString a of
-      Nothing -> error "This align mode cannot be used for string formatter"
+      Nothing -> error alignErrorMsg
       Just al -> pure (fromIntegral i, al, fromMaybe ' ' mc)
 
 newPadding :: Padding -> Maybe (Integer, AnyAlign, Char)
@@ -148,26 +162,39 @@ data FormattingType where
   Fractional :: RealFloat t => t -> FormattingType
   Integral :: (Show t, Integral t) => t -> FormattingType
 
-class Categorise t where
-  categorise :: t -> FormattingType
+class Categorise k t where
+  categorise :: Proxy k -> t -> FormattingType
 
-instance Categorise Integer where categorise i = Integral i
-instance Categorise Int where categorise i = Integral i
-instance Categorise Int.Int8 where categorise i = Integral i
-instance Categorise Int.Int16 where categorise i = Integral i
-instance Categorise Int.Int32 where categorise i = Integral i
-instance Categorise Int.Int64 where categorise i = Integral i
+instance Categorise k Integer where categorise _  i = Integral i
+instance Categorise k Int where categorise _  i = Integral i
+instance Categorise k Int.Int8 where categorise _  i = Integral i
+instance Categorise k Int.Int16 where categorise _  i = Integral i
+instance Categorise k Int.Int32 where categorise _  i = Integral i
+instance Categorise k Int.Int64 where categorise _  i = Integral i
 
-instance Categorise Natural where categorise i = Integral i
-instance Categorise Word where categorise i = Integral i
-instance Categorise Word.Word8 where categorise i = Integral i
-instance Categorise Word.Word16 where categorise i = Integral i
-instance Categorise Word.Word32 where categorise i = Integral i
-instance Categorise Word.Word64 where categorise i = Integral i
+instance Categorise k Natural where categorise _  i = Integral i
+instance Categorise k Word where categorise _  i = Integral i
+instance Categorise k Word.Word8 where categorise _  i = Integral i
+instance Categorise k Word.Word16 where categorise _  i = Integral i
+instance Categorise k Word.Word32 where categorise _  i = Integral i
+instance Categorise k Word.Word64 where categorise _  i = Integral i
 
-instance Categorise Float where categorise f = Fractional f
-instance Categorise Double where categorise f = Fractional f
+instance Categorise k Float where categorise _  f = Fractional f
+instance Categorise k Double where categorise _  f = Fractional f
 
-instance Categorise LText.Text where categorise t = StringType (LText.unpack t)
-instance Categorise SText.Text where categorise t = StringType (SText.unpack t)
-instance Categorise String where categorise t = StringType t
+-- This may use DataKinds extension, however the need for the
+-- extension will leak inside the code calling the template haskell
+-- quasi quotes.
+data EnableForString
+data DisableForString
+
+instance Categorise EnableForString LText.Text where categorise _  t = StringType (LText.unpack t)
+instance Categorise EnableForString SText.Text where categorise _  t = StringType (SText.unpack t)
+instance Categorise EnableForString String where categorise _  t = StringType t
+
+alignErrorMsg :: String
+alignErrorMsg = "String Cannot be aligned with the inside `=` mode"
+
+instance TypeError ('Text "String Cannot be aligned with the inside `=` mode") => Categorise DisableForString LText.Text where categorise _ _ = error "unreachable"
+instance TypeError ('Text "String Cannot be aligned with the inside `=` mode") => Categorise DisableForString SText.Text where categorise _ _ = error "unreachable"
+instance TypeError ('Text "String Cannot be aligned with the inside `=` mode") => Categorise DisableForString String where categorise _ _ = error "unreachable"

@@ -4,6 +4,8 @@
 
 # Quick Start
 
+You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session.
+
 The following *Formatting* example:
 
 ```haskell
@@ -113,9 +115,12 @@ A float: 10
 
 ## Error reporting
 
-I took great care to provide clear error reporting, this means that:
+Template haskell is generally known to give devellopers a lot of
+frustration when it comes to error message, dumping an unreadable
+piece of generated code.
 
-- Only one possible runtime exception (`error`), when using the `inner` padding with default type to format a string, for example `{"hello":=10}` will fail.
+However, in PyF, we took great care to provide clear error reporting, this means that:
+
 - Any parsing error on the mini language results in a clear indication of the error, for example:
 
 ```haskell
@@ -137,7 +142,50 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 ```
 
 - However, if the interpolated name is not of a compatible type (or
-  too polymorphic), you will get an awful error.
+  too polymorphic), you will get an awful error:
+
+```haskell
+>>*> [fString|{True:d}|]
+
+<interactive>:80:10: error:
+    • No instance for (Integral Bool)
+        arising from a use of ‘PyF.Internal.QQ.formatAnyIntegral’
+...
+```
+
+- There is also one class of error related to alignement which can be triggered, when using alignement inside sign (i.e. `=`) with string. This can fail in two flavors:
+
+```haskell
+>>> [fString|{"hello":=10s}|]
+
+<interactive>:88:1: error:
+    • Exception when trying to run compile-time code:
+        String Cannot be aligned with the inside `=` mode
+CallStack (from HasCallStack):
+  error, called at src/PyF/Internal/QQ.hs:143:18 in PyF-0.4.0.0-inplace:PyF.Internal.QQ
+      Code: quoteExp fString "{\"hello\":=10s}"
+    • In the quasi-quotation: [fString|{"hello":=10s}|]
+```
+
+And
+
+```haskell
+*PyF PyF.Internal.QQ> [fString|{"hello":=10}|]
+
+<interactive>:89:10: error:
+    • String Cannot be aligned with the inside `=` mode
+...
+```
+
+- Finally, if you make any type error inside the expression field, you are on your own:
+
+```haskell
+>>> [fString|{3 + pi + "hello":10}|]
+
+<interactive>:99:10: error:
+    • No instance for (Floating [Char]) arising from a use of ‘pi’
+    ...
+```
 
 ## Difference with the Python Syntax
 
@@ -158,12 +206,10 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 # TODO
 
 - Check with python that all examples are correct
-- Fix the only runtime error
 - Fix the unsupported formatters
 - Fix the small differences, the point of this library is to match the python syntax, so the differences should not exists.
 - Code quality (documentation and tests, we can copy the python tests)
 - Improve the error reporting with more Parsec annotation
-- Improve the issue with type inference
 - Improve the parser for sub-expression (handle the `:` and `}` cases if possible).
 
 # Build / test
