@@ -246,11 +246,11 @@ And
 The implementation is unit-tested against the reference python implementation (python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
 
 ### Not supported
-,p
-- Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator.
-- Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
-- Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones
-- Python support adding custom formatters for new types, such as date. This may be really cool, for example `[f|{today:%Y-%M-%D}`.
+
+- Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator. There is no plan to support that because of the impure interface needed to read the locale.
+- Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too. However should we accept `String` parameter (such as `<`), with a possible runtime error, or should we use the `ADT` such as `AlignRight`?
+- Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones, hdece in to plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
+- Python support adding custom formatters for new types, such as date. This may be really cool, for example `[f|{today:%Y-%M-%D}`. I don't know how to support that now.
 
 ### Difference
 
@@ -269,11 +269,11 @@ cabal new-test
 
 # TODO
 
-- Fix the unsupported formatters
-- Code quality (documentation and tests. I want automated tests ala quickcheck)
 - Improve the error reporting with more Parsec annotation
 - Improve the parser for sub-expression (handle the `:` and `}` cases if possible).
 - Allow extension to others type / custom formatters (for date for example)
+- Improve code quality. This code is really ugly, but there is a really strong test suite so, well.
+- Work on performance, do we really care? For now, everything is internally done with `String`.
 
 # Library note
 
