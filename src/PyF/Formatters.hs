@@ -1,17 +1,45 @@
 {-# LANGUAGE DataKinds, KindSignatures, GADTs, ViewPatterns, OverloadedStrings, StandaloneDeriving, LambdaCase #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveLift #-}
+{- |
+
+Formatters for integral / fractional and strings.
+
+Is support:
+
+For all types:
+
+  * Grouping of the integral part (i.e: adding a custom char to separate groups of digits)
+  * Padding (left, right, around, and between the sign and the number)
+  * Sign handling (i.e: display the positive sign or not)
+
+For floating:
+
+  * Precision
+  * Fixed / Exponential / Generic formatting
+
+For integrals:
+
+   * Binary / Hexa / Octal / Character representation
+-}
+
 module PyF.Formatters
-  ( formatString
+  (
+    -- * Generic formating function
+    formatString
   , formatIntegral
   , formatFractional
+    -- * Formatter details
+  , AltStatus(..)
+  , UpperStatus(..)
+  , FormatType (..)
   , Format(..)
   , SignMode(..)
+  , AnyAlign(..)
+    -- * Internal usage only
   , AlignMode(..)
   , getAlignForString
   , AlignForString(..)
-  , AnyAlign(..)
-  , FormatType(..)
 )
 where
 
@@ -22,19 +50,30 @@ import qualified Numeric
 import Language.Haskell.TH.Syntax
 
 -- ADT for API
-data SignMode = Plus | Minus | Space
+-- | Sign handling
+data SignMode = Plus -- ^ Display '-' sign and '+' sign
+              | Minus -- ^ Only display '-' sign
+              | Space -- ^ Display '-' sign and a space for positive numbers
   deriving (Show)
 
 data AlignForString = AlignAll | AlignNumber
   deriving (Show)
 
+-- | Alignement
 data AlignMode (k :: AlignForString) where
+  -- | Left padding
   AlignLeft :: AlignMode 'AlignAll
+  -- | Right padding
   AlignRight :: AlignMode 'AlignAll
+  -- | Padding will be added between the sign and the number
   AlignInside :: AlignMode 'AlignNumber
+  -- | Padding will be added around the valueber
   AlignCenter :: AlignMode 'AlignAll
 
+deriving instance Show (AlignMode k)
+
 -- The generic version
+-- | Existential version of 'AlignMode'
 data AnyAlign where
   AnyAlign :: AlignMode (k :: AlignForString) -> AnyAlign
 
@@ -49,13 +88,16 @@ getAlignForString AlignRight = Just AlignRight
 getAlignForString AlignCenter = Just AlignCenter
 getAlignForString AlignLeft = Just AlignLeft
 
-deriving instance Show (AlignMode k)
-
---
+-- | This formatter support alternate version
 data AltStatus = CanAlt | NoAlt
+
+-- | This formatter support Upper case version
 data UpperStatus = CanUpper | NoUpper
+
+-- | This formatter formats an integral or a fractional
 data FormatType = Fractional | Integral
 
+-- | All the Formatters
 data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   -- Integrals
   Decimal :: Format 'NoAlt 'NoUpper 'Integral
@@ -209,13 +251,34 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- Final formatters
 
-formatIntegral :: (Show i, Integral i) => Format t t' 'Integral -> SignMode -> Maybe (Int, AlignMode k, Char) -> Maybe (Int, Char) -> i -> String
+-- | Format an integral number
+formatIntegral :: (Show i, Integral i)
+               => Format t t' 'Integral
+               -> SignMode
+               -> Maybe (Int, AlignMode k, Char) -- ^ Padding
+               -> Maybe (Int, Char) -- ^ Grouping
+               -> i
+               -> String
 formatIntegral f sign padding grouping i = padAndSign f (prefixIntegral f) sign padding (group (reprIntegral f i) grouping)
 
-formatFractional :: (RealFloat f) => Format t t' 'Fractional -> SignMode -> Maybe (Int, AlignMode k, Char) -> Maybe (Int, Char) -> Maybe Int -> f -> String
+-- | Format a fractional number
+formatFractional
+  :: (RealFloat f)
+  => Format t t' 'Fractional
+  -> SignMode
+  -> Maybe (Int, AlignMode k, Char) -- ^ Padding
+  -> Maybe (Int, Char) -- ^ Grouping
+  -> Maybe Int -- ^ Precision
+  -> f
+  -> String
 formatFractional f sign padding grouping precision i = padAndSign f "" sign padding (group (reprFractional f precision i) grouping)
 
-formatString :: Maybe (Int, AlignMode 'AlignAll, Char) -> Maybe Int -> String -> String
+-- | Format a string
+formatString
+  :: Maybe (Int, AlignMode 'AlignAll, Char) -- ^ Padding
+  -> Maybe Int -- ^ Precision (will truncate before padding)
+  -> String
+  -> String
 formatString Nothing Nothing s = s
 formatString Nothing (Just i) s = take i s
 formatString (Just (padSize, padMode, padC)) size s = padLeft <> str <> padRight

@@ -5,8 +5,20 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-
-module PyF.Internal.PythonSyntax where
+{- |
+This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
+-}
+module PyF.Internal.PythonSyntax
+  ( parsePythonFormatString
+  , Item(..)
+  , FormatMode(..)
+  , Padding(..)
+  , Precision(..)
+  , TypeFormat(..)
+  , AlternateForm(..)
+  , pattern DefaultFormatMode
+  )
+where
 
 import Language.Haskell.TH.Syntax
 
@@ -45,12 +57,27 @@ format_spec       ::=  (literal_char | NULL | replacement_field)*
 literal_char      ::=  <any code point except "{", "}" or NULL>
 -}
 
-data Item = Raw String
-           | Replacement String (Maybe FormatMode)
+-- | A format string is composed of many chunks of raw string or replacement
+data Item = Raw String -- ^ A raw string
+           | Replacement String (Maybe FormatMode) -- ^ A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
            deriving (Show)
 
-result :: Parser [Item]
-result = many (rawString <|> escapedParenthesis <|> replacementField)
+{- |
+Parse a string, returns a list of raw string or replacement fields
+
+>>> import Text.Megaparsec
+>>> parse parsePythonFormatString "" "hello {1+1:>10.2f}"
+Right [
+       Raw "hello ",
+       Replacement "1+1"
+       (
+       Just (FormatMode
+                      (Padding 10 (Just (Nothing,AnyAlign AlignRight)))
+                      (FixedF (Precision 2) NormalForm Minus)
+                       Nothing))]
+-}
+parsePythonFormatString :: Parser [Item]
+parsePythonFormatString = many (rawString <|> escapedParenthesis <|> replacementField)
 
 rawString :: Parser Item
 rawString = Raw . escapeChars <$> some (noneOf ("{}" :: [Char]))
@@ -79,16 +106,20 @@ replacementField = do
 
   pure (Replacement expr fmt)
 
+-- | Default formating mode, no padding, default precision, no grouping, no sign handling
 pattern DefaultFormatMode :: FormatMode
 pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Minus) Nothing
 
+-- | A Formatter, listing padding, format and and grouping char
 data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
                 deriving (Show)
 
+-- | Padding, containing the padding width, the padding char and the alignement mode
 data Padding = PaddingDefault
              | Padding Integer (Maybe (Maybe Char, AnyAlign))
              deriving (Show)
 
+-- | Floating point precision
 data Precision = PrecisionDefault
                | Precision Integer
                deriving (Show)
@@ -109,25 +140,26 @@ type            ::=  "b" | "c" | "d" | "e" | "E" | "f" | "F" | "g" | "G" | "n" |
 data TypeFlag = Flagb | Flagc | Flagd | Flage | FlagE | Flagf | FlagF | Flagg | FlagG | Flagn | Flago | Flags | Flagx | FlagX | FlagPercent
   deriving (Show)
 
+-- | All formating type
 data TypeFormat =
-    DefaultF Precision SignMode -- Default
-  | BinaryF AlternateForm SignMode -- Binary
-  | CharacterF -- Character
-  | DecimalF SignMode -- Decimal
-  | ExponentialF Precision AlternateForm SignMode -- exponential notation
-  | ExponentialCapsF Precision AlternateForm SignMode -- exponentiel notation CAPS
-  | FixedF Precision AlternateForm SignMode -- fixed point
-  | FixedCapsF Precision AlternateForm SignMode -- fixed point CAPS
-  | GeneralF Precision AlternateForm SignMode -- General
-  | GeneralCapsF Precision AlternateForm SignMode -- General Switch to E
-  -- | NumberF Precision AlternateForm SignMode -- Number (Not Yet handled)
-  | OctalF AlternateForm SignMode -- octal
-  | StringF Precision -- string
-  | HexF AlternateForm SignMode -- small hex
-  | HexCapsF AlternateForm SignMode -- big hex
-  | PercentF Precision AlternateForm SignMode -- percent
+    DefaultF Precision SignMode -- ^ Default, depends on the infered type of the expression
+  | BinaryF AlternateForm SignMode -- ^ Binary, such as `0b0121`
+  | CharacterF -- ^ Character, will convert an integer to its character representation
+  | DecimalF SignMode -- ^ Decimal, base 10 integer formatting
+  | ExponentialF Precision AlternateForm SignMode -- ^ Exponential notation for floatting points
+  | ExponentialCapsF Precision AlternateForm SignMode -- ^ Exponential notation with capitalised 'e'
+  | FixedF Precision AlternateForm SignMode -- ^ Fixed number of digits floating point
+  | FixedCapsF Precision AlternateForm SignMode -- ^ Capitalized version of the previous
+  | GeneralF Precision AlternateForm SignMode -- ^ General formatting: `FixedF` or `ExponentialF` depending on the number magnitude
+  | GeneralCapsF Precision AlternateForm SignMode -- ^ Same as `GeneralF` but with upper case 'E' and infinite / NaN
+  | OctalF AlternateForm SignMode -- ^ Octal, such as 00245
+  | StringF Precision -- ^ Simple string
+  | HexF AlternateForm SignMode -- ^ Hexadecimal, such as 0xaf3e
+  | HexCapsF AlternateForm SignMode -- ^ Hexadecimal with capitalized letters, such as 0XAF3E
+  | PercentF Precision AlternateForm SignMode -- ^ Percent representation
   deriving (Show)
 
+-- | If the formatter use its alternate form
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
 

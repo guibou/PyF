@@ -1,6 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeApplications #-}
+{- | A lot of quasiquoters to format and interpolate string expression
+-}
 module PyF
   (f,
    f',
@@ -10,7 +12,7 @@ module PyF
    fLazyText,
    fStrictText,
 
-   -- Formatting reexport
+   -- * Formatting re-export
    runFormat,
    format,
    sformat,
@@ -77,8 +79,17 @@ instance MagicFormat Builder.Builder where
 fIO, fString, fStrictText, fLazyText, fBuilder :: QuasiQuoter
 
 
+-- | Format the format string and directly print it to stdout
 fIO = wrapQQ (templateF "fIO") (VarE 'F.fprint)
+
+-- | Format the format string as a 'String'
 fString = wrapQQ (templateF "fString") (VarE 'F.formatToString)
+
+-- | Format the format string as a strict 'SText.Text'
 fStrictText = wrapQQ (templateF "fStrictTeext") (VarE 'F.sformat)
+
+-- | Format the format string as a Lazy 'LText.Text'
 fLazyText = wrapQQ (templateF "fLazy") (VarE 'F.sformat)
+
+-- | Format the format string as a 'Builder.Builder'
 fBuilder = wrapQQ (templateF "fBuilder") (VarE 'F.bprint)
