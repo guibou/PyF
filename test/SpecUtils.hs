@@ -15,7 +15,6 @@ import Language.Haskell.TH.Syntax
 import Formatting
 import System.Process
 import System.Exit
-import Data.Maybe
 
 -- * Utils
 
@@ -31,7 +30,7 @@ runPythonExample s = do
   let
     pythonPath = "/nix/store/b8gd0cbvkm59x8flbc53bvsvmskyig5a-python3-3.6.4/bin/python"
     args = ["-c", "from math import pi;nan = float('NaN');inf = float('inf');print(f\'''" ++ s ++ "''', end='')"]
-  (ecode, stdout, stderr) <- readProcessWithExitCode pythonPath args ""
+  (ecode, stdout, _stderr) <- readProcessWithExitCode pythonPath args ""
   pure $ case ecode of
     ExitSuccess -> Just stdout
     ExitFailure _ -> Nothing
@@ -45,14 +44,14 @@ This expression is a failure if python cannot format this formatString
 or if the python result does not match the (provided) reference.
 -}
 pyCheck :: String -> Maybe String -> Q Exp
-pyCheck s example = do
+pyCheck s exampleStr = do
   pythonRes <- Language.Haskell.TH.Syntax.runIO (runPythonExample s)
 
   case pythonRes of
     Nothing -> [| expectationFailure $ "Expression: `" ++ s ++ "` fails in python" |]
     Just res -> do
       let qexp = [| formatToString $(toExp s)  `shouldBe` res |]
-      case example of
+      case exampleStr of
         Nothing -> qexp
         Just e -> if res == e
         then qexp
