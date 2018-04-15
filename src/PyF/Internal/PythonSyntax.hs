@@ -30,9 +30,7 @@ type Parser t = Parsec Void String t
 - Recursive replacement field, so "{string:.{precision}} can be parsed
 - f_expression / conversion
 - Not (Yet) implemented:
-     - 0
      - types: n
-     - #: for floating points
 -}
 
 
@@ -116,18 +114,18 @@ data TypeFormat =
   | BinaryF AlternateForm SignMode -- Binary
   | CharacterF -- Character
   | DecimalF SignMode -- Decimal
-  | ExponentialF Precision {- AlternateForm -} SignMode -- exponential notation (Alt not handled)
-  | ExponentialCapsF Precision {- AlternateForm -} SignMode -- exponentiel notation CAPS (Alt not handled)
-  | FixedF Precision {- AlternateForm -} SignMode -- fixed point (Alt not handled)
-  | FixedCapsF Precision {- AlternateForm -} SignMode -- fixed point CAPS (Alt not handled)
-  | GeneralF Precision {- AlternateForm -} SignMode -- General (Alt Not Yet handled)
-  | GeneralCapsF Precision {- AlternateForm -} SignMode -- General Switch to E (Alt Not yet handled)
+  | ExponentialF Precision AlternateForm SignMode -- exponential notation
+  | ExponentialCapsF Precision AlternateForm SignMode -- exponentiel notation CAPS
+  | FixedF Precision AlternateForm SignMode -- fixed point
+  | FixedCapsF Precision AlternateForm SignMode -- fixed point CAPS
+  | GeneralF Precision AlternateForm SignMode -- General
+  | GeneralCapsF Precision AlternateForm SignMode -- General Switch to E
   -- | NumberF Precision AlternateForm SignMode -- Number (Not Yet handled)
   | OctalF AlternateForm SignMode -- octal
   | StringF Precision -- string
   | HexF AlternateForm SignMode -- small hex
   | HexCapsF AlternateForm SignMode -- big hex
-  | PercentF Precision {- AlternateForm -} SignMode -- percent (Alt not handled)
+  | PercentF Precision AlternateForm SignMode -- percent
   deriving (Show)
 
 data AlternateForm = AlternateForm | NormalForm
@@ -178,18 +176,18 @@ evalFlag :: TypeFlag -> Precision -> AlternateForm -> Maybe SignMode -> Either S
 evalFlag Flagb prec alt s = failIfPrec prec (BinaryF alt (defSign s))
 evalFlag Flagc prec alt s = failIfS s =<< failIfPrec prec =<< failIfAlt alt CharacterF
 evalFlag Flagd prec alt s = failIfPrec prec =<< failIfAlt alt (DecimalF (defSign s))
-evalFlag Flage prec alt s = unhandledAlt alt (ExponentialF prec (defSign s))
-evalFlag FlagE prec alt s = unhandledAlt alt (ExponentialCapsF prec (defSign s))
-evalFlag Flagf prec alt s = unhandledAlt alt (FixedF prec (defSign s))
-evalFlag FlagF prec alt s = unhandledAlt alt (FixedCapsF prec (defSign s))
-evalFlag Flagg prec alt s = unhandledAlt alt (GeneralF prec (defSign s))
-evalFlag FlagG prec alt s = unhandledAlt alt (GeneralCapsF prec (defSign s))
+evalFlag Flage prec alt s = pure $ExponentialF prec alt (defSign s)
+evalFlag FlagE prec alt s = pure $ ExponentialCapsF prec alt (defSign s)
+evalFlag Flagf prec alt s = pure $ FixedF prec alt (defSign s)
+evalFlag FlagF prec alt s = pure $ FixedCapsF prec alt (defSign s)
+evalFlag Flagg prec alt s = pure $ GeneralF prec alt (defSign s)
+evalFlag FlagG prec alt s = pure $ GeneralCapsF prec alt (defSign s)
 evalFlag Flagn _prec _alt _s = Left ("Type 'n' not handled (yet). " ++ errgGn)
 evalFlag Flago prec alt s = failIfPrec prec $ OctalF alt (defSign s)
 evalFlag Flags prec alt s = failIfS s =<< (failIfAlt alt $ StringF prec)
 evalFlag Flagx prec alt s = failIfPrec prec $ HexF alt (defSign s)
 evalFlag FlagX prec alt s = failIfPrec prec $ HexCapsF alt (defSign s)
-evalFlag FlagPercent prec alt s = unhandledAlt alt (PercentF prec (defSign s))
+evalFlag FlagPercent prec alt s = pure $ PercentF prec alt (defSign s)
 
 defSign :: Maybe SignMode -> SignMode
 defSign Nothing = Minus
@@ -215,11 +213,6 @@ toSignMode :: SignMode -> Char
 toSignMode Plus = '+'
 toSignMode Minus = '-'
 toSignMode Space = ' '
-
-
-unhandledAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
-unhandledAlt NormalForm i = Right i
-unhandledAlt _ _ = Left "Type not yet compatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
 
 alignment :: Parser (Maybe Char, AnyAlign)
 alignment = choice [

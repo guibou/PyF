@@ -18,7 +18,6 @@ where
 import Data.Monoid ((<>))
 import Data.List (intercalate)
 import Data.Char (toUpper, chr)
-import Data.Bifunctor (bimap)
 import qualified Numeric
 import Language.Haskell.TH.Syntax
 
@@ -69,7 +68,7 @@ data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   Fixed :: Format 'CanAlt 'CanUpper 'Fractional
   Exponent :: Format 'CanAlt 'CanUpper 'Fractional
   Generic :: Format 'CanAlt 'CanUpper 'Fractional
-  Percent :: Format 'NoAlt 'NoUpper 'Fractional
+  Percent :: Format 'CanAlt 'NoUpper 'Fractional
 
   -- Meta formats
   Alternate :: Format 'CanAlt u f -> Format 'NoAlt u f
@@ -109,51 +108,61 @@ reprFractional :: (RealFloat f) => Format t t' 'Fractional -> Maybe Int -> f -> 
 reprFractional fmt precision f
   | isInfinite f = Infinite sign (upperIt "inf")
   | isNaN f = NaN (upperIt "nan")
-  | isNegativeZero f = let (FractionalRepr Positive aa bb) = reprFractional fmt precision (abs f)
-                       in FractionalRepr Negative aa bb
-  | otherwise = FractionalRepr sign a b
+  | isNegativeZero f = let (FractionalRepr Positive aa bb cc) = reprFractional fmt precision (abs f)
+                       in FractionalRepr Negative aa bb cc
+  | otherwise = FractionalRepr sign decimalPart fractionalPart suffixPart
   where
     upperIt s = case fmt of
       Upper _ -> toUpper <$> s
       _ -> s
 
     (sign, iAbs) = splitSign f
-    (a, b) = format fmt
+    (decimalPart, fractionalPart, suffixPart) = format fmt
 
-    format :: Format t t' 'Fractional -> (String, String)
+    format :: Format t t' 'Fractional -> (String, String, String)
     format = \case
       Fixed -> splitFractional (Numeric.showFFloatAlt precision iAbs "")
-      Exponent -> pythoniseExponent <$> splitFractional (Numeric.showEFloat precision iAbs "")
-      Generic -> splitFractional (Numeric.showGFloatAlt precision iAbs "")
-      Percent -> (<>"%") <$> splitFractional (Numeric.showFFloatAlt precision (iAbs * 100) "")
+      Exponent -> overrideExponent precision $ splitFractionalExp (Numeric.showEFloat precision iAbs "")
+      Generic -> splitFractionalExp (Numeric.showGFloatAlt precision iAbs "")
+      Percent -> let (a, b, "") = splitFractional (Numeric.showFFloatAlt precision (iAbs * 100) "") in (a, b, "%")
       Alternate fmt' -> format fmt'
-      Upper fmt' -> bimap (map toUpper) (map toUpper) (format fmt')
+      Upper fmt' -> let (a, b, c) = format fmt'
+                        in (a, b, map toUpper c)
 
-    splitFractional :: String -> (String, String)
-    splitFractional s = drop 1 <$> break (=='.') s
+    splitFractional :: String -> (String, String, String)
+    splitFractional s = let (a, b) = break (=='.') s
+                        in (a, drop 1 b, "")
 
-    pythoniseExponent :: String -> String
-    pythoniseExponent fracPart = let (fpart, e) = break (=='e') fracPart
-                                 in case e of
-      'e':'-':n -> fpart ++ "e-" ++ pad n
-      'e':n -> fpart ++ "e+" ++ pad n
-      _ -> error $ "unreachable (I hope so...) when pythonising exponent: " ++ e
-      where pad n@[_] = '0':n
-            pad n = n
+overrideExponent :: Maybe Int -> (String, String, String) -> (String, String, String)
+overrideExponent (Just 0) (a, "0", c) = (a, "", c)
+overrideExponent _ o = o
+
+splitFractionalExp :: String -> (String, String, String)
+splitFractionalExp s = let (a, b') = break (\c -> c == '.' || c == 'e' ) s
+                           b = drop 1 b'
+                           (fpart, e) = case b' of
+                             'e':_ -> ("", b')
+                             _ -> break (=='e') b
+                       in (a, fpart, case e of
+                            'e':'-':n -> "e-" ++ pad n
+                            'e':n -> "e+" ++ pad n
+                            leftover -> leftover)
+                         where pad n@[_] = '0':n
+                               pad n = n
 
 -- Cases Integral / Fractional
 
 group :: Repr -> Maybe (Int, Char) -> Repr
 group (IntegralRepr s str) (Just (size, c)) = IntegralRepr s (groupIntercalate c size str)
-group (FractionalRepr s a b) (Just (size, c)) = FractionalRepr s (groupIntercalate c size a) b
+group (FractionalRepr s a b d) (Just (size, c)) = FractionalRepr s (groupIntercalate c size a) b d
 group i _ = i
 
-padAndSign :: String -> SignMode -> Maybe (Int, AlignMode t, Char) -> Repr -> String
-padAndSign prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignMode <> content <> rightAlignMode
+padAndSign :: Format t t' t'' -> String -> SignMode -> Maybe (Int, AlignMode k, Char) -> Repr -> String
+padAndSign format prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignMode <> content <> rightAlignMode
   where
     (signStr, content) = case repr of
       IntegralRepr s str -> (formatSign s sign, str)
-      FractionalRepr s a b -> (formatSign s sign, a <> "." <> b)
+      FractionalRepr s a b c -> (formatSign s sign, joinPoint format a b <> c)
       Infinite s str -> (formatSign s sign, str)
       NaN str -> ("", str)
     prefixStr = signStr <> prefix
@@ -169,10 +178,16 @@ padAndSign prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignM
              AlignCenter -> (replicate (padNeeded `div` 2) padC, replicate (padNeeded - padNeeded `div` 2) padC, "")
              AlignInside -> ("", "", replicate padNeeded padC)
 
+joinPoint :: Format t t' t'' -> String -> String -> String
+joinPoint (Upper f) a b = joinPoint f a b
+joinPoint (Alternate _) a b = a <> "." <> b
+joinPoint _ a "" = a
+joinPoint _ a b = a <> "." <> b
+
 -- Generic
 data Repr
   = IntegralRepr Sign String
-  | FractionalRepr Sign String String
+  | FractionalRepr Sign String String String
   | Infinite Sign String
   | NaN String
   deriving (Show)
@@ -195,10 +210,10 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 -- Final formatters
 
 formatIntegral :: (Show i, Integral i) => Format t t' 'Integral -> SignMode -> Maybe (Int, AlignMode k, Char) -> Maybe (Int, Char) -> i -> String
-formatIntegral f sign padding grouping i = padAndSign (prefixIntegral f) sign padding (group (reprIntegral f i) grouping)
+formatIntegral f sign padding grouping i = padAndSign f (prefixIntegral f) sign padding (group (reprIntegral f i) grouping)
 
 formatFractional :: (RealFloat f) => Format t t' 'Fractional -> SignMode -> Maybe (Int, AlignMode k, Char) -> Maybe (Int, Char) -> Maybe Int -> f -> String
-formatFractional f sign padding grouping precision i = padAndSign "" sign padding (group (reprFractional f precision i) grouping)
+formatFractional f sign padding grouping precision i = padAndSign f "" sign padding (group (reprFractional f precision i) grouping)
 
 formatString :: Maybe (Int, AlignMode 'AlignAll, Char) -> Maybe Int -> String -> String
 formatString Nothing Nothing s = s

@@ -106,13 +106,13 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
   HexCapsF alt s -> [| formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
 
   -- Floating
-  ExponentialF prec s -> [| formatAnyFractional (Formatters.Exponent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  ExponentialCapsF prec s -> [| formatAnyFractional (Formatters.Upper (Formatters.Exponent)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  GeneralF prec s -> [| formatAnyFractional (Formatters.Generic) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  GeneralCapsF prec s -> [| formatAnyFractional (Formatters.Upper (Formatters.Generic)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  FixedF prec s -> [| formatAnyFractional (Formatters.Fixed) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  FixedCapsF prec s -> [| formatAnyFractional (Formatters.Upper (Formatters.Fixed)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  PercentF prec s -> [| formatAnyFractional (Formatters.Percent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  ExponentialF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Exponent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  ExponentialCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  GeneralF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Generic) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  GeneralCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  FixedF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Fixed) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  FixedCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
 
   -- Default / String
   DefaultF prec s -> [| \v ->

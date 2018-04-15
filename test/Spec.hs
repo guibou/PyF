@@ -61,13 +61,13 @@ spec = do
     describe "general" $ do
       it "simple small" $(checkExampleDiff "{123.02:g}" "123.020000")
       it "precision small" $(checkExampleDiff "{123.02:.1g}" "123.0")
-      it "simple big" $(checkExampleDiff "{1234567890.23:g}" "1.234568e9")
-      it "precision big" $(checkExampleDiff "{1234567890.23:.1g}" "1.2e9")
+      it "simple big" $(checkExampleDiff "{1234567890.23:g}" "1.234568e+09")
+      it "precision big" $(checkExampleDiff "{1234567890.23:.1g}" "1.2e+09")
     describe "general caps" $ do
       it "simple small" $(checkExampleDiff "{123.02:G}" "123.020000")
       it "precision small" $(checkExampleDiff "{123.02:.1G}" "123.0")
-      it "simple big" $(checkExampleDiff "{1234567890.23:G}" "1.234568E9")
-      it "precision big" $(checkExampleDiff "{1234567890.23:.1G}" "1.2E9")
+      it "simple big" $(checkExampleDiff "{1234567890.23:G}" "1.234568E+09")
+      it "precision big" $(checkExampleDiff "{1234567890.23:.1G}" "1.2E+09")
     describe "fixed" $ do
       it "simple" $(checkExample "{0.234:f}" "0.234000")
       it "precision" $(checkExample "{0.234:.1f}" "0.2")
@@ -148,6 +148,22 @@ spec = do
         it "works with sign" $(checkExample "{-123:010}" "-000000123")
         it "accept mode override" $(checkExample "{-123:<010}" "-123000000")
         it "accept mode and char override" $(checkExample "{-123:.<010}" "-123......")
+
+    describe "no digit no dot" $ do
+      it "f" $(checkExample "{1.0:.0f}" "1")
+      it "e" $(checkExample "{1.0:.0e}" "1e+00")
+      it "g" $(checkExample "{1.0:.0g}" "1")
+      it "E" $(checkExample "{1.0:.0E}" "1E+00")
+      it "G" $(checkExample "{1.0:.0G}" "1")
+      it "percent" $(checkExample "{1.0:.0%}" "100%")
+    describe "no digit alt -> dot" $ do
+      it "f" $(checkExample "{1.0:#.0f}" "1.")
+      it "e" $(checkExample "{1.0:#.0e}" "1.e+00")
+      it "g" $(checkExample "{1.0:#.0g}" "1.")
+      it "E" $(checkExample "{1.0:#.0E}" "1.E+00")
+      it "G" $(checkExample "{1.0:#.0G}" "1.")
+      it "percent" $(checkExample "{1.0:#.0%}" "100.%")
+
   describe "complex" $ do
     it "works with many things at once" $
       let

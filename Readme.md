@@ -246,11 +246,11 @@ And
 The implementation is unit-tested against the reference python implementation (python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
 
 ### Not supported
-
-- Number `n` formatter is not supported
-- Alternative `#` forms for all floating point representations are not supported. Theses forms allow the result of the conversion to always contain a decimal-point character.
+,p
+- Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too.
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones
+- Python support adding custom formatters for new types, such as date. This may be really cool, for example `[f|{today:%Y-%M-%D}`.
 
 ### Difference
 
