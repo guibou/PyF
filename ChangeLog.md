@@ -1,10 +1,13 @@
 # Revision history for FormatStringLiteral
 ## 0.5.0.0 -- 2018-04-16
+
 - Support for negative zero
 - Support for 0 modifier
 - Exponential formatter now behaves as python
 - Support for alternate floatting point represenation
 - Lot of documentation
+- Test are auto verified with the python reference implementation
+
 ## 0.4.0.0 -- 2018-04-13
 
 - Support for grouping option
