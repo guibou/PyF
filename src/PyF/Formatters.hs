@@ -219,3 +219,4 @@ the .
 
 deriving instance Lift (AlignMode k)
 deriving instance Lift SignMode
+deriving instance Lift (Format k k' k'')

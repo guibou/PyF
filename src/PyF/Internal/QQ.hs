@@ -90,20 +90,20 @@ changePrec' (Precision n) = Just (fromIntegral n)
 toGrp :: Maybe b -> a -> Maybe (a, b)
 toGrp mb a = (a,) <$> mb
 
+withAlt :: AlternateForm -> Formatters.Format t t' t'' -> Q Exp
+withAlt NormalForm e = [| e |]
+withAlt AlternateForm e = [| Formatters.Alternate e |]
+
 -- Todo: Alternates for floating
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat (FormatMode padding tf grouping) = case tf of
   -- Integrals
-  BinaryF AlternateForm s -> [| formatAnyIntegral (Formatters.Alternate Formatters.Binary) s (newPadding padding) (toGrp grouping 4) |]
-  BinaryF NormalForm s -> [| formatAnyIntegral Formatters.Binary s (newPadding padding) (toGrp grouping 4) |]
+  BinaryF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Binary) s (newPadding padding) (toGrp grouping 4) |]
   CharacterF -> [| formatAnyIntegral Formatters.Character Formatters.Minus (newPadding padding) Nothing |]
   DecimalF s -> [| formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) |]
-  HexF AlternateForm s -> [| formatAnyIntegral (Formatters.Alternate Formatters.Hexa) s (newPadding padding) (toGrp grouping 4) |]
-  HexF NormalForm s -> [| formatAnyIntegral Formatters.Hexa s (newPadding padding) (toGrp grouping 4) |]
-  OctalF AlternateForm s -> [| formatAnyIntegral (Formatters.Alternate Formatters.Octal) s (newPadding padding) (toGrp grouping 4) |]
-  OctalF NormalForm s -> [| formatAnyIntegral Formatters.Octal s (newPadding padding) (toGrp grouping 4) |]
-  HexCapsF AlternateForm s -> [| formatAnyIntegral (Formatters.Upper (Formatters.Alternate Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
-  HexCapsF NormalForm s -> [| formatAnyIntegral (Formatters.Upper (Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
+  HexF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Hexa) s (newPadding padding) (toGrp grouping 4) |]
+  OctalF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Octal) s (newPadding padding) (toGrp grouping 4) |]
+  HexCapsF alt s -> [| formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
 
   -- Floating
   ExponentialF prec s -> [| formatAnyFractional (Formatters.Exponent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
