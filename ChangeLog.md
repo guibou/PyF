@@ -1,4 +1,7 @@
 # Revision history for FormatStringLiteral
+
+- Better error message for badly formated expression
+
 ## 0.5.0.0 -- 2018-04-16
 
 - Support for negative zero
