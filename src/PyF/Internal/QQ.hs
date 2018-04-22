@@ -163,6 +163,8 @@ instance Categorise k Word.Word64 where categorise _  i = Integral i
 instance Categorise k Float where categorise _  f = Fractional f
 instance Categorise k Double where categorise _  f = Fractional f
 
+instance {-# OVERLAPPABLE #-} TypeError ('Text "This type cannot be formatted. Convert it to `Integral`, `RealFloat` or a String/Text") => Categorise k t where categorise _ _ = error "unreachable"
+
 -- This may use DataKinds extension, however the need for the
 -- extension will leak inside the code calling the template haskell
 -- quasi quotes.
