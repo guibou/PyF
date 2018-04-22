@@ -67,17 +67,6 @@ data Item = Raw String -- ^ A raw string
 
 {- |
 Parse a string, returns a list of raw string or replacement fields
-
->>> import Text.Megaparsec
->>> parse parsePythonFormatString "" "hello {1+1:>10.2f}"
-Right [
-       Raw "hello ",
-       Replacement "1+1"
-       (
-       Just (FormatMode
-                      (Padding 10 (Just (Nothing,AnyAlign AlignRight)))
-                      (FixedF (Precision 2) NormalForm Minus)
-                       Nothing))]
 -}
 parsePythonFormatString :: Parser [Item]
 parsePythonFormatString = many (rawString <|> escapedParenthesis <|> replacementField)
@@ -140,27 +129,22 @@ precision       ::=  integer
 type            ::=  "b" | "c" | "d" | "e" | "E" | "f" | "F" | "g" | "G" | "n" | "o" | "s" | "x" | "X" | "%"
 -}
 
-data TypeFlag = Flagb | Flagc | Flagd | Flage | FlagE | Flagf | FlagF | Flagg | FlagG | Flagn | Flago | Flags | Flagx | FlagX | FlagPercent
+-- Note : 'n' is not handled
+
+data TypeFlag = Flagb | Flagc | Flagd | Flage | FlagE | Flagf | FlagF | Flagg | FlagG | Flago | Flags | Flagx | FlagX | FlagPercent
   deriving (Show)
 
+-- TODO: DefaultF and precision
 -- | All formating type
-data TypeFormat =
-    DefaultF Precision SignMode -- ^ Default, depends on the infered type of the expression
-  | BinaryF AlternateForm SignMode -- ^ Binary, such as `0b0121`
-  | CharacterF -- ^ Character, will convert an integer to its character representation
-  | DecimalF SignMode -- ^ Decimal, base 10 integer formatting
-  | ExponentialF Precision AlternateForm SignMode -- ^ Exponential notation for floatting points
-  | ExponentialCapsF Precision AlternateForm SignMode -- ^ Exponential notation with capitalised 'e'
-  | FixedF Precision AlternateForm SignMode -- ^ Fixed number of digits floating point
-  | FixedCapsF Precision AlternateForm SignMode -- ^ Capitalized version of the previous
-  | GeneralF Precision AlternateForm SignMode -- ^ General formatting: `FixedF` or `ExponentialF` depending on the number magnitude
-  | GeneralCapsF Precision AlternateForm SignMode -- ^ Same as `GeneralF` but with upper case 'E' and infinite / NaN
-  | OctalF AlternateForm SignMode -- ^ Octal, such as 00245
-  | StringF Precision -- ^ Simple string
-  | HexF AlternateForm SignMode -- ^ Hexadecimal, such as 0xaf3e
-  | HexCapsF AlternateForm SignMode -- ^ Hexadecimal with capitalized letters, such as 0XAF3E
-  | PercentF Precision AlternateForm SignMode -- ^ Percent representation
-  deriving (Show)
+data TypeFormat where
+  TypeFormatIntegral :: Format k k' 'Integral -> SignMode -> TypeFormat
+  TypeFormatFractional :: Format k k' 'Fractional -> SignMode -> Precision -> TypeFormat
+  TypeFormatString :: Precision -> TypeFormat
+  -- ^ Simple string
+  DefaultF :: Precision -> SignMode -> TypeFormat
+  -- ^ Default, depends on the infered type of the expression
+
+deriving instance Show TypeFormat
 
 -- | If the formatter use its alternate form
 data AlternateForm = AlternateForm | NormalForm
@@ -221,38 +205,55 @@ format_spec = do
       Left typeError -> do
         lastCharFailed typeError
 
+data FormatTag (k :: FormatType) where
+  TagIntegral :: FormatTag 'Integral
+  TagFractional :: FormatTag 'Fractional
+  TagString :: FormatTag 'StringType
+
+data AnyFormat where
+  AnyFormat :: Format k k' k'' -> FormatTag k'' -> AnyFormat
+
+altIf :: AlternateForm -> Format 'CanAlt k k' -> FormatTag k' -> AnyFormat
+altIf NormalForm t tag = AnyFormat t tag
+altIf AlternateForm t tag = AnyFormat (Alternate t) tag
+
+altUpperIf :: AlternateForm -> Format 'CanAlt 'CanUpper k -> FormatTag k -> AnyFormat
+altUpperIf NormalForm t tag = AnyFormat (Upper t) tag
+altUpperIf AlternateForm t tag = AnyFormat (Upper (Alternate t)) tag
+
+typeFlagToFormat :: TypeFlag -> AlternateForm -> Either String AnyFormat
+typeFlagToFormat Flagb alt = Right $ altIf alt Binary TagIntegral
+typeFlagToFormat Flagc NormalForm = Right $ AnyFormat Character TagIntegral
+typeFlagToFormat Flagd NormalForm = Right $ AnyFormat Decimal TagIntegral
+typeFlagToFormat Flage alt = Right $ altIf alt Exponent TagFractional
+typeFlagToFormat FlagE alt = Right $ altUpperIf alt Exponent TagFractional
+typeFlagToFormat Flagf alt = Right $ altIf alt Fixed TagFractional
+typeFlagToFormat FlagF alt = Right $ altUpperIf alt Fixed TagFractional
+typeFlagToFormat Flagg alt = Right $ altIf alt Generic TagFractional
+typeFlagToFormat FlagG alt = Right $ altUpperIf alt Generic TagFractional
+typeFlagToFormat Flago alt = Right $ altIf alt Octal TagIntegral
+typeFlagToFormat Flags NormalForm = Right $ AnyFormat StringF TagString
+typeFlagToFormat Flagx alt = Right $ altIf alt Hexa TagIntegral
+typeFlagToFormat FlagX alt = Right $ altUpperIf alt Hexa TagIntegral
+typeFlagToFormat FlagPercent alt = Right $ altIf alt Percent TagFractional
+typeFlagToFormat f AlternateForm = Left $ "Type " ++ show f ++ "incompatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
+
 evalFlag :: TypeFlag -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
-evalFlag Flagb prec alt s = failIfPrec prec (BinaryF alt (defSign s))
-evalFlag Flagc prec alt s = failIfS s =<< failIfPrec prec =<< failIfAlt alt CharacterF
-evalFlag Flagd prec alt s = failIfPrec prec =<< failIfAlt alt (DecimalF (defSign s))
-evalFlag Flage prec alt s = pure $ExponentialF prec alt (defSign s)
-evalFlag FlagE prec alt s = pure $ ExponentialCapsF prec alt (defSign s)
-evalFlag Flagf prec alt s = pure $ FixedF prec alt (defSign s)
-evalFlag FlagF prec alt s = pure $ FixedCapsF prec alt (defSign s)
-evalFlag Flagg prec alt s = pure $ GeneralF prec alt (defSign s)
-evalFlag FlagG prec alt s = pure $ GeneralCapsF prec alt (defSign s)
-evalFlag Flagn _prec _alt _s = Left ("Type 'n' not handled (yet). " ++ errgGn)
-evalFlag Flago prec alt s = failIfPrec prec $ OctalF alt (defSign s)
-evalFlag Flags prec alt s = failIfS s =<< (failIfAlt alt $ StringF prec)
-evalFlag Flagx prec alt s = failIfPrec prec $ HexF alt (defSign s)
-evalFlag FlagX prec alt s = failIfPrec prec $ HexCapsF alt (defSign s)
-evalFlag FlagPercent prec alt s = pure $ PercentF prec alt (defSign s)
+evalFlag typeFlag pre alt s = do
+  AnyFormat format tag <- typeFlagToFormat typeFlag alt
+
+  case tag of
+    TagIntegral -> failIfPrec pre (TypeFormatIntegral format (defSign s))
+    TagFractional -> Right $ TypeFormatFractional format (defSign s) pre
+    TagString -> failIfS s (TypeFormatString pre) -- check no sign and pre
 
 defSign :: Maybe SignMode -> SignMode
 defSign Nothing = Minus
 defSign (Just s) = s
 
-
-errgGn :: String
-errgGn = "Use one of {'b', 'c', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 's', 'x', 'X', '%'}."
-
 failIfPrec :: Precision -> TypeFormat -> Either String TypeFormat
 failIfPrec PrecisionDefault i = Right i
 failIfPrec (Precision i) _ = Left ("Type incompatible with precision (." ++ show i ++ "), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.")
-
-failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
-failIfAlt NormalForm i = Right i
-failIfAlt _ _ = Left "Type incompatible with alternative form (#), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the alternative field."
 
 failIfS :: Maybe SignMode -> TypeFormat -> Either String TypeFormat
 failIfS Nothing i = Right i
@@ -315,7 +316,6 @@ type_ = choice [
   FlagF <$ char 'F',
   Flagg <$ char 'g',
   FlagG <$ char 'G',
-  Flagn <$ char 'n',
   Flago <$ char 'o',
   Flags <$ char 's',
   Flagx <$ char 'x',

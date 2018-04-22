@@ -91,35 +91,26 @@ changePrec' (Precision n) = Just (fromIntegral n)
 toGrp :: Maybe b -> a -> Maybe (a, b)
 toGrp mb a = (a,) <$> mb
 
-withAlt :: AlternateForm -> Formatters.Format t t' t'' -> Q Exp
-withAlt NormalForm e = [| e |]
-withAlt AlternateForm e = [| Formatters.Alternate e |]
+formatToGrouping :: Formatters.Format  k k' 'Formatters.Integral -> Int
+formatToGrouping Formatters.Decimal = 3
+formatToGrouping (Formatters.Upper f) = formatToGrouping f
+formatToGrouping (Formatters.Alternate f) = formatToGrouping f
+formatToGrouping _ = 4
+
 
 -- Todo: Alternates for floating
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat (FormatMode padding tf grouping) = case tf of
-  -- Integrals
-  BinaryF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Binary) s (newPadding padding) (toGrp grouping 4) |]
-  CharacterF -> [| formatAnyIntegral Formatters.Character Formatters.Minus (newPadding padding) Nothing |]
-  DecimalF s -> [| formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) |]
-  HexF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Hexa) s (newPadding padding) (toGrp grouping 4) |]
-  OctalF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Octal) s (newPadding padding) (toGrp grouping 4) |]
-  HexCapsF alt s -> [| formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
+  TypeFormatIntegral f sign -> [| Formatters.formatIntegral f sign $(newPadding padding) (toGrp grouping (formatToGrouping f)) |]
+  TypeFormatFractional f sign prec -> [| Formatters.formatFractional f sign $(newPadding padding) (toGrp grouping 3) (changePrec prec)  |]
+  TypeFormatString prec -> [| Formatters.formatString pad (changePrec' prec) |]
+    where pad = newPaddingForString padding
 
-  -- Floating
-  ExponentialF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Exponent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  ExponentialCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  GeneralF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Generic) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  GeneralCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  FixedF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Fixed) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  FixedCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-
-  -- Default / String
+  -- Default
   DefaultF prec s -> [| \v ->
       case categorise (Proxy :: Proxy $(typeAllowed)) v of
-        Integral i -> formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) i
-        Fractional f -> formatAnyFractional Formatters.Generic s (newPadding padding) (toGrp grouping 3) (changePrec' prec) f
+        Integral i -> Formatters.formatIntegral Formatters.Decimal s $(newPadding padding) (toGrp grouping 3) i
+        Fractional f -> Formatters.formatFractional Formatters.Generic s $(newPadding padding) (toGrp grouping 3) (changePrec' prec) f
         StringType f -> Formatters.formatString (newPaddingForString padding) (changePrec' prec) f
                          |]
    where
@@ -131,9 +122,6 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
          Nothing -> [t| DisableForString |]
          Just _ -> [t| EnableForString |]
 
-  StringF prec -> [| Formatters.formatString pad (changePrec' prec) |]
-    where pad = newPaddingForString padding
-
 newPaddingForString :: Padding -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingForString padding = case padding of
     PaddingDefault -> Nothing
@@ -142,21 +130,13 @@ newPaddingForString padding = case padding of
       Nothing -> error alignErrorMsg
       Just al -> pure (fromIntegral i, al, fromMaybe ' ' mc)
 
-newPadding :: Padding -> Maybe (Integer, AnyAlign, Char)
+newPadding :: Padding -> Q Exp
 newPadding padding = case padding of
-    PaddingDefault -> Nothing
+    PaddingDefault -> [| Nothing |]
     (Padding i al) -> case al of
-      Nothing -> Just (i, AnyAlign Formatters.AlignRight, ' ') -- Right align and space is default for any object, except string
-      Just (Nothing, a) -> Just (i, a, ' ')
-      Just (Just c, a) -> Just (i, a, c)
-
-formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
-formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i
-formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = Formatters.formatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
-
-formatAnyFractional :: (RealFloat i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
-formatAnyFractional f s Nothing grouping p i = Formatters.formatFractional f s Nothing grouping p i
-formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
+      Nothing -> [| Just (fromIntegral i, Formatters.AlignRight, ' ') |] -- Right align and space is default for any object, except string
+      Just (Nothing, AnyAlign a) -> [| Just (fromIntegral i, a, ' ') |]
+      Just (Just c, AnyAlign a) -> [| Just (fromIntegral i, a, c) |]
 
 data FormattingType where
   StringType :: String -> FormattingType

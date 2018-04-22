@@ -95,7 +95,7 @@ data AltStatus = CanAlt | NoAlt
 data UpperStatus = CanUpper | NoUpper
 
 -- | This formatter formats an integral or a fractional
-data FormatType = Fractional | Integral
+data FormatType = Fractional | Integral | StringType
 
 -- | All the Formatters
 data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
@@ -116,6 +116,11 @@ data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   Alternate :: Format 'CanAlt u f -> Format 'NoAlt u f
   -- Upper should come AFTER Alt, so this disallow any future alt
   Upper :: Format alt 'CanUpper f -> Format 'NoAlt 'NoUpper f
+
+  -- String
+  StringF :: Format 'NoAlt 'NoUpper 'StringType
+
+deriving instance Show (Format k k' k'')
 
 -- Internal Integral
 -- Todo: remove the Show constraint ?
