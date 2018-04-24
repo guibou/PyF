@@ -57,7 +57,7 @@ format ("Hello " % text % ". Your age is " % int
 
 ```haskell
 let formattedPi = Numeric.showFFloat (Just 2) pi
-in [|Hello #{name}. You age is #{age} and pi = #{formatedPi}.\n|]
+in [|Hello #{name}. Your age is #{age} and pi = #{formatedPi}.\n|]
 ```
 
 - Compact
