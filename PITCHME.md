@@ -90,7 +90,7 @@ f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 ## PyF
 
 ```haskell
-[f|Hello {name}. Your age is {age}. and pi = {pi:.2f}|]
+[fString|Hello {name}. Your age is {age}. and pi = {pi:.2f}|]
 ```
 
 - Type Safe
@@ -103,7 +103,41 @@ f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 
 ---
 
+## PyF - Availables QQ
+
+- `f`: format to `Formatting` formatter
+- `fString`: format to `String` (`Text` also available)
+- `f'`: use type inference
+- `fIO`: format and output on stdout
+
+---
+
 ## Examples
+
+```haskell
+for_ [0..16] $ \i ->
+  [fIO|{i:>2}: Binary: {i:_=#7b} Octal: {i:_=#4o} Hexa: {i:_=#4x}\n|]
+```
+
+```
+ 0: Binary: 0b____0 Octal: 0o_0 Hexa: 0x_0
+ 1: Binary: 0b____1 Octal: 0o_1 Hexa: 0x_1
+ 2: Binary: 0b___10 Octal: 0o_2 Hexa: 0x_2
+ 3: Binary: 0b___11 Octal: 0o_3 Hexa: 0x_3
+ 4: Binary: 0b__100 Octal: 0o_4 Hexa: 0x_4
+ 5: Binary: 0b__101 Octal: 0o_5 Hexa: 0x_5
+ 6: Binary: 0b__110 Octal: 0o_6 Hexa: 0x_6
+ 7: Binary: 0b__111 Octal: 0o_7 Hexa: 0x_7
+ 8: Binary: 0b_1000 Octal: 0o10 Hexa: 0x_8
+ 9: Binary: 0b_1001 Octal: 0o11 Hexa: 0x_9
+10: Binary: 0b_1010 Octal: 0o12 Hexa: 0x_a
+11: Binary: 0b_1011 Octal: 0o13 Hexa: 0x_b
+12: Binary: 0b_1100 Octal: 0o14 Hexa: 0x_c
+13: Binary: 0b_1101 Octal: 0o15 Hexa: 0x_d
+14: Binary: 0b_1110 Octal: 0o16 Hexa: 0x_e
+15: Binary: 0b_1111 Octal: 0o17 Hexa: 0x_f
+16: Binary: 0b10000 Octal: 0o20 Hexa: 0x10
+```
 
 ---
 
