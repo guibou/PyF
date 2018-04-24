@@ -42,7 +42,7 @@ printf "Hello %s. Your age is %d. and pi = %.2f.\n"
 
 ```haskell
 format ("Hello " % text % ". Your age is " % int
-  % ". And pi = " % fixed 2 % ".\n" name age pi
+  % ". And pi = " % fixed 2 % ".\n") name age pi
 ```
 
 - Type Safe
@@ -57,9 +57,8 @@ format ("Hello " % text % ". Your age is " % int
 
 ```haskell
 let formattedPi = Numeric.showFFloat (Just 2) pi
-in [|Hello #{name}. You age is ${age} and pi = #{formatedPi}.\n|]
+in [|Hello #{name}. You age is #{age} and pi = #{formatedPi}.\n|]
 ```
----
 
 - Compact
 - Type safe
@@ -103,6 +102,10 @@ f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 
 ---
 
+## Examples
+
+---
+
 # Implementation details
 
 ---
@@ -119,7 +122,8 @@ f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 ## Tests
 
 ```haskell
-it "groups bin" $(checkExample "{123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
+it "groups bin" $(checkExample "{123456789:_b}"
+   "111_0101_1011_1100_1101_0001_0101")
 ```
 
 - Format string is checked with the provided example
