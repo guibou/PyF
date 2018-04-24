@@ -97,6 +97,7 @@ f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 - No ping pong
 - Readable format string
 - Well known syntax (extended C `printf(3)` like)
+- Readable errors !
 
 - *Limited number of formatters* (can be extended...)
 
@@ -129,6 +130,7 @@ it "groups bin" $(checkExample "{123456789:_b}"
 - Format string is checked with the provided example
 - *AND* with the python reference implementation
 - with *Randomized* examples (using `Quickcheck`)
+- Need tests for failure cases
 
 ---
 
