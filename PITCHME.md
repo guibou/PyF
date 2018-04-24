@@ -4,14 +4,6 @@
 
 ---
 
-## Introduction
-
-- PyF was announced the previous week
-
-...
-
----
-
 # Formatting in Haskell
 
 ---
@@ -20,43 +12,44 @@
 
 ```haskell
 "Hello " <> name <> ". Your age is " <> show age
-  <> ".And pi = " <> Numeric.showFFloat (Just 2) pi "" <> ".\n"
+  <> ".And pi = "
+  <> Numeric.showFFloat (Just 2) pi "" <> ".\n"
 ```
 
-- No formatting
-- Incompact format string
 - Type safe
 
+- *No formatting*
+- *Verbose*
+
 ---
 
-## Advanced formatting
-
-### `Text.Printf`
+## `Text.Printf`
 
 ```haskell
-printf "Hello %s. Your age is %d. and pi = %.2f.\n" name age pi
+printf "Hello %s. Your age is %d. and pi = %.2f.\n"
+        name age pi
 ```
 
-- Format string is compact
-- unsafe
-- Ping-Pong between format string and arguments
-- Limited number of formatters (can be extended)
-- Well known syntax (C printf like)
+- Compact
+- Well known syntax (C `printf(3)` like)
+
+- *Runtime errors*
+- *Ping-Pong between format string and arguments*
 
 ---
 
-### `Formatting`
+## `Formatting`
 
 ```haskell
 format ("Hello " % text % ". Your age is " % int
   % ". And pi = " % fixed 2 % ".\n" name age pi
 ```
 
-- Format string is not compact
 - Type Safe
-- Ping-Pong between format string and arguments
 - Any number of formatter
-- Well known syntax (C printf like)
+
+- *Verbose*
+- *Ping-Pong between format string and arguments*
 
 ---
 
@@ -65,11 +58,13 @@ format ("Hello " % text % ". Your age is " % int
 ```haskell
 let formattedPi = Numeric.showFFloat (Just 2) pi
 in [|Hello #{name}. You age is ${age} and pi = #{formatedPi}.\n|]
+```
 ---
 
-- No formatting at all
-- Really readable
+- Compact
 - Type safe
+
+- *No formatting*
 
 ---
 
@@ -79,41 +74,75 @@ in [|Hello #{name}. You age is ${age} and pi = #{formatedPi}.\n|]
 f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 ```
 
-- Readable format string
-- Limited number of formatters (can be extended)
-- Well known syntax (extended C printf like)
+- Compact
+- Well known syntax (extended `C printf(3)`)
 - No Ping Pong
-- Runtime errors
+
+- *Runtime errors*
 
 ---
 
-## Introducing PyF
+## PyF
+
+### Python experience, with type safety
+
+---
+
+## PyF
 
 ```haskell
 [f|Hello {name}. Your age is {age}. and pi = {pi:.2f}|]
 ```
 
-- Python like syntax
+- Type Safe
 - No ping pong
 - Readable format string
-- Limited number of formatters (can be extended*)
-- Well known syntax (extended C printf like)
-- Type Safe
+- Well known syntax (extended C `printf(3)` like)
+
+- *Limited number of formatters* (can be extended...)
 
 ---
 
 # Implementation details
 
-## Tests
+---
+
+## Details
+
+- Template Haskell (And quasiquotes) : don't be afraid
+- `Megaparsec` for parsing / error reporting
+- `GADTs` for type safety of the formatting details
+- `GHC.TypeLits.TypeError` for final safety
 
 ---
 
+## Tests
+
+```haskell
+it "groups bin" $(checkExample "{123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
+```
+
+- Format string is checked with the provided example
+- *AND* with the python reference implementation
+- with *Randomized* examples (using `Quickcheck`)
+
+---
+
+## Error reporting
+
+TODO
+
 ## Error reporting - TH Parsing
+
+TODO
 
 ---
 
 ## Error reporting - TH Type check
 
+TODO
 ---
 
 ## Error reporting - Typeclass type check
+
+TODO
