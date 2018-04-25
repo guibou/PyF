@@ -191,11 +191,12 @@ it "groups bin" $(checkExample "{123456789:_b}"
 ## Representing formatters : First approach
 
 ```haskell
-data Format = Decimal | Binary | Alternate Format | UpperCase Format | StringF | Fixed | ...
+data Format = Decimal | Binary | Alternate Format
+                   | UpperCase Format | StringF | Fixed | ...
 ```
 
 - Incorrect inhabitants: `Alternate StringF`, ...
-- Repetitions: `UpperCase (UpperCase (Alternate (Alternate Binary))))`
+- Repetitions: `Alternate (Alternate Binary)`
 - Order: `UpperCase (Alternate Binary)` vs `Alternate (UpperCase Binary)`
 
 ---
@@ -206,7 +207,9 @@ data Format = Decimal | Binary | Alternate Format | UpperCase Format | StringF |
 data AltStatus = CanAlt | NoAlt
 data UpperStatus = CanUpper | NoUpper
 data FormatType = Fractional | Integral | Textual
+```
 
+```
 data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   Decimal :: Format 'NoAlt 'NoUpper 'Integral
   Binary :: Format 'CanAlt 'NoUpper 'Integral
@@ -215,16 +218,39 @@ data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
 
   Alternate :: Format 'CanAlt u f -> Format 'NoAlt u f
   Upper :: Format alt 'CanUpper f -> Format 'NoAlt 'NoUpper f
+  ...
   ```
+
+---
+
+```haskell
+>>> Upper Fixed
+Upper Fixed
+>>> Alternate Binary
+Alternate Binary
+>>> Upper Binary
+
+<interactive>:5:7: error:
+    • Couldn't match type ‘'NoUpper’ with ‘'CanUpper’
+      Expected type: Format 'CanAlt 'CanUpper 'Integral
+        Actual type: Format 'CanAlt 'NoUpper 'Integral
+		...
+>>> Upper (Alternate Fixed)
+Upper (Alternate Fixed)
+>>> Alternate (Upper Fixed)
+
+<interactive>:7:12: error:
+    • Couldn't match type ‘'NoAlt’ with ‘'CanAlt’
+      Expected type: Format 'CanAlt 'NoUpper 'Fractional
+        Actual type: Format 'NoAlt 'NoUpper 'Fractional
+		...
+```
 
 ---
 
 ## More GADTs: Alignement
 
 ```haskell
-data AlignForString = AlignAll | AlignNumber
-
--- | Alignement
 data AlignMode (k :: AlignForString) where
   AlignLeft :: AlignMode 'AlignAll
   AlignRight :: AlignMode 'AlignAll
@@ -239,15 +265,7 @@ data Formatter where
 
 ---
 
-# Type checking
-
----
-
-## 3 Phases
-
-- Untyped parsing (during TH) -> `Megaparser` errors
-- Type checking (during TH) -> `Megaparsec` errors
-- Final type classes / arbitrary expression checking -> GHC + `TypeError`
+# Type checking : 3 phases
 
 ---
 
@@ -277,24 +295,26 @@ expecting '#', '%', '+', '-', '.', '0', 'E', 'F', 'G', 'X', 'b', 'c', 'd', 'e', 
   |
 1 | {age:.3d}
   |        ^
-Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.
+Type `d` incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.
 ```
 
 ---
 
 ## Typeclass type check
 
-- `GHC-TypeLits.TypeError` is *awesome*
+- `GHC.TypeLits.TypeError` is *awesome*
 
 ```haskell
-instance TypeError ('Text "String Cannot be aligned with the "sign-aware" (i.e. `=`)") => Categorise DisableForString LText.Text where ...
+instance TypeError (
+  'Text "String cannot be aligned with the \"sign-aware\" (i.e. `=`) mode"
+  ) => Categorise DisableForString LText.Text where ...
 ```
 
 ```haskell
 *PyF> [fString|Hello {"hello":=10}|]
 
 <interactive>:10:10: error:
-    • String Cannot be aligned with the inside `=` mode
+    • String cannot be aligned with the "sign-aware" (i.e. `=`) mode
 ```
 
 ---
@@ -309,4 +329,4 @@ Todos:
 - https://github.com/guibou/PyF
 - https://hackage.haskell.org/package/PyF
 
-- Thank you ;)
+Thank you ;)
