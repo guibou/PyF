@@ -239,7 +239,7 @@ data AlignMode (k :: AlignForString) where
 
 ```haskell
 data Formatter where
-    Formatter :: SingletonAlignMode ft
+    Formatter :: SingletonAlignMode (ModeFor ft)
 	      -> AlignMode (ModeFor ft)
 		  -> Format k k' ft
 		  -> Formatter
