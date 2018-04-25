@@ -98,21 +98,39 @@ f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 - Readable format string
 - Well known syntax (extended C `printf(3)` like)
 - Readable errors !
+- Format any haskell expression
 
 - *Limited number of formatters* (can be extended...)
 
 ---
 
-## PyF - Availables QQ
+## Availables formatters
 
-- `f`: format to `Formatting` formatter
-- `fString`: format to `String` (`Text` also available)
-- `f'`: use type inference
-- `fIO`: format and output on stdout
+- Floating point (Precision, fixed, exponential, generic, percent)
+- Integral (Decimal, Octal, Binary, Hexa)
+- Padding (left, right, around, between sign and number)
+- Grouping (i.e: `123,456,789.123`)
+- Sign handling
 
 ---
-
 ## Examples
+
+Padding
+
+```
+>>> [fString|{name:|^13}|]
+"||Guillaume||"
+```
+
+Grouping
+
+```
+>>> [fString|{2 ^ 32  -1:_#b}|]
+"0b1111_1111_1111_1111_1111_1111_1111_1111"
+```
+---
+
+## Complex formatter
 
 ```haskell
 for_ [0..16] $ \i ->
@@ -147,7 +165,8 @@ for_ [0..16] $ \i ->
 
 ## Details
 
-- Template Haskell (And quasiquotes) : don't be afraid
+- Crazy test suite ;)
+- Template Haskell (And quasiquotes)
 - `Megaparsec` for parsing / error reporting
 - `GADTs` for type safety of the formatting details
 - `GHC.TypeLits.TypeError` for final safety
@@ -164,25 +183,130 @@ it "groups bin" $(checkExample "{123456789:_b}"
 - Format string is checked with the provided example
 - *AND* with the python reference implementation
 - with *Randomized* examples (using `Quickcheck`)
+
 - Need tests for failure cases
 
 ---
 
-## Error reporting
+## Representing formatters : First approach
 
-TODO
+```haskell
+data Format = Decimal | Binary | Alternate Format | UpperCase Format | StringF | Fixed | ...
+```
 
-## Error reporting - TH Parsing
-
-TODO
+- Incorrect inhabitants: `Alternate StringF`, ...
+- Repetitions: `UpperCase (UpperCase (Alternate (Alternate Binary))))`
+- Order: `UpperCase (Alternate Binary)` vs `Alternate (UpperCase Binary)`
 
 ---
 
-## Error reporting - TH Type check
+## Representing formatters : GADTs
 
-TODO
+```haskell
+data AltStatus = CanAlt | NoAlt
+data UpperStatus = CanUpper | NoUpper
+data FormatType = Fractional | Integral | Textual
+
+data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
+  Decimal :: Format 'NoAlt 'NoUpper 'Integral
+  Binary :: Format 'CanAlt 'NoUpper 'Integral
+  Fixed :: Format 'CanAlt 'CanUpper 'Fractional
+  StringF :: Format 'NoAlt 'NoUpper 'Textual
+
+  Alternate :: Format 'CanAlt u f -> Format 'NoAlt u f
+  Upper :: Format alt 'CanUpper f -> Format 'NoAlt 'NoUpper f
+  ```
+
 ---
 
-## Error reporting - Typeclass type check
+## More GADTs: Alignement
 
-TODO
+```haskell
+data AlignForString = AlignAll | AlignNumber
+
+-- | Alignement
+data AlignMode (k :: AlignForString) where
+  AlignLeft :: AlignMode 'AlignAll
+  AlignRight :: AlignMode 'AlignAll
+  AlignInside :: AlignMode 'AlignNumber
+  AlignCenter :: AlignMode 'AlignAll
+```
+
+```haskell
+data Formatter where
+    Formatter :: SingletonAlignMode ft -> AlignMode (ModeFor ft) -> Format k k' ft -> Formatter
+```
+
+---
+
+# Type checking
+
+---
+
+## 3 Phases
+
+- Untyped parsing (during TH) -> `Megaparser` errors
+- Type checking (during TH) -> `Megaparsec` errors
+- Final type classes / arbitrary expression checking -> GHC + `TypeError`
+
+---
+
+## Untyped parsing
+
+```haskell
+>>> [fString|Hello {pi:Hi}|]
+
+<interactive>:5:10: error:
+    • <interactive>:1:11:
+  |
+1 | Hello {pi:Hi}
+  |           ^
+unexpected 'H'
+expecting '#', '%', '+', '-', '.', '0', 'E', 'F', 'G', 'X', 'b', 'c', 'd', 'e', 'f', 'g', 'o', 's', 'x', '}', integer, or space
+```
+
+---
+
+## *Type* checking
+
+```haskell
+>>> [f|{age:.3d}|]
+
+<interactive>:77:4: error:
+    • <interactive>:1:8:
+  |
+1 | {age:.3d}
+  |        ^
+Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.
+```
+
+---
+
+## Typeclass type check
+
+- `GHC-TypeLits.TypeError` is *awesome*
+
+```haskell
+instance TypeError ('Text "String Cannot be aligned with the "sign-aware" (i.e. `=`)") => Categorise DisableForString LText.Text where ...
+```
+
+```haskell
+*PyF> [fString|Hello {"hello":=10}|]
+
+<interactive>:10:10: error:
+    • String Cannot be aligned with the inside `=` mode
+```
+
+---
+
+## Final thoughts
+
+Todos:
+
+- Improve error reporting
+- Some error case are still accepted
+
+- https://github.com/guibou/PyF
+- https://hackage.haskell.org/package/PyF
+
+- Thank you ;)
