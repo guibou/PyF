@@ -57,7 +57,7 @@ format ("Hello " % text % ". Your age is " % int
 
 ```haskell
 let formattedPi = Numeric.showFFloat (Just 2) pi
-in [|Hello #{name}. Your age is #{age} and pi = #{formatedPi}.\n|]
+in [i|Hello #{name}. Your age is #{age} and pi = #{formatedPi}.\n|]
 ```
 
 - Compact
@@ -104,7 +104,7 @@ f"Hello {name}. Your age is {age}. and pi = {pi:.2f}"
 
 ---
 
-## Availables formatters
+## Available formatters
 
 - Floating point (Precision, fixed, exponential, generic, percent)
 - Integral (Decimal, Octal, Binary, Hexa)
@@ -130,7 +130,7 @@ Grouping
 ```
 ---
 
-## Complex formatter
+## Complex formatters
 
 ```haskell
 for_ [0..16] $ \i ->
@@ -160,16 +160,6 @@ for_ [0..16] $ \i ->
 ---
 
 # Implementation details
-
----
-
-## Details
-
-- Crazy test suite ;)
-- Template Haskell (And quasiquotes)
-- `Megaparsec` for parsing / error reporting
-- `GADTs` for type safety of the formatting details
-- `GHC.TypeLits.TypeError` for final safety
 
 ---
 
@@ -226,8 +216,6 @@ data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
 ```haskell
 >>> Upper Fixed
 Upper Fixed
->>> Alternate Binary
-Alternate Binary
 >>> Upper Binary
 
 <interactive>:5:7: error:
@@ -235,20 +223,11 @@ Alternate Binary
       Expected type: Format 'CanAlt 'CanUpper 'Integral
         Actual type: Format 'CanAlt 'NoUpper 'Integral
 		...
->>> Upper (Alternate Fixed)
-Upper (Alternate Fixed)
->>> Alternate (Upper Fixed)
-
-<interactive>:7:12: error:
-    • Couldn't match type ‘'NoAlt’ with ‘'CanAlt’
-      Expected type: Format 'CanAlt 'NoUpper 'Fractional
-        Actual type: Format 'NoAlt 'NoUpper 'Fractional
-		...
 ```
 
 ---
 
-## More GADTs: Alignement
+## More GADTs: Alignment
 
 ```haskell
 data AlignMode (k :: AlignForString) where
@@ -260,7 +239,10 @@ data AlignMode (k :: AlignForString) where
 
 ```haskell
 data Formatter where
-    Formatter :: SingletonAlignMode ft -> AlignMode (ModeFor ft) -> Format k k' ft -> Formatter
+    Formatter :: SingletonAlignMode ft
+	      -> AlignMode (ModeFor ft)
+		  -> Format k k' ft
+		  -> Formatter
 ```
 
 ---
@@ -311,10 +293,11 @@ instance TypeError (
 ```
 
 ```haskell
-*PyF> [fString|Hello {"hello":=10}|]
+*PyF> [fString|Hello {var:=10}|]
 
 <interactive>:10:10: error:
     • String cannot be aligned with the "sign-aware" (i.e. `=`) mode
+	... (Too much TH generted code)
 ```
 
 ---
@@ -324,7 +307,8 @@ instance TypeError (
 Todos:
 
 - Improve error reporting
-- Some error case are still accepted
+- Reject more badly formatted input (And test it)
+- Introduce a *safe* API for user-defined formatters
 
 - https://github.com/guibou/PyF
 - https://hackage.haskell.org/package/PyF
