@@ -3,6 +3,8 @@ module SpecUtils
   ( checkExample
   , checkExampleDiff
   , check
+  , checkCompile
+  , CompilationStatus(..)
 )
 where
 
@@ -12,8 +14,11 @@ import PyF.Internal.QQ
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import System.Process
+import System.Process (readProcessWithExitCode)
 import System.Exit
+
+import System.IO.Temp
+import qualified System.IO as IO
 
 -- * Utils
 
@@ -77,3 +82,33 @@ checkExampleDiff s res = [| $(toExpPython s) `shouldBe` res |]
 -}
 check :: String -> Q Exp
 check s = pyCheck s Nothing
+
+-- * Check compilation with external GHC (this is usefull to test compilation failure)
+
+data CompilationStatus
+  = CompileError String -- ^ Fails during compilation (with error)
+  | RuntimeError String
+  | Ok String
+  deriving (Show, Eq)
+
+{- | Compile a formatting string
+
+>>> checkCompile "pi:x"
+CompileError "Bla bla bla, Floating cannot be formatted as hexa (`x`)
+-}
+checkCompile :: String -> IO CompilationStatus
+checkCompile s = withSystemTempFile "PyFTest.hs" $ \path fd -> do
+  IO.hPutStr fd $ "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules #-}\nimport PyF\nmain :: IO ()\nmain = [f|{" ++ s ++ "}|]\n"
+  IO.hFlush fd
+
+  (ecode, _stdout, stderr) <- readProcessWithExitCode "ghc" [path] ""
+  case ecode of
+    ExitFailure _ -> pure (CompileError stderr)
+    ExitSuccess -> do
+      (ecode', stdout', stderr') <- readProcessWithExitCode (take (length path - 3) path) [] ""
+
+      case ecode' of
+        ExitFailure _ -> pure (RuntimeError stderr')
+        ExitSuccess -> pure (Ok stdout')
+
+-- * Quick-checking

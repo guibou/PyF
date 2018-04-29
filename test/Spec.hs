@@ -175,9 +175,6 @@ spec = do
         [f|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
 
 
-  describe "error reporting" $ do
-    pure () -- TODO: find a way to test error reporting
-
   describe "sub expressions" $ do
     it "works" $ do
       [f|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
@@ -194,3 +191,79 @@ spec = do
       [myCustomFormatter|2 * pi = @2*pi:.2f!|] `shouldBe` "2 * pi = 6.28"
     it "escape chars" $ do
        [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
+
+  describe "error reporting ok" $ do
+    it "does not fail" $ do
+      compile "pi:.3f"
+
+  describe "error reporting" $ do
+    describe "string" $ do
+      it "integral / fractional qualifiers" $ do
+        failCompile "\"hello\":f"
+        failCompile "\"hello\":d"
+        failCompile "\"hello\":e"
+        failCompile "\"hello\":b"
+        failCompile "\"hello\":b"
+        failCompile "\"hello\":E"
+        failCompile "\"hello\":G"
+        failCompile "\"hello\":g"
+        failCompile "\"hello\":%"
+        failCompile "\"hello\":x"
+        failCompile "\"hello\":X"
+        failCompile "\"hello\":o"
+
+      it "padding center" $ do
+        failCompile "\"hello\":=100s"
+        failCompile "\"hello\":=100"
+
+      -- XXX: this are not failing for now, it should be fixed
+      xit "grouping" $ do
+        failCompile "\"hello\":_s"
+        failCompile "\"hello\":,s"
+
+      it "sign" $ do
+        failCompile "\"hello\":+s"
+        failCompile "\"hello\": s"
+        failCompile "\"hello\":-s"
+
+    it "number" $ do
+      failCompile "truncate pi:f"
+      failCompile "truncate pi:g"
+      failCompile "truncate pi:G"
+      failCompile "truncate pi:e"
+      failCompile "truncate pi:E"
+      failCompile "truncate pi:%"
+      failCompile "truncate pi:s"
+
+    it "number with precision" $ do
+      failCompile "truncate pi:.3d"
+      failCompile "truncate pi:.3o"
+      failCompile "truncate pi:.3b"
+      failCompile "truncate pi:.3x"
+
+    it "floats" $ do
+      failCompile "pi:o"
+      failCompile "pi:b"
+      failCompile "pi:x"
+      failCompile "pi:X"
+      failCompile "pi:d"
+      failCompile "pi:s"
+
+    -- XXX: this are not failing for now, it should be fixed
+    xit "not specified" $ do
+      failCompile "truncate pi:.3"
+      failCompile "\"hello\":#"
+
+compile :: String -> IO ()
+compile s = do
+  res <- checkCompile s
+  shouldSatisfy res $ \x -> case x of
+    Ok _ -> True
+    _ -> False
+
+failCompile :: String -> IO ()
+failCompile s = do
+  res <- checkCompile s
+  shouldSatisfy res $ \x -> case x of
+    CompileError _ -> True
+    _ -> False
