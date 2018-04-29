@@ -90,6 +90,10 @@ spec = do
     describe "percent" $ do
       it "simple" $(checkExample "{0.234:%}" "23.400000%")
       it "precision" $(checkExample "{0.234:.2%}" "23.40%")
+
+    describe "string truncating" $ do
+      it "works" $ $(checkExample "{\"hello\":.3}" "hel")
+
     describe "padding" $ do
       describe "default char" $ do
         it "left" $(checkExample "{\"hello\":<10}" "hello     ")
