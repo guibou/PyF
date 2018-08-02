@@ -1,4 +1,10 @@
 # Revision history for FormatStringLiteral
+
+## 0.6.0.0 -- 2018-08-02
+
+- Fix the espace parsing of `{{` and `}}` as `{` and `}`
+
+
 ## 0.5.0.0 -- 2018-04-16
 
 - Support for negative zero
