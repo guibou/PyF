@@ -184,3 +184,6 @@ spec = do
   describe "escape strings" $ do
     it "works" $ do
       [fString|hello \n\b|] `shouldBe` "hello \n\b"
+
+  it "escape chars" $ do
+     [fString|}}{{}}{{|] `shouldBe` "}{}{"

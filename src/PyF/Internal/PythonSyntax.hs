@@ -83,7 +83,7 @@ rawString :: Parser Item
 rawString = Raw . escapeChars <$> some (noneOf ("{}" :: [Char]))
 
 escapedParenthesis :: Parser Item
-escapedParenthesis = Raw <$> (string "{{" <|> string "}}")
+escapedParenthesis = Raw <$> (("{" <$ string "{{") <|> ("}" <$ string "}}"))
 
 {- | Replace escape chars with their value
 >>> escapeChars "hello \\n"
