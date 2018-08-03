@@ -1,5 +1,9 @@
 # Revision history for FormatStringLiteral
 
+## 0.6.1.0 -- 2018-08-03
+
+- Custom delimiters, you can use whatever delimiters you want in place of `{` and `}`.
+
 ## 0.6.0.0 -- 2018-08-02
 
 - Fix the espace parsing of `{{` and `}}` as `{` and `}`
