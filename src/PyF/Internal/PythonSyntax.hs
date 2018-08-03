@@ -10,6 +10,7 @@ This module provides a parser for <https://docs.python.org/3.4/library/string.ht
 -}
 module PyF.Internal.PythonSyntax
   ( parsePythonFormatString
+  , parseGenericFormatString
   , Item(..)
   , FormatMode(..)
   , Padding(..)

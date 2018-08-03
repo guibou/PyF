@@ -14,7 +14,8 @@
 
 -}
 module PyF.Internal.QQ (
-  toExp)
+  toExp,
+  toExpPython)
 where
 
 import Text.Megaparsec
@@ -45,8 +46,8 @@ import GHC.TypeLits
 
 -- Be Careful: empty format string
 -- | Parse a string and return a formatter for it
-toExp:: String -> Q Exp
-toExp s = do
+toExp:: (Char, Char) -> String -> Q Exp
+toExp delimiters s = do
   filename <- loc_filename <$> location
   (line, col) <- loc_start <$> location
 
@@ -55,7 +56,7 @@ toExp s = do
         (SourcePos sName _ _) NonEmpty.:| xs = statePos currentState
         in currentState {statePos = (SourcePos sName (mkPos line) (mkPos col)) NonEmpty.:| xs}
 
-  case parse (updateParserState (change_log filename) >> parsePythonFormatString) filename s of
+  case parse (updateParserState (change_log filename) >> parseGenericFormatString delimiters) filename s of
     Left err -> do
 
       if filename == "<interactive>"
@@ -65,6 +66,9 @@ toExp s = do
           fileContent <- runIO (readFile filename)
           fail (parseErrorPretty' fileContent err)
     Right items -> goFormat items
+
+toExpPython :: String -> Q Exp
+toExpPython = toExp ('{', '}')
 
 goFormat :: [Item] -> Q Exp
 goFormat items = foldl1 fofo <$> (mapM toFormat items)

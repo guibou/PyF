@@ -43,6 +43,7 @@ This TH expression will return an expression compatible with `Hspec` `SpecM`.
 This expression is a failure if python cannot format this formatString
 or if the python result does not match the (provided) reference.
 -}
+
 pyCheck :: String -> Maybe String -> Q Exp
 pyCheck s exampleStr = do
   pythonRes <- Language.Haskell.TH.Syntax.runIO (runPythonExample s)
@@ -50,7 +51,7 @@ pyCheck s exampleStr = do
   case pythonRes of
     Nothing -> [| expectationFailure $ "Expression: `" ++ s ++ "` fails in python" |]
     Just res -> do
-      let qexp = [| formatToString $(toExp s)  `shouldBe` res |]
+      let qexp = [| formatToString $(toExpPython s)  `shouldBe` res |]
       case exampleStr of
         Nothing -> qexp
         Just e -> if res == e
@@ -71,7 +72,7 @@ checkExample s res = pyCheck s (Just res)
      against the python implementation
 -}
 checkExampleDiff :: String -> String -> Q Exp
-checkExampleDiff s res = [| formatToString $(toExp s) `shouldBe` res |]
+checkExampleDiff s res = [| formatToString $(toExpPython s) `shouldBe` res |]
 
 {- | `check formatString` checks only with the python implementation
 -}

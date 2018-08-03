@@ -241,6 +241,35 @@ And
     ...
 ```
 
+## Custom Delimiters
+
+If `{` and `}` does not fit your needs, for example if you are formatting a lot of json, you can use custom delimiters. All quasi quoters have a parametric form which accepts custom delimiters. Due to template haskell stage restriction, you must define your custom quasi quoter in an other module.
+
+For example, in `MyCustomDelimiter.hs`:
+
+```haskell
+module MyCustomQQ where
+
+import Language.Haskell.TH.Quote
+
+import PyF
+
+myCustomFormatter :: QuasiQuoter
+myCustomFormatter = fStringWithDelimiters ('@','!')
+```
+
+Later, in another module:
+
+```haskell
+import MyCustomQQ
+
+-- ...
+
+[myCustomFormatter|pi = @pi:2.f!|]
+```
+
+Escaping still works by doubling the delimiters, `@@!!@@!!` will be formatted as `@!@!`.
+
 ## Difference with the Python Syntax
 
 The implementation is unit-tested against the reference python implementation (python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
@@ -256,6 +285,7 @@ The implementation is unit-tested against the reference python implementation (p
 
 - General formatters *g* and *G* behaves a bit differently. Precision influence the number of significant digits instead of the number of the magnitude at which the representation changes between fixed and exponential.
 - Grouping options allows grouping with an `_` for floating point, python only allows `,`.
+- Custom delimiters
 
 # Build / test
 
@@ -274,6 +304,7 @@ cabal new-test
 - Allow extension to others type / custom formatters (for date for example)
 - Improve code quality. This code is really ugly, but there is a really strong test suite so, well.
 - Work on performance, do we really care? For now, everything is internally done with `String`.
+- Directly expose the formatter to be used as a template haskell splice
 
 # Library note
 

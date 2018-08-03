@@ -8,6 +8,7 @@ import Test.Hspec
 
 import PyF
 import SpecUtils
+import SpecCustomDelimiters
 
 {-
    - Normal tests are done using the recommanded API: [fString|.....|]
@@ -187,3 +188,9 @@ spec = do
 
   it "escape chars" $ do
      [fString|}}{{}}{{|] `shouldBe` "}{}{"
+
+  describe "custom delimiters" $ do
+    it "works" $ do
+      [myCustomFormatter|2 * pi = @2*pi:.2f!|] `shouldBe` "2 * pi = 6.28"
+    it "escape chars" $ do
+       [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
