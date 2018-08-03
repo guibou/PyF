@@ -77,13 +77,17 @@ Right [
                        Nothing))]
 -}
 parsePythonFormatString :: Parser [Item]
-parsePythonFormatString = many (rawString <|> escapedParenthesis <|> replacementField)
+parsePythonFormatString = parseGenericFormatString ('{', '}')
 
-rawString :: Parser Item
-rawString = Raw . escapeChars <$> some (noneOf ("{}" :: [Char]))
+parseGenericFormatString :: (Char, Char) -> Parser [Item]
+parseGenericFormatString delimiters = many (rawString delimiters <|> escapedParenthesis delimiters <|> replacementField delimiters)
 
-escapedParenthesis :: Parser Item
-escapedParenthesis = Raw <$> (("{" <$ string "{{") <|> ("}" <$ string "}}"))
+rawString :: (Char, Char) -> Parser Item
+rawString (openingChar,closingChar) = Raw . escapeChars <$> some (noneOf ([openingChar, closingChar]))
+
+escapedParenthesis :: (Char, Char) -> Parser Item
+escapedParenthesis (openingChar, closingChar) = Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
+  where parseRaw c = c:[] <$ string (replicate 2 c)
 
 {- | Replace escape chars with their value
 >>> escapeChars "hello \\n"
@@ -95,14 +99,14 @@ escapeChars s = case Data.Char.readLitChar s of
                   [] -> ""
                   ((c, xs):_) -> c : escapeChars xs
 
-replacementField :: Parser Item
-replacementField = do
-  _ <- char '{'
-  expr <- many (noneOf ("}:" :: [Char]))
+replacementField :: (Char, Char) -> Parser Item
+replacementField (charOpening, charClosing) = do
+  _ <- char charOpening
+  expr <- many (noneOf (charClosing:":"))
   fmt <- optional $ do
     _ <- char ':'
     format_spec
-  _ <- char '}'
+  _ <- char charClosing
 
   pure (Replacement expr fmt)
 
