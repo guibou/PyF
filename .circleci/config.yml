@@ -1,0 +1,12 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: nixos/nix:latest
+    working_directory: ~/PyF
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: nix-build
