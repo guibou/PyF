@@ -1,3 +1,7 @@
+# PyF
+
+[![CircleCI](https://circleci.com/gh/guibou/PyF.svg?style=svg)](https://circleci.com/gh/guibou/PyF)
+
 *PyF* is a Haskell library for string interpolation and formatting.
 
 *PyF* exposes a quasiquoter `f` for the [Formatting](https://hackage.haskell.org/package/formatting) library. The quasiquotation introduces string interpolation and formatting with a mini language inspired from printf and Python.
