@@ -14,7 +14,7 @@
 >>> name = "Dave"
 >>> age = 54
 
->>> format [f|Person's name is {name}, age is {age:x}|]
+>>> [f|Person's name is {name}, age is {age:x}|]
 "Person's name is Dave, age is 36"
 ```
 
@@ -39,11 +39,11 @@ Left `<` / Right `>` / Around `^` padding:
 
 ```haskell
 >>> name = "Guillaume"
->>> format [f|{name:<11}|]
+>>> [f|{name:<11}|]
 "Guillaume  "
->>> format [f|{name:>11}|]
+>>> [f|{name:>11}|]
 "  Guillaume"
->>> format [f|{name:|^13}|]
+>>> [f|{name:|^13}|]
 "||Guillaume||"
 ```
 
@@ -57,7 +57,7 @@ Padding inside `=` the sign:
 ## Float rounding
 
 ```haskell
->>> format [f|{pi:.2}|]
+>>> [f|{pi:.2}|]
 "3.14"
 ```
 
@@ -65,11 +65,11 @@ Padding inside `=` the sign:
 
 ```haskell
 >>> v = 31
->>> format [f|Binary: {v:#b}|]
+>>> [f|Binary: {v:#b}|]
 "Binary: 0b11111"
->>> format [f|Octal (no prefix): {age:o}|]
+>>> [f|Octal (no prefix): {age:o}|]
 "Octal (no prefix): 37"
->>> format [f|Hexa (caps and prefix): {age:#X}|]
+>>> [f|Hexa (caps and prefix): {age:#X}|]
 "Hexa (caps and prefix): 0x1F"
 ```
 
@@ -109,9 +109,9 @@ Preceding the width with a `0` enables sign-aware zero-padding, this is equivale
 First argument inside the curly braces can be a valid Haskell expression, for example:
 
 ```haskell
->>> format [f|2pi = {2* pi:.2}|]
+>>> [f|2pi = {2* pi:.2}|]
 6.28
->>> format [f|tail "hello" = {tail "hello":->6}|]
+>>> [f|tail "hello" = {tail "hello":->6}|]
 "tail \"hello\" = --ello"
 ```
 
@@ -122,7 +122,7 @@ However the expression must not contain `}` or `:` characters.
 Most options can be combined. This generally leads to totally unreadable format string ;)
 
 ```haskell
->>> format [f|{pi:~>5.2}|]
+>>> [f|{pi:~>5.2}|]
 "~~3.14"
 ```
 
