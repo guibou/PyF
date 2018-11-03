@@ -28,6 +28,7 @@ library
 
                      --
                      , haskell-src-meta
+                     , haskell-src-exts
   hs-source-dirs: src
   ghc-options: -Wall
   default-language:    Haskell2010
