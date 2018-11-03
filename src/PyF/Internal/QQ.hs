@@ -10,7 +10,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-{- | This module uses the python mini language detailed in 'PyF.Internal.PythonSyntax' to build an template haskell expression which represents a 'Formatting.Format'.
+{- | This module uses the python mini language detailed in
+'PyF.Internal.PythonSyntax' to build an template haskell expression
+representing a formatted string ('String', 'Text' or 'Builder').
 
 -}
 module PyF.Internal.QQ (
@@ -19,8 +21,6 @@ module PyF.Internal.QQ (
 where
 
 import Text.Megaparsec
-
-import qualified Formatting as F
 
 import           Language.Haskell.TH
 
@@ -74,17 +74,17 @@ goFormat :: [Item] -> Q Exp
 goFormat items = foldl1 fofo <$> (mapM toFormat items)
 
 fofo :: Exp -> Exp -> Exp
-fofo s0 s1 = InfixE (Just s0) (VarE '(F.%)) (Just s1)
+fofo s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 -- Real formatting is here
 
 toFormat :: Item -> Q Exp
-toFormat (Raw x) = [| F.now (Builder.fromString x) |]
+toFormat (Raw x) = [| Builder.fromString x |]
 toFormat (Replacement x y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
 
   case parseExp x of
-    Right expr -> pure (AppE (VarE 'F.now) (VarE 'Builder.fromString `AppE` (formatExpr `AppE` expr)))
+    Right expr -> pure (VarE 'Builder.fromString `AppE` (formatExpr `AppE` expr))
     Left err -> fail err
 
 changePrec :: Precision -> Maybe Int

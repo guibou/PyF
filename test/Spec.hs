@@ -11,7 +11,7 @@ import SpecUtils
 import SpecCustomDelimiters
 
 {-
-   - Normal tests are done using the recommanded API: [fString|.....|]
+   - Normal tests are done using the recommanded API: [f|.....|]
    - Test with $(checkExample formatString result) are checked against the python reference implementation. Result is provided as documentation.
    - Test with $(checkExampleDiff formatString result) are not checked against the python reference implementation. This is known (and documented) differences.
    - Test with $(check formatString) are only tested against the python reference implementation.
@@ -27,9 +27,9 @@ spec = do
       anInt = 123
       aFloat = 0.234
       aString = "hello"
-    it "int" $ [fString|{anInt}|] `shouldBe` "123"
-    it "float" $ [fString|{aFloat}|] `shouldBe` "0.234"
-    it "string" $ [fString|{aString}|] `shouldBe` "hello"
+    it "int" $ [f|{anInt}|] `shouldBe` "123"
+    it "float" $ [f|{aFloat}|] `shouldBe` "0.234"
+    it "string" $ [f|{aString}|] `shouldBe` "hello"
   describe "only expression" $ do
     describe "default" $ do
       it "int" $(checkExample "{123}" "123")
@@ -172,7 +172,7 @@ spec = do
         age = 31
         euroToFrancs = 6.55957
       in
-        [fString|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
+        [f|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
 
 
   describe "error reporting" $ do
@@ -180,14 +180,14 @@ spec = do
 
   describe "sub expressions" $ do
     it "works" $ do
-      [fString|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
+      [f|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
 
   describe "escape strings" $ do
     it "works" $ do
-      [fString|hello \n\b|] `shouldBe` "hello \n\b"
+      [f|hello \n\b|] `shouldBe` "hello \n\b"
 
   it "escape chars" $ do
-     [fString|}}{{}}{{|] `shouldBe` "}{}{"
+     [f|}}{{}}{{|] `shouldBe` "}{}{"
 
   describe "custom delimiters" $ do
     it "works" $ do

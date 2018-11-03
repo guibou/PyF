@@ -1,5 +1,12 @@
 # Revision history for FormatStringLiteral
 
+# Formatting removal
+
+- All monomorphic quasiquoters (`f`, `fString`, `fText`, `fIO`, `fLazyText`) are removed
+- Polymophic quasiquoter `f'` is renamed `f` and is the only entry point. Monomorphic users are encouraged to use the polymorphic quasiquoter with type annotation.
+- `Formatting` dependency is removed.
+- Previously named `f` quasiquoters which was exporting to `Formatting.Format` is removed. User of this behavior should use `Formatting.now` instead.
+
 ## 0.6.1.0 -- 2018-08-03
 
 - Custom delimiters, you can use whatever delimiters you want in place of `{` and `}`.
