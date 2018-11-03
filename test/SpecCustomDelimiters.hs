@@ -5,4 +5,4 @@ import Language.Haskell.TH.Quote
 import PyF
 
 myCustomFormatter :: QuasiQuoter
-myCustomFormatter = fStringWithDelimiters ('@','!')
+myCustomFormatter = fWithDelimiters ('@','!')

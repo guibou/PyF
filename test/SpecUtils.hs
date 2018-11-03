@@ -12,7 +12,6 @@ import PyF.Internal.QQ
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import Formatting
 import System.Process
 import System.Exit
 
@@ -51,7 +50,7 @@ pyCheck s exampleStr = do
   case pythonRes of
     Nothing -> [| expectationFailure $ "Expression: `" ++ s ++ "` fails in python" |]
     Just res -> do
-      let qexp = [| formatToString $(toExpPython s)  `shouldBe` res |]
+      let qexp = [| $(toExpPython s)  `shouldBe` res |]
       case exampleStr of
         Nothing -> qexp
         Just e -> if res == e
@@ -72,7 +71,7 @@ checkExample s res = pyCheck s (Just res)
      against the python implementation
 -}
 checkExampleDiff :: String -> String -> Q Exp
-checkExampleDiff s res = [| formatToString $(toExpPython s) `shouldBe` res |]
+checkExampleDiff s res = [| $(toExpPython s) `shouldBe` res |]
 
 {- | `check formatString` checks only with the python implementation
 -}

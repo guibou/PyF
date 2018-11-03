@@ -4,26 +4,11 @@
 
 *PyF* is a Haskell library for string interpolation and formatting.
 
-*PyF* exposes a quasiquoter `f` for the [Formatting](https://hackage.haskell.org/package/formatting) library. The quasiquotation introduces string interpolation and formatting with a mini language inspired from printf and Python.
+*PyF* exposes a quasiquoter `f` which introduces string interpolation and formatting with a mini language inspired from printf and Python.
 
 # Quick Start
 
-The following *Formatting* example:
-
 ```haskell
->>> import Formatting
-
->>> name = "Dave"
->>> age = 54
-
->>> format ("Person's name is " % text % ", age is " % hex) name age
-"Person's name is Dave, age is 36"
-```
-
-can be written as:
-
-```haskell
->>> import Formatting
 >>> import PyF
 
 >>> name = "Dave"
@@ -42,7 +27,7 @@ The formatting mini language can represent:
 - Floating point representation
 - The interpolated value can be any Haskell expression
 
-You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session.
+You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session. `ExtendedDefaultRules` and `OverloadedStrings` may be more convenient.
 
 Expression to be formatted are referenced by `{expression:formatingOptions}` where `formatingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the python documentation, but the [Test file](https://github.com/guibou/PyF/blob/master/test/Spec.hs) as well as this readme contain many examples.
 
@@ -65,7 +50,7 @@ Left `<` / Right `>` / Around `^` padding:
 Padding inside `=` the sign:
 
 ```haskell
->>> [fString|{-pi:=10.3}|]
+>>> [f|{-pi:=10.3}|]
 "-    3.142"
 ```
 
@@ -93,9 +78,9 @@ Padding inside `=` the sign:
 Using `,` or `_`.
 
 ```haskell
->>> [fString|{10 ^ 9 - 1:,}|]
+>>> [f|{10 ^ 9 - 1:,}|]
 "999,999,999"
->>> [fString|{2 ^ 32  -1:_b}|]
+>>> [f|{2 ^ 32  -1:_b}|]
 "1111_1111_1111_1111_1111_1111_1111_1111"
 ```
 
@@ -104,9 +89,9 @@ Using `,` or `_`.
 Using `+` to display the positive sign (if any) or ` ` to display a space instead:
 
 ```haskell
->>> [fString|{pi:+.3}|]
+>>> [f|{pi:+.3}|]
 "+3.142"
->>> [fString|{pi: .3}|]
+>>> [f|{pi: .3}|]
 " 3.142"
 ```
 
@@ -115,7 +100,7 @@ Using `+` to display the positive sign (if any) or ` ` to display a space instea
 Preceding the width with a `0` enables sign-aware zero-padding, this is equivalent to inside `=` padding with a fill char of `0`.
 
 ```haskell
->>> [fString{-10:010}|]
+>>> [f{-10:010}|]
 -000000010
 ```
 
@@ -141,23 +126,19 @@ Most options can be combined. This generally leads to totally unreadable format 
 "~~3.14"
 ```
 
-# Other quasiquoters
+# Output type
 
-*PyF* main entry point is `f` but for convenience some other quasiquoters are provided:
-
-- `f(StrictText|LazyText|String|Builder|IO)` directly call the underlying `Formatting` runner and produce the specified type.
-- `f'` use type inference to deduce the type.
-
-`PyF` reexport most of `Formatting` runners, such as `format`, `sformat`, `formatToString`, ...
+*PyF* main entry point `f` is polymorphic and can represents `Text`, lazy `Text`, `String`, lazy text `Builder` or `IO` operations. Most of the time, type inference will do the right thing for you, but you may need to add type annotations.
 
 For example:
 
 ```haskell
->>> [f'|hello {pi.2}|] :: String
+>>> [f|hello {pi.2}|] :: String
 "hello 3.14"
->>> :type [fString|hello|]
-[Char]
 ```
+
+Note: it works in ghci without any type annotation if the extensions
+`OverloadedStrings` and `ExtendedDefaultRules` are enabled.
 
 # Caveats
 
@@ -203,7 +184,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
   too polymorphic), you will get an awful error:
 
 ```haskell
->>*> [fString|{True:d}|]
+>>*> [f|{True:d}|]
 
 <interactive>:80:10: error:
     • No instance for (Integral Bool)
@@ -214,21 +195,21 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - There is also one class of error related to alignement which can be triggered, when using alignement inside sign (i.e. `=`) with string. This can fail in two flavors:
 
 ```haskell
->>> [fString|{"hello":=10s}|]
+>>> [f|{"hello":=10s}|]
 
 <interactive>:88:1: error:
     • Exception when trying to run compile-time code:
         String Cannot be aligned with the inside `=` mode
 CallStack (from HasCallStack):
   error, called at src/PyF/Internal/QQ.hs:143:18 in PyF-0.4.0.0-inplace:PyF.Internal.QQ
-      Code: quoteExp fString "{\"hello\":=10s}"
-    • In the quasi-quotation: [fString|{"hello":=10s}|]
+      Code: quoteExp f "{\"hello\":=10s}"
+    • In the quasi-quotation: [f|{"hello":=10s}|]
 ```
 
 And
 
 ```haskell
-*PyF PyF.Internal.QQ> [fString|{"hello":=10}|]
+*PyF PyF.Internal.QQ> [f|{"hello":=10}|]
 
 <interactive>:89:10: error:
     • String Cannot be aligned with the inside `=` mode
@@ -238,7 +219,7 @@ And
 - Finally, if you make any type error inside the expression field, you are on your own:
 
 ```haskell
->>> [fString|{3 + pi + "hello":10}|]
+>>> [f|{3 + pi + "hello":10}|]
 
 <interactive>:99:10: error:
     • No instance for (Floating [Char]) arising from a use of ‘pi’
@@ -259,7 +240,7 @@ import Language.Haskell.TH.Quote
 import PyF
 
 myCustomFormatter :: QuasiQuoter
-myCustomFormatter = fStringWithDelimiters ('@','!')
+myCustomFormatter = fWithDelimiters ('@','!')
 ```
 
 Later, in another module:
