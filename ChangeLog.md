@@ -1,5 +1,7 @@
 # Revision history for FormatStringLiteral
 
+- Better error message for badly formated expression
+
 # Formatting removal
 
 - All monomorphic quasiquoters (`f`, `fString`, `fText`, `fIO`, `fLazyText`) are removed
@@ -14,7 +16,6 @@
 ## 0.6.0.0 -- 2018-08-02
 
 - Fix the espace parsing of `{{` and `}}` as `{` and `}`
-
 
 ## 0.5.0.0 -- 2018-04-16
 
