@@ -36,7 +36,6 @@ import qualified Data.Word as Word
 import qualified Data.Int as Int
 import Numeric.Natural
 
-import Language.Haskell.Meta.Parse (parseExp)
 
 import PyF.Internal.PythonSyntax
 import qualified PyF.Formatters as Formatters
@@ -80,12 +79,9 @@ fofo s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = [| Builder.fromString x |]
-toFormat (Replacement x y) = do
+toFormat (Replacement expr y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
-
-  case parseExp x of
-    Right expr -> pure (VarE 'Builder.fromString `AppE` (formatExpr `AppE` expr))
-    Left err -> fail err
+  pure (VarE 'Builder.fromString `AppE` (formatExpr `AppE` expr))
 
 changePrec :: Precision -> Maybe Int
 changePrec PrecisionDefault = Just 6

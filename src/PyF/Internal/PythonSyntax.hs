@@ -33,6 +33,9 @@ import qualified Data.Char
 import Data.Maybe (fromMaybe)
 
 import qualified Data.Set as Set -- For fancyFailure
+import qualified Language.Haskell.Meta.Syntax.Translate as SyntaxTranslate
+import qualified Language.Haskell.Exts.Parser as ParseExp
+import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
 import PyF.Formatters
 
 type Parser t = Parsec Void String t
@@ -60,7 +63,7 @@ literal_char      ::=  <any code point except "{", "}" or NULL>
 
 -- | A format string is composed of many chunks of raw string or replacement
 data Item = Raw String -- ^ A raw string
-           | Replacement String (Maybe FormatMode) -- ^ A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
+           | Replacement Exp (Maybe FormatMode) -- ^ A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
            deriving (Show)
 
 {- |
@@ -103,7 +106,7 @@ escapeChars s = case Data.Char.readLitChar s of
 replacementField :: (Char, Char) -> Parser Item
 replacementField (charOpening, charClosing) = do
   _ <- char charOpening
-  expr <- many (noneOf (charClosing:":"))
+  expr <- evalExpr (many (noneOf (charClosing:":" :: [Char])))
   fmt <- optional $ do
     _ <- char ':'
     format_spec
@@ -175,6 +178,20 @@ lastCharFailed err = do
   -- This is right as long as there is not line break in the string
   setPosition (SourcePos name line (mkPos (unPos col - 1)))
   fancyFailure (Set.singleton (ErrorFail err))
+
+evalExpr :: Parser String -> Parser Exp
+evalExpr exprParser = do
+  (SourcePos name line col) <- getPosition
+  s <- exprParser
+  case SyntaxTranslate.toExp <$> ParseExp.parseExp s of
+    ParseExp.ParseOk expr -> pure expr
+    ParseExp.ParseFailed (SrcLoc.SrcLoc _name' line' col') err -> do
+      let realLine = mkPos (line' + unPos line - 1)
+          realCol = if line' == 1
+                    then mkPos (col' + unPos col - 1)
+                    else mkPos col'
+      setPosition (SourcePos name realLine realCol)
+      fancyFailure (Set.singleton (ErrorFail err))
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
 overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)
