@@ -1,0 +1,21 @@
+
+INITIALPATH:7:11: error:
+    • Couldn't match type ‘Float’ with ‘[Char]’
+      Expected type: String
+        Actual type: Float
+    • In the third argument of ‘PyF.Formatters.formatString’, namely
+        ‘number’
+      In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely
+        ‘(((PyF.Formatters.formatString Nothing)
+             (PyF.Internal.QQ.changePrec'
+                PyF.Internal.PythonSyntax.PrecisionDefault))
+            number)’
+      In the first argument of ‘PyF.magicFormat’, namely
+        ‘(Data.Text.Internal.Builder.fromString
+            (((PyF.Formatters.formatString Nothing)
+                (PyF.Internal.QQ.changePrec'
+                   PyF.Internal.PythonSyntax.PrecisionDefault))
+               number))’
+  |
+7 | main = [f|{number:s}|]
+  |           ^^^^^^^^^^^^

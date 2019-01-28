@@ -1,5 +1,16 @@
 { nixpkgs ? ./nixpkgs.nix }:
 with import nixpkgs {};
+let
+  hspec-golden = haskellPackages.developPackage {
+    name = "hspec_golden";
+    returnShellEnv = false;
+
+    root = pkgs.fetchzip {
+      url = "https://github.com/guibou/hspec-golden/archive/71dea329ed2175390798f0aee0602ec05b483978.tar.gz";
+      sha256 = "1gnmw5xsf2zxkyssi8l5hqwvzdk5caj55gbvd9is2ys15bgpq2n8";
+    };
+  };
+in
 haskellPackages.developPackage {
   name = "PyF";
 
@@ -14,5 +25,6 @@ haskellPackages.developPackage {
   overrides = self: super: {
     # PyF is not compatible yet with megaparsec 7
     megaparsec = super.megaparsec_6_5_0;
+    hspec-golden = hspec-golden;
   };
 }
