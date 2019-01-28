@@ -1,0 +1,84 @@
+
+INITIALPATH:7:11: error:
+    • String Cannot be aligned with the inside `=` mode
+    • In the expression:
+        (PyF.Internal.QQ.categorise
+           (Data.Proxy.Proxy ::
+              Data.Proxy.Proxy PyF.Internal.QQ.DisableForString))
+          v_PyF
+      In the expression:
+        case
+            (PyF.Internal.QQ.categorise
+               (Data.Proxy.Proxy ::
+                  Data.Proxy.Proxy PyF.Internal.QQ.DisableForString))
+              v_PyF
+        of
+          PyF.Internal.QQ.Integral i_PyF
+            -> ((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Decimal)
+                    PyF.Formatters.Minus)
+                   (PyF.Internal.QQ.newPadding
+                      ((PyF.Internal.PythonSyntax.Padding 100)
+                         (Just
+                            (Nothing, PyF.Formatters.AnyAlign PyF.Formatters.AlignInside)))))
+                  ((PyF.Internal.QQ.toGrp Nothing) 3))
+                 i_PyF
+          PyF.Internal.QQ.Fractional f_PyF
+            -> (((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Generic)
+                     PyF.Formatters.Minus)
+                    (PyF.Internal.QQ.newPadding
+                       ((PyF.Internal.PythonSyntax.Padding 100)
+                          (Just
+                             (Nothing, PyF.Formatters.AnyAlign PyF.Formatters.AlignInside)))))
+                   ((PyF.Internal.QQ.toGrp Nothing) 3))
+                  (PyF.Internal.QQ.changePrec'
+                     PyF.Internal.PythonSyntax.PrecisionDefault))
+                 f_PyF
+          PyF.Internal.QQ.StringType f_PyF
+            -> ((PyF.Formatters.formatString
+                   (PyF.Internal.QQ.newPaddingForString
+                      ((PyF.Internal.PythonSyntax.Padding 100)
+                         (Just
+                            (Nothing, PyF.Formatters.AnyAlign PyF.Formatters.AlignInside)))))
+                  (PyF.Internal.QQ.changePrec'
+                     PyF.Internal.PythonSyntax.PrecisionDefault))
+                 f_PyF
+      In the expression:
+        \ v_PyF
+          -> case
+                 (PyF.Internal.QQ.categorise
+                    (Data.Proxy.Proxy ::
+                       Data.Proxy.Proxy PyF.Internal.QQ.DisableForString))
+                   v_PyF
+             of
+               PyF.Internal.QQ.Integral i_PyF
+                 -> ((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Decimal)
+                         PyF.Formatters.Minus)
+                        (PyF.Internal.QQ.newPadding
+                           ((PyF.Internal.PythonSyntax.Padding 100)
+                              (Just
+                                 (Nothing, PyF.Formatters.AnyAlign PyF.Formatters.AlignInside)))))
+                       ((PyF.Internal.QQ.toGrp Nothing) 3))
+                      i_PyF
+               PyF.Internal.QQ.Fractional f_PyF
+                 -> (((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Generic)
+                          PyF.Formatters.Minus)
+                         (PyF.Internal.QQ.newPadding
+                            ((PyF.Internal.PythonSyntax.Padding 100)
+                               (Just
+                                  (Nothing, PyF.Formatters.AnyAlign PyF.Formatters.AlignInside)))))
+                        ((PyF.Internal.QQ.toGrp Nothing) 3))
+                       (PyF.Internal.QQ.changePrec'
+                          PyF.Internal.PythonSyntax.PrecisionDefault))
+                      f_PyF
+               PyF.Internal.QQ.StringType f_PyF
+                 -> ((PyF.Formatters.formatString
+                        (PyF.Internal.QQ.newPaddingForString
+                           ((PyF.Internal.PythonSyntax.Padding 100)
+                              (Just
+                                 (Nothing, PyF.Formatters.AnyAlign PyF.Formatters.AlignInside)))))
+                       (PyF.Internal.QQ.changePrec'
+                          PyF.Internal.PythonSyntax.PrecisionDefault))
+                      f_PyF
+  |
+7 | main = [f|{hello:=100}|]
+  |           ^^^^^^^^^^^^^^

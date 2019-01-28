@@ -1,0 +1,12 @@
+
+INITIALPATH:7:11: error:
+    • INITIALPATH:7:19:
+  |
+7 | main = [f|{hello:+s}|]
+  |                   ^
+Type incompatible with sign field (+), use any of {'b', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the sign field.
+
+    • In the quasi-quotation: [f|{hello:+s}|]
+  |
+7 | main = [f|{hello:+s}|]
+  |           ^^^^^^^^^^^^
