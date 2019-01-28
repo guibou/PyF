@@ -119,11 +119,13 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
   PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
 
   -- Default / String
-  DefaultF prec s -> [| \v ->
-      case categorise (Proxy :: Proxy $(typeAllowed)) v of
-        Integral i -> formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) i
-        Fractional f -> formatAnyFractional Formatters.Generic s (newPadding padding) (toGrp grouping 3) (changePrec' prec) f
-        StringType f -> Formatters.formatString (newPaddingForString padding) (changePrec' prec) f
+
+  -- Note: v / i / f uses pat and var to ensure stable name in error message
+  DefaultF prec s -> [| \($(pat "v")) ->
+      case categorise (Proxy :: Proxy $(typeAllowed)) $(var "v") of
+        Integral $(pat "i") -> formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) $(var "i")
+        Fractional $(pat "f") -> formatAnyFractional Formatters.Generic s (newPadding padding) (toGrp grouping 3) (changePrec' prec) $(var "f")
+        StringType $(pat "f") -> Formatters.formatString (newPaddingForString padding) (changePrec' prec) $(var "f")
                          |]
    where
      typeAllowed :: Q Type
@@ -136,6 +138,15 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
 
   StringF prec -> [| Formatters.formatString pad (changePrec' prec) |]
     where pad = newPaddingForString padding
+
+-- Generate stable name in TH slices
+-- The name are postfixed by _PyF to limit the risk of shadowing
+
+pat :: String -> Q Pat
+pat name = pure (VarP (mkName (name ++ "_PyF")))
+
+var :: String -> Q Exp
+var name = pure (VarE (mkName (name ++ "_PyF")))
 
 newPaddingForString :: Padding -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingForString padding = case padding of

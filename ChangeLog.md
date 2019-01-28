@@ -1,6 +1,7 @@
 # Revision history for FormatStringLiteral
 
 - Better error message for badly formated expression
+- Name in template haskell splices are stable. This increases readability of error messages
 
 # Formatting removal
 
