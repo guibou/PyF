@@ -1,0 +1,17 @@
+
+INITIALPATH:7:11: error:
+    • INITIALPATH:11:10:
+   |
+11 | in 1 + - / lalalal}|]
+   |          ^
+Parse error: /
+
+    • In the quasi-quotation:
+        [f|hello
+    {
+let a = 5
+    b = 10
+in 1 + - / lalalal}|]
+  |
+7 | main = [f|hello
+  |           ^^^^^...

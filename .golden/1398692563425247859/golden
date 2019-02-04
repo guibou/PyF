@@ -1,0 +1,16 @@
+
+INITIALPATH:7:11: error:
+    • INITIALPATH:10:5:
+   |
+10 | {pi:l}|]
+   |     ^
+unexpected 'l'
+expecting '#', '%', '+', '-', '.', '0', 'E', 'F', 'G', 'X', 'b', 'c', 'd', 'e', 'f', 'g', 'n', 'o', 's', 'x', '}', integer, or space
+
+    • In the quasi-quotation: [f|hello
+
+
+{pi:l}|]
+  |
+7 | main = [f|hello
+  |           ^^^^^...

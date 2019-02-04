@@ -173,24 +173,23 @@ data AlternateForm = AlternateForm | NormalForm
 
 lastCharFailed :: String -> Parser t
 lastCharFailed err = do
-  (SourcePos name line col) <- getPosition
+  offset <- getOffset
+  setOffset (offset - 1)
 
-  -- This is right as long as there is not line break in the string
-  setPosition (SourcePos name line (mkPos (unPos col - 1)))
   fancyFailure (Set.singleton (ErrorFail err))
 
 evalExpr :: Parser String -> Parser Exp
 evalExpr exprParser = do
-  (SourcePos name line col) <- getPosition
+  offset <- getOffset
   s <- exprParser
   case SyntaxTranslate.toExp <$> ParseExp.parseExp s of
     ParseExp.ParseOk expr -> pure expr
-    ParseExp.ParseFailed (SrcLoc.SrcLoc _name' line' col') err -> do
-      let realLine = mkPos (line' + unPos line - 1)
-          realCol = if line' == 1
-                    then mkPos (col' + unPos col - 1)
-                    else mkPos col'
-      setPosition (SourcePos name realLine realCol)
+    ParseExp.ParseFailed (SrcLoc.SrcLoc _name' line col) err -> do
+      let
+        linesBefore = take (line - 1) (lines s)
+        currentOffset = length (unlines linesBefore) + col - 1
+
+      setOffset (offset + currentOffset)
       fancyFailure (Set.singleton (ErrorFail err))
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
@@ -280,7 +279,7 @@ alignment = choice [
     ]
 
 fill :: Parser Char
-fill = anyChar
+fill = anySingle
 
 align :: Parser AnyAlign
 align = choice [

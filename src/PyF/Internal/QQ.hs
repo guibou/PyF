@@ -30,7 +30,6 @@ import qualified Data.Text.Lazy.Builder as Builder
 
 import qualified Data.Text.Lazy as LText
 import qualified Data.Text as SText
-import qualified Data.List.NonEmpty as NonEmpty
 
 import qualified Data.Word as Word
 import qualified Data.Int as Int
@@ -48,23 +47,40 @@ import GHC.TypeLits
 toExp:: (Char, Char) -> String -> Q Exp
 toExp delimiters s = do
   filename <- loc_filename <$> location
-  (line, col) <- loc_start <$> location
-
-  let change_log "<interactive>" currentState = currentState
-      change_log _ currentState = let
-        (SourcePos sName _ _) NonEmpty.:| xs = statePos currentState
-        in currentState {statePos = (SourcePos sName (mkPos line) (mkPos col)) NonEmpty.:| xs}
-
-  case parse (updateParserState (change_log filename) >> parseGenericFormatString delimiters) filename s of
+  case parse (parseGenericFormatString delimiters) filename s of
     Left err -> do
-
-      if filename == "<interactive>"
-        then do
-          fail (parseErrorPretty' s err)
-        else do
-          fileContent <- runIO (readFile filename)
-          fail (parseErrorPretty' fileContent err)
+      err' <- overrideErrorForFile filename err
+      fail (errorBundlePretty err')
     Right items -> goFormat items
+
+-- Megaparsec displays error relative to what they parsed
+-- However the formatting string is part of a more complex file and we
+-- want error reporting relative to that file
+overrideErrorForFile :: FilePath -> ParseErrorBundle String e -> Q (ParseErrorBundle String e)
+-- We have no may to recover interactive content
+-- So we won't do better than displaying the megaparsec
+-- error relative to the quasi quote content
+overrideErrorForFile "<interactive>" err = pure err
+-- We know the content of the file here
+overrideErrorForFile filename err = do
+  (line, col) <- loc_start <$> location
+  fileContent <- runIO (readFile filename)
+
+  let
+    -- drop the first lines of the file up to the line containing the quasiquote
+    -- then, split in what is before the QQ and what is after.
+    -- e.g.  blablabla [f|hello|] will split to
+    -- "blablabla [f|" and "hello|]"
+    (prefix, postfix) = splitAt (col - 1) $ unlines $ drop (line - 1) (lines fileContent)
+
+
+  pure $ err {
+    bundlePosState = (bundlePosState err) {
+        pstateInput = postfix,
+        pstateSourcePos = SourcePos filename (mkPos line) (mkPos col),
+        pstateOffset = 0,
+        pstateLinePrefix = prefix
+        }}
 
 toExpPython :: String -> Q Exp
 toExpPython = toExp ('{', '}')

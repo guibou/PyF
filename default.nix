@@ -23,8 +23,6 @@ haskellPackages.developPackage {
   };
 
   overrides = self: super: {
-    # PyF is not compatible yet with megaparsec 7
-    megaparsec = super.megaparsec_6_5_0;
     hspec-golden = hspec-golden;
   };
 }
