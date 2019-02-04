@@ -1,5 +1,6 @@
-# Revision history for FormatStringLiteral
+# Revision history for PyF
 
+- Bump dependencies to megaparsec 7
 - Error message are now tested
 - Name in template haskell splices are stable. This increases readability of error messages
 - Better error message for badly formated expression
