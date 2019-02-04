@@ -123,3 +123,12 @@ spec = do
     xdescribe "not specified" $ do
       failCompile "{truncate number:.3}"
       failCompile "{hello:#}"
+
+    describe "multiples lines" $ do
+      failCompile "hello\n\n\n{pi:l}"
+
+    describe "on haskell expression parsing" $ do
+      describe "single line" $ do
+        failCompile "{1 + - / lalalal}"
+      describe "multiples lines" $ do
+        failCompile "hello\n    {\nlet a = 5\n    b = 10\nin 1 + - / lalalal}"
