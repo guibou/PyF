@@ -1,11 +1,13 @@
 # Revision history for PyF
 
+## 0.7.0.0 -- 2019-02-04
+
 - Bump dependencies to megaparsec 7
 - Error message are now tested
 - Name in template haskell splices are stable. This increases readability of error messages
 - Better error message for badly formated expression
 
-# Formatting removal
+### Formatting removal
 
 - All monomorphic quasiquoters (`f`, `fString`, `fText`, `fIO`, `fLazyText`) are removed
 - Polymophic quasiquoter `f'` is renamed `f` and is the only entry point. Monomorphic users are encouraged to use the polymorphic quasiquoter with type annotation.
