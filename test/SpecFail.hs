@@ -5,7 +5,7 @@
 {-# LANGUAGE DataKinds #-}
 
 import Test.Hspec
-import Test.Hspec.Golden (defaultGolden)
+import Test.HUnit.Lang
 
 import System.Process (readProcessWithExitCode)
 import System.Exit
@@ -16,6 +16,10 @@ import System.IO.Temp
 import qualified System.IO as IO
 
 import Data.Hashable
+import System.FilePath
+import Control.Exception
+import Control.DeepSeq
+import System.Directory
 
 -- * Check compilation with external GHC (this is usefull to test compilation failure)
 
@@ -35,7 +39,7 @@ checkCompile s = withSystemTempFile "PyFTest.hs" $ \path fd -> do
   IO.hPutStr fd $ "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}\nimport PyF\ntruncate' = truncate @Float @Int\nhello = \"hello\"\nnumber = 3.14 :: Float\nmain :: IO ()\nmain = [f|" ++ s ++ "|]\n"
   IO.hFlush fd
 
-  (ecode, _stdout, stderr) <- readProcessWithExitCode "ghc" [path, "-isrc"] ""
+  (ecode, _stdout, stderr) <- readProcessWithExitCode "ghc" [path, "-isrc", "-package-env", "-"] ""
   case ecode of
     ExitFailure _ -> pure (CompileError (sanitize path stderr))
     ExitSuccess -> do
@@ -54,13 +58,48 @@ sanitize path s =
     t = Text.pack s
   in Text.unpack (Text.replace (Text.pack path) (Text.pack "INITIALPATH") t) 
 
+golden :: HasCallStack => String -> String -> IO ()
+golden name output = do
+  let
+    goldenFile = ".golden" </> name </> "golden"
+    actualFile = ".golden" </> name </> "actual"
+
+  createDirectoryIfMissing True (".golden" </> name)
+
+  -- It can fail if the golden file does not exists
+  goldenContentE :: Either SomeException String <- try $ readFile goldenFile
+
+  let
+    -- if no golden file, the golden file is the content
+    goldenContent = case goldenContentE of
+      Right e -> e
+      Left _ -> output
+
+  -- Flush lazy IO
+  _ <- evaluate (force goldenContent)
+
+  if output /= goldenContent
+    then do
+      writeFile actualFile output
+      (_, diffOutput, _) <- readProcessWithExitCode "diff" [goldenFile, actualFile] ""
+
+      putStrLn diffOutput
+
+      -- Update golden file
+      writeFile goldenFile output
+
+      assertFailure diffOutput
+    else do
+      writeFile goldenFile output
+
+
 -- if the compilation fails, runs a golden test on compilation output
 -- else, fails the test
-failCompile :: String -> Spec
+failCompile :: HasCallStack => String -> Spec
 failCompile s = do
   before (checkCompile s) $ it (s ++ " " ++ show (hash s)) $ \res -> case res of
-    CompileError output -> defaultGolden (show $ hash s) output
-    _ -> error (show res)
+   CompileError output -> golden (show $ hash s) output
+   _ -> assertFailure (show res)
 
 main :: IO ()
 main = hspec spec
