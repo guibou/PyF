@@ -198,3 +198,19 @@ spec = do
       [myCustomFormatter|2 * pi = @2*pi:.2f!|] `shouldBe` "2 * pi = 6.28"
     it "escape chars" $ do
        [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
+
+
+  describe "multi line escape" $ do
+    it "works" $ do
+      [f|\
+- a
+- b
+\
+|] `shouldBe` "- a\n- b\n"
+
+    it "escapes" $ do
+      [f|\\
+- a
+- b
+\
+|] `shouldBe` "\\\n- a\n- b\n"
