@@ -84,7 +84,7 @@ parsePythonFormatString :: Parser [Item]
 parsePythonFormatString = parseGenericFormatString ('{', '}')
 
 parseGenericFormatString :: (Char, Char) -> Parser [Item]
-parseGenericFormatString delimiters = many (rawString delimiters <|> escapedParenthesis delimiters <|> replacementField delimiters)
+parseGenericFormatString delimiters = many ((Raw "\\" <$ "\\\\") <|> (Raw "" <$ "\\\n") <|> rawString delimiters <|> escapedParenthesis delimiters <|> replacementField delimiters)
 
 rawString :: (Char, Char) -> Parser Item
 rawString (openingChar,closingChar) = Raw . escapeChars <$> some (noneOf ([openingChar, closingChar]))

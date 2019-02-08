@@ -126,6 +126,19 @@ Most options can be combined. This generally leads to totally unreadable format 
 "~~3.14"
 ```
 
+## Multi-line strings
+
+You can ignore a line break with `\` if needed. For example:
+
+```haskell
+[f|\
+- a
+- b\
+|]
+```
+
+Will returns `-a\n-b`. Note how the first and last line breaks are ignored.
+
 # Output type
 
 *PyF* main entry point `f` is polymorphic and can represents `Text`, lazy `Text`, `String`, lazy text `Builder` or `IO` operations. Most of the time, type inference will do the right thing for you, but you may need to add type annotations.
