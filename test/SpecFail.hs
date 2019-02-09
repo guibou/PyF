@@ -172,5 +172,6 @@ spec = do
       describe "multiples lines" $ do
         failCompile "hello\n    {\nlet a = 5\n    b = 10\nin 1 + - / lalalal}"
 
-    describe "non-doubled closing delimiter" $ do
+    describe "non-doubled delimiters" $ do
       failCompile "hello } world"
+      failCompile "hello { world"
