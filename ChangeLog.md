@@ -1,7 +1,9 @@
 # Revision history for PyF
 
+## 0.7.1.0 -- 2019-02-11
+
 - Fixed: PyF was wrongly ignoring everything located after a non-doubled closing delimiter.
-- line break can be escaped with \, thus allowing string to start on a new line ignoring the initial backspace
+- New Feature: line break can be escaped with \, thus allowing string to start on a new line ignoring the initial backspace
 
 ## 0.7.0.0 -- 2019-02-04
 
