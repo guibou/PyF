@@ -1,0 +1,6 @@
+
+INITIALPATH:7:11: error:
+    Variable not in scope: b0001
+  |
+7 | main = [f|{0b0001}|]
+  |           ^^^^^^^^^^

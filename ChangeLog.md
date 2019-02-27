@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+- Fixed: PyF now uses the same haskell extensions as the one used by the current haskell file to parse sub expressions.
+
 ## 0.7.1.0 -- 2019-02-11
 
 - Fixed: PyF was wrongly ignoring everything located after a non-doubled closing delimiter.

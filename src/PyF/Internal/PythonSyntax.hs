@@ -35,6 +35,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set -- For fancyFailure
 import qualified Language.Haskell.Meta.Syntax.Translate as SyntaxTranslate
 import qualified Language.Haskell.Exts.Parser as ParseExp
+import qualified Language.Haskell.Exts.Extension as ParseExtension
 import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
 import PyF.Formatters
 
@@ -80,11 +81,11 @@ Right [
                       (FixedF (Precision 2) NormalForm Minus)
                        Nothing))]
 -}
-parsePythonFormatString :: Parser [Item]
-parsePythonFormatString = parseGenericFormatString ('{', '}')
+parsePythonFormatString :: [ParseExtension.Extension] -> Parser [Item]
+parsePythonFormatString exts = parseGenericFormatString exts ('{', '}')
 
-parseGenericFormatString :: (Char, Char) -> Parser [Item]
-parseGenericFormatString delimiters = many ((Raw "\\" <$ "\\\\") <|> (Raw "" <$ "\\\n") <|> rawString delimiters <|> escapedParenthesis delimiters <|> replacementField delimiters) <* eof
+parseGenericFormatString :: [ParseExtension.Extension] -> (Char, Char) -> Parser [Item]
+parseGenericFormatString exts delimiters = many ((Raw "\\" <$ "\\\\") <|> (Raw "" <$ "\\\n") <|> rawString delimiters <|> escapedParenthesis delimiters <|> replacementField exts delimiters) <* eof
 
 rawString :: (Char, Char) -> Parser Item
 rawString (openingChar,closingChar) = Raw . escapeChars <$> some (noneOf ([openingChar, closingChar]))
@@ -103,10 +104,10 @@ escapeChars s = case Data.Char.readLitChar s of
                   [] -> ""
                   ((c, xs):_) -> c : escapeChars xs
 
-replacementField :: (Char, Char) -> Parser Item
-replacementField (charOpening, charClosing) = do
+replacementField :: [ParseExtension.Extension] -> (Char, Char) -> Parser Item
+replacementField exts (charOpening, charClosing) = do
   _ <- char charOpening
-  expr <- evalExpr (many (noneOf (charClosing:":" :: [Char])))
+  expr <- evalExpr exts (many (noneOf (charClosing:":" :: [Char])))
   fmt <- optional $ do
     _ <- char ':'
     format_spec
@@ -178,11 +179,16 @@ lastCharFailed err = do
 
   fancyFailure (Set.singleton (ErrorFail err))
 
-evalExpr :: Parser String -> Parser Exp
-evalExpr exprParser = do
+evalExpr :: [ParseExtension.Extension] -> Parser String -> Parser Exp
+evalExpr exts exprParser = do
   offset <- getOffset
   s <- exprParser
-  case SyntaxTranslate.toExp <$> ParseExp.parseExp s of
+
+  -- Setup the parser using the provided list of extensions
+  -- Which are detected by template haskell at splice position
+  let parseMode = ParseExp.defaultParseMode { ParseExp.extensions = exts }
+
+  case SyntaxTranslate.toExp <$> ParseExp.parseExpWithMode parseMode s of
     ParseExp.ParseOk expr -> pure expr
     ParseExp.ParseFailed (SrcLoc.SrcLoc _name' line col) err -> do
       let

@@ -34,9 +34,11 @@ import qualified Data.Text as SText
 import qualified Data.Word as Word
 import qualified Data.Int as Int
 import Numeric.Natural
-
+import qualified Data.Maybe
 
 import PyF.Internal.PythonSyntax
+import PyF.Internal.Extensions
+
 import qualified PyF.Formatters as Formatters
 import PyF.Formatters (AnyAlign(..))
 import Data.Proxy
@@ -47,7 +49,10 @@ import GHC.TypeLits
 toExp:: (Char, Char) -> String -> Q Exp
 toExp delimiters s = do
   filename <- loc_filename <$> location
-  case parse (parseGenericFormatString delimiters) filename s of
+
+  exts <- Data.Maybe.mapMaybe thExtToMetaExt <$> extsEnabled
+
+  case parse (parseGenericFormatString exts delimiters) filename s of
     Left err -> do
       err' <- overrideErrorForFile filename err
       fail (errorBundlePretty err')

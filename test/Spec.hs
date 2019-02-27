@@ -3,6 +3,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE BinaryLiterals #-}
 
 import Test.Hspec
 
@@ -214,3 +216,9 @@ spec = do
 - b
 \
 |] `shouldBe` "\\\n- a\n- b\n"
+
+  describe "language extensions" $ do
+     it "parses @Int" $ do
+       [f|hello {show @Int 10}|] `shouldBe` "hello 10"
+     it "parses BinaryLiterals" $ do
+       [f|hello {0b1111}|] `shouldBe` "hello 15"
