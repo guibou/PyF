@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+## 0.7.2.0 -- 2019-02-27
+
 - Fixed: PyF now uses the same haskell extensions as the one used by the current haskell file to parse sub expressions.
 
 ## 0.7.1.0 -- 2019-02-11
