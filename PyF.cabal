@@ -16,6 +16,7 @@ library
                   PyF
                   PyF.Internal.PythonSyntax
                   PyF.Internal.QQ
+                  PyF.Internal.Extensions
                   PyF.Formatters
 
   build-depends:       base >= 4.9 && < 5.0
@@ -26,8 +27,9 @@ library
                      , text >= 0.11 && < 1.3
                      , containers >= 0.5 && < 0.7
 
-                     --
-                     , haskell-src-meta
+                     -- haskell-src-meta < 0.8.2 does not correctly handle TypeApplication
+                     -- That's not critical for PyF, so you can ignore this bound if needed
+                     , haskell-src-meta >= 0.8.2
                      , haskell-src-exts
   hs-source-dirs: src
   ghc-options: -Wall

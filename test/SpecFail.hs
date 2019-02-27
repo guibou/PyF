@@ -175,3 +175,6 @@ spec = do
     describe "non-doubled delimiters" $ do
       failCompile "hello } world"
       failCompile "hello { world"
+
+    describe "fail is not enabled extension" $ do
+      failCompile "{0b0001}"
