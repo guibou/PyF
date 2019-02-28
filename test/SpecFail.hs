@@ -39,7 +39,16 @@ checkCompile s = withSystemTempFile "PyFTest.hs" $ \path fd -> do
   IO.hPutStr fd $ "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}\nimport PyF\ntruncate' = truncate @Float @Int\nhello = \"hello\"\nnumber = 3.14 :: Float\nmain :: IO ()\nmain = [f|" ++ s ++ "|]\n"
   IO.hFlush fd
 
-  (ecode, _stdout, stderr) <- readProcessWithExitCode "ghc" [path, "-isrc", "-package-env", "-"] ""
+  (ecode, _stdout, stderr) <- readProcessWithExitCode "ghc" [path,
+                                                             -- Include all PyF files
+                                                             "-isrc",
+                                                             -- Disable the usage of the annoying .ghc environment file
+                                                             "-package-env", "-",
+                                                            -- Tests use a filename in a temporary directory which may have a long filename which triggers
+                                                            -- line wrapping, reducing the reproducibility of error message
+                                                            -- By setting the column size to a high value, we ensure reproducible error messages
+                                                             "-dppr-cols=10000000000000"
+                                                            ] ""
   case ecode of
     ExitFailure _ -> pure (CompileError (sanitize path stderr))
     ExitSuccess -> do

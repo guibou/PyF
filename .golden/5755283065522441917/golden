@@ -1,20 +1,9 @@
 
 INITIALPATH:7:11: error:
-    • No instance for (Integral String)
-        arising from a use of ‘truncate’
-    • In the third argument of ‘PyF.Formatters.formatString’, namely
-        ‘(truncate number)’
-      In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely
-        ‘(((PyF.Formatters.formatString Nothing)
-             (PyF.Internal.QQ.changePrec'
-                PyF.Internal.PythonSyntax.PrecisionDefault))
-            (truncate number))’
-      In the first argument of ‘PyF.magicFormat’, namely
-        ‘(Data.Text.Internal.Builder.fromString
-            (((PyF.Formatters.formatString Nothing)
-                (PyF.Internal.QQ.changePrec'
-                   PyF.Internal.PythonSyntax.PrecisionDefault))
-               (truncate number)))’
+    • No instance for (Integral String) arising from a use of ‘truncate’
+    • In the third argument of ‘PyF.Formatters.formatString’, namely ‘(truncate number)’
+      In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely ‘(((PyF.Formatters.formatString Nothing) (PyF.Internal.QQ.changePrec' PyF.Internal.PythonSyntax.PrecisionDefault)) (truncate number))’
+      In the first argument of ‘PyF.magicFormat’, namely ‘(Data.Text.Internal.Builder.fromString (((PyF.Formatters.formatString Nothing) (PyF.Internal.QQ.changePrec' PyF.Internal.PythonSyntax.PrecisionDefault)) (truncate number)))’
   |
 7 | main = [f|{truncate number:s}|]
   |           ^^^^^^^^^^^^^^^^^^^^^
