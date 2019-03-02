@@ -183,6 +183,11 @@ spec = do
     xdescribe "not specified" $ do
       failCompile "{truncate number:.3}"
       failCompile "{hello:#}"
+      failCompile "{hello:+}"
+      failCompile "{hello: }"
+      failCompile "{hello:-}"
+      failCompile "{hello:_}"
+      failCompile "{hello:,}"
 
     describe "multiples lines" $ do
       failCompile "hello\n\n\n{pi:l}"
