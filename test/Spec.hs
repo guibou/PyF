@@ -5,6 +5,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BinaryLiterals #-}
+{-# LANGUAGE DataKinds #-}
 
 import Test.Hspec
 
