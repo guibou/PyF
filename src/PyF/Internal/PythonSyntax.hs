@@ -240,31 +240,35 @@ format_spec = do
 
   case t of
     Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Minus s)) grouping)
-    Just flag -> case evalFlag flag padding prec alternateForm s of
+    Just flag -> case evalFlag flag padding grouping prec alternateForm s of
       Right fmt -> pure (FormatMode padding fmt grouping)
       Left typeError -> do
         lastCharFailed typeError
 
-evalFlag :: TypeFlag -> Padding -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
-evalFlag Flagb _pad prec alt s = failIfPrec prec (BinaryF alt (defSign s))
-evalFlag Flagc _pad prec alt s = failIfS s =<< failIfPrec prec =<< failIfAlt alt CharacterF
-evalFlag Flagd _pad prec alt s = failIfPrec prec =<< failIfAlt alt (DecimalF (defSign s))
-evalFlag Flage _pad prec alt s = pure $ExponentialF prec alt (defSign s)
-evalFlag FlagE _pad prec alt s = pure $ ExponentialCapsF prec alt (defSign s)
-evalFlag Flagf _pad prec alt s = pure $ FixedF prec alt (defSign s)
-evalFlag FlagF _pad prec alt s = pure $ FixedCapsF prec alt (defSign s)
-evalFlag Flagg _pad prec alt s = pure $ GeneralF prec alt (defSign s)
-evalFlag FlagG _pad prec alt s = pure $ GeneralCapsF prec alt (defSign s)
-evalFlag Flagn _pad _prec _alt _s = Left ("Type 'n' not handled (yet). " ++ errgGn)
-evalFlag Flago _pad prec alt s = failIfPrec prec $ OctalF alt (defSign s)
-evalFlag Flags pad prec alt s = failIfInsidePadding pad =<< failIfS s =<< (failIfAlt alt $ StringF prec)
-evalFlag Flagx _pad prec alt s = failIfPrec prec $ HexF alt (defSign s)
-evalFlag FlagX _pad prec alt s = failIfPrec prec $ HexCapsF alt (defSign s)
-evalFlag FlagPercent _pad prec alt s = pure $ PercentF prec alt (defSign s)
+evalFlag :: TypeFlag -> Padding -> Maybe Char -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
+evalFlag Flagb _pad _grouping prec alt s = failIfPrec prec (BinaryF alt (defSign s))
+evalFlag Flagc _pad _grouping prec alt s = failIfS s =<< failIfPrec prec =<< failIfAlt alt CharacterF
+evalFlag Flagd _pad _grouping prec alt s = failIfPrec prec =<< failIfAlt alt (DecimalF (defSign s))
+evalFlag Flage _pad _grouping prec alt s = pure $ExponentialF prec alt (defSign s)
+evalFlag FlagE _pad _grouping prec alt s = pure $ ExponentialCapsF prec alt (defSign s)
+evalFlag Flagf _pad _grouping prec alt s = pure $ FixedF prec alt (defSign s)
+evalFlag FlagF _pad _grouping prec alt s = pure $ FixedCapsF prec alt (defSign s)
+evalFlag Flagg _pad _grouping prec alt s = pure $ GeneralF prec alt (defSign s)
+evalFlag FlagG _pad _grouping prec alt s = pure $ GeneralCapsF prec alt (defSign s)
+evalFlag Flagn _pad _grouping _prec _alt _s = Left ("Type 'n' not handled (yet). " ++ errgGn)
+evalFlag Flago _pad _grouping prec alt s = failIfPrec prec $ OctalF alt (defSign s)
+evalFlag Flags pad grouping prec alt s = failIfGrouping grouping =<< failIfInsidePadding pad =<< failIfS s =<< (failIfAlt alt $ StringF prec)
+evalFlag Flagx _pad _grouping prec alt s = failIfPrec prec $ HexF alt (defSign s)
+evalFlag FlagX _pad _grouping prec alt s = failIfPrec prec $ HexCapsF alt (defSign s)
+evalFlag FlagPercent _pad _grouping prec alt s = pure $ PercentF prec alt (defSign s)
 
 defSign :: Maybe SignMode -> SignMode
 defSign Nothing = Minus
 defSign (Just s) = s
+
+failIfGrouping :: Maybe Char -> TypeFormat -> Either String TypeFormat
+failIfGrouping (Just _) _t = Left "String type is incompatible with grouping (_ or ,)."
+failIfGrouping Nothing t = Right t
 
 failIfInsidePadding :: Padding -> TypeFormat -> Either String TypeFormat
 failIfInsidePadding (Padding _ (Just (_, AnyAlign AlignInside))) _t = Left "String type is incompatible with inside padding (=)."

@@ -1,0 +1,12 @@
+
+INITIALPATH:7:11: error:
+    • INITIALPATH:7:19:
+  |
+7 | main = [f|{hello:,s}|]
+  |                   ^
+String type is incompatible with grouping (_ or ,).
+
+    • In the quasi-quotation: [f|{hello:,s}|]
+  |
+7 | main = [f|{hello:,s}|]
+  |           ^^^^^^^^^^^^
