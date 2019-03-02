@@ -1,11 +1,12 @@
 
-INITIALPATH:7:8: error:
-    • Exception when trying to run compile-time code:
-        String Cannot be aligned with the inside `=` mode
-CallStack (from HasCallStack):
-  error, called at src/PyF/Internal/QQ.hs:178:18 in main:PyF.Internal.QQ
-      Code: Language.Haskell.TH.Quote.quoteExp f "{hello:=100s}"
+INITIALPATH:7:11: error:
+    • INITIALPATH:7:22:
+  |
+7 | main = [f|{hello:=100s}|]
+  |                      ^
+String type is incompatible with inside padding (=).
+
     • In the quasi-quotation: [f|{hello:=100s}|]
   |
 7 | main = [f|{hello:=100s}|]
-  |        ^^^^^^^^^^^^^^^^^^
+  |           ^^^^^^^^^^^^^^^
