@@ -88,22 +88,34 @@ parseGenericFormatString :: [ParseExtension.Extension] -> (Char, Char) -> Parser
 parseGenericFormatString exts delimiters = many (rawString delimiters <|> escapedParenthesis delimiters <|> replacementField exts delimiters) <* eof
 
 rawString :: (Char, Char) -> Parser Item
-rawString (openingChar,closingChar) = Raw . escapeChars <$> some (noneOf ([openingChar, closingChar]))
+rawString (openingChar,closingChar) = do
+  chars <- some (noneOf ([openingChar, closingChar]))
+  case escapeChars chars of
+    Left remaining -> do
+      offset <- getOffset
+      setOffset (offset - length remaining)
+      fancyFailure (Set.singleton (ErrorFail "lexical error in literal section"))
+    Right escaped -> return (Raw escaped)
 
 escapedParenthesis :: (Char, Char) -> Parser Item
 escapedParenthesis (openingChar, closingChar) = Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
   where parseRaw c = c:[] <$ string (replicate 2 c)
 
-{- | Replace escape chars with their value
+{- | Replace escape chars with their value. Results in a Left with the
+remainder of the string on encountering a lexical error (such as a bad escape
+sequence).
 >>> escapeChars "hello \\n"
-"hello \n"
+Right "hello \n"
+>>> escapeChars "hello \\x"
+Left "\\x"
 -}
-escapeChars :: String -> String
-escapeChars "" = ""
+escapeChars :: String -> Either String String
+escapeChars "" = Right ""
 escapeChars ('\\':'\n':xs) = escapeChars xs
-escapeChars ('\\':'\\':xs) = '\\' : escapeChars xs
+escapeChars ('\\':'\\':xs) = ('\\' :) <$> escapeChars xs
 escapeChars s = case Data.Char.readLitChar s of
-                  ((c, xs):_) -> c : escapeChars xs
+                  ((c, xs):_) -> (c :) <$> escapeChars xs
+                  _ -> Left s
 
 replacementField :: [ParseExtension.Extension] -> (Char, Char) -> Parser Item
 replacementField exts (charOpening, charClosing) = do
