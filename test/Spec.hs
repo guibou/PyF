@@ -210,6 +210,18 @@ spec = do
 \
 |] `shouldBe` "- a\n- b\n"
 
+    it "escapes in middle of line" $ do
+      [f|Example goes \
+here!|] `shouldBe` "Example goes here!"
+
+    it "escapes a lot of things" $ do
+      [f|\
+I'm a line with \n and \\ and a correct line
+ending, but that one is escaped\
+And I'm escaping before and after: \\{pi:.3f}\\
+yeah\
+|] `shouldBe` "I'm a line with \n and \\ and a correct line\nending, but that one is escapedAnd I'm escaping before and after: \\3.142\\\nyeah"
+
     it "escapes" $ do
       [f|\\
 - a

@@ -85,7 +85,7 @@ parsePythonFormatString :: [ParseExtension.Extension] -> Parser [Item]
 parsePythonFormatString exts = parseGenericFormatString exts ('{', '}')
 
 parseGenericFormatString :: [ParseExtension.Extension] -> (Char, Char) -> Parser [Item]
-parseGenericFormatString exts delimiters = many ((Raw "\\" <$ "\\\\") <|> (Raw "" <$ "\\\n") <|> rawString delimiters <|> escapedParenthesis delimiters <|> replacementField exts delimiters) <* eof
+parseGenericFormatString exts delimiters = many (rawString delimiters <|> escapedParenthesis delimiters <|> replacementField exts delimiters) <* eof
 
 rawString :: (Char, Char) -> Parser Item
 rawString (openingChar,closingChar) = Raw . escapeChars <$> some (noneOf ([openingChar, closingChar]))
@@ -100,8 +100,9 @@ escapedParenthesis (openingChar, closingChar) = Raw <$> (parseRaw openingChar <|
 -}
 escapeChars :: String -> String
 escapeChars "" = ""
+escapeChars ('\\':'\n':xs) = escapeChars xs
+escapeChars ('\\':'\\':xs) = '\\' : escapeChars xs
 escapeChars s = case Data.Char.readLitChar s of
-                  [] -> ""
                   ((c, xs):_) -> c : escapeChars xs
 
 replacementField :: [ParseExtension.Extension] -> (Char, Char) -> Parser Item
