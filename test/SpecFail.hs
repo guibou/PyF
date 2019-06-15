@@ -187,3 +187,6 @@ spec = do
 
     describe "fail is not enabled extension" $ do
       failCompile "{0b0001}"
+
+    describe "lexical errors" $ do
+      failCompile "foo\\Pbar"
