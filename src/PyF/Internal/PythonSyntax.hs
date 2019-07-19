@@ -18,6 +18,7 @@ module PyF.Internal.PythonSyntax
   , TypeFormat(..)
   , AlternateForm(..)
   , pattern DefaultFormatMode
+  , Parser
   )
 where
 
@@ -169,11 +170,11 @@ data TypeFormat =
   | CharacterF -- ^ Character, will convert an integer to its character representation
   | DecimalF SignMode -- ^ Decimal, base 10 integer formatting
   | ExponentialF Precision AlternateForm SignMode -- ^ Exponential notation for floatting points
-  | ExponentialCapsF Precision AlternateForm SignMode -- ^ Exponential notation with capitalised 'e'
+  | ExponentialCapsF Precision AlternateForm SignMode -- ^ Exponential notation with capitalised @e@
   | FixedF Precision AlternateForm SignMode -- ^ Fixed number of digits floating point
   | FixedCapsF Precision AlternateForm SignMode -- ^ Capitalized version of the previous
   | GeneralF Precision AlternateForm SignMode -- ^ General formatting: `FixedF` or `ExponentialF` depending on the number magnitude
-  | GeneralCapsF Precision AlternateForm SignMode -- ^ Same as `GeneralF` but with upper case 'E' and infinite / NaN
+  | GeneralCapsF Precision AlternateForm SignMode -- ^ Same as `GeneralF` but with upper case @E@ and infinite / NaN
   | OctalF AlternateForm SignMode -- ^ Octal, such as 00245
   | StringF Precision -- ^ Simple string
   | HexF AlternateForm SignMode -- ^ Hexadecimal, such as 0xaf3e

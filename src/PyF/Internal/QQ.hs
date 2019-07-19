@@ -12,7 +12,7 @@
 
 {- | This module uses the python mini language detailed in
 'PyF.Internal.PythonSyntax' to build an template haskell expression
-representing a formatted string ('String', 'Text' or 'Builder').
+representing a formatted string ('String', 'LText.Text', 'SText.Text' or 'Builder.Builder').
 
 -}
 module PyF.Internal.QQ (
