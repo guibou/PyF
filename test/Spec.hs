@@ -201,6 +201,9 @@ spec = do
     it "escape chars" $ do
        [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
 
+  describe "empty line" $ do
+    it "works" $ do
+      [f||] `shouldBe` ""
 
   describe "multi line escape" $ do
     it "works" $ do

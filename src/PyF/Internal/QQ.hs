@@ -91,6 +91,7 @@ toExpPython :: String -> Q Exp
 toExpPython = toExp ('{', '}')
 
 goFormat :: [Item] -> Q Exp
+goFormat [] = [| "" |]
 goFormat items = foldl1 fofo <$> (mapM toFormat items)
 
 fofo :: Exp -> Exp -> Exp
