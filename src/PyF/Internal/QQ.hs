@@ -12,7 +12,7 @@
 
 {- | This module uses the python mini language detailed in
 'PyF.Internal.PythonSyntax' to build an template haskell expression
-representing a formatted string ('String', 'Text' or 'Builder').
+representing a formatted string ('String', 'LText.Text', 'SText.Text' or 'Builder.Builder').
 
 -}
 module PyF.Internal.QQ (
@@ -91,6 +91,7 @@ toExpPython :: String -> Q Exp
 toExpPython = toExp ('{', '}')
 
 goFormat :: [Item] -> Q Exp
+goFormat [] = [| "" |]
 goFormat items = foldl1 fofo <$> (mapM toFormat items)
 
 fofo :: Exp -> Exp -> Exp
