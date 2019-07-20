@@ -6,6 +6,8 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveAnyClass, GeneralizedNewtypeDeriving, DerivingStrategies #-}
 
 import Test.Hspec
 
@@ -22,6 +24,27 @@ import SpecCustomDelimiters
 
 main :: IO ()
 main = hspec spec
+
+newtype FooFloating = FooFloating Float
+  deriving newtype (Show, RealFloat, RealFrac, Floating, Fractional, Real, Enum, Num, Ord, Eq)
+
+newtype FooIntegral = FooIntegral Integer
+  deriving newtype (Show, Integral, Real, Enum, Num, Ord, Eq)
+
+data Foo = Foo
+
+data FooDefault = FooDefault
+  deriving (Show)
+
+instance PyFToString FooDefault
+
+instance PyFToString Foo where
+  toString Foo = "I'm a Foo"
+
+type instance PyFClassify Foo = 'PyFString
+type instance PyFClassify FooFloating = 'PyFFractional
+type instance PyFClassify FooIntegral = 'PyFIntegral
+type instance PyFClassify FooDefault = 'PyFString
 
 spec :: Spec
 spec = do
@@ -238,3 +261,18 @@ yeah\
        [f|hello {show @Int 10}|] `shouldBe` "hello 10"
      it "parses BinaryLiterals" $ do
        [f|hello {0b1111}|] `shouldBe` "hello 15"
+
+
+  describe "custom types" $ do
+      it "works with integral" $ do
+        [f|{FooIntegral 10:d}|] `shouldBe` "10"
+      it "works with floating" $ do
+        [f|{FooFloating 25.123:f}|] `shouldBe` "25.123000"
+      it "works with string" $ do
+        [f|{Foo:s}|] `shouldBe` "I'm a Foo"
+        [f|{FooDefault:s}|] `shouldBe` "FooDefault"
+      it "works with classify" $ do
+        [f|{Foo}|] `shouldBe` "I'm a Foo"
+        [f|{FooIntegral 100}|] `shouldBe` "100"
+        [f|{FooFloating 100.123}|] `shouldBe` "100.123"
+        [f|{FooDefault}|] `shouldBe` "FooDefault"

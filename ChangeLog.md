@@ -1,5 +1,6 @@
 # Revision history for PyF
 
+- PyF now exposes the typeclass `PyFToString` and `PyFClassify` which can be extended to support any type as input for the formatters.
 - PyF now uses `Data.String.IsString t` as its output type. It means that it behaves as a string literal as if the `OverloadedStrings` was enabled. This also works that PyF can outputs any standard string.
 - A caveat of the previous change is that PyF does not have instances for `IO` anymore.
 
