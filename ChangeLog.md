@@ -1,5 +1,12 @@
 # Revision history for PyF
 
+### bugfixes and general improvements
+
+- An important amount of bugfixs
+- Error reporting for generic formatting (i.e. formatting without a specified type) is now more robust
+- Template haskell splices are simpler. This leads to more efficient / small generated code and in the event of this code appears in a GHC error message, it is more readable.
+
+
 ## 0.7.3.0 -- 2019-02-28
 
 - Tests: fix non reproducible tests
