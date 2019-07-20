@@ -37,7 +37,7 @@ makeTemplate s = "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplicatio
 >>> checkCompile fileContent
 CompileError "Bla bla bla, Floating cannot be formatted as hexa (`x`)
 -}
-checkCompile :: String -> IO CompilationStatus
+checkCompile :: HasCallStack => String -> IO CompilationStatus
 checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
   IO.hPutStr fd content
   IO.hFlush fd
@@ -107,14 +107,21 @@ golden name output = do
 
 -- if the compilation fails, runs a golden test on compilation output
 -- else, fails the test
+fileFailCompile :: HasCallStack => FilePath -> Spec
+fileFailCompile path = do
+  fileContent <- runIO $ readFile path
+
+  -- I'm using the hash of the path, considering that the file content can evolve
+  failCompileContent (hash path) path fileContent
+
 failCompile :: HasCallStack => String -> Spec
 failCompile s = failCompileContent (hash s) s (makeTemplate s)
 
 failCompileContent :: HasCallStack => Int -> String -> String -> Spec
-failCompileContent hash caption fileContent = do
+failCompileContent h caption fileContent = do
   before (checkCompile fileContent) $ it (show caption) $ \res -> case res of
-   CompileError output -> golden (show hash) output
-   _ -> assertFailure (show $ ".golden/" <> show hash  <> "\n" <>show res)
+   CompileError output -> golden (show h) output
+   _ -> assertFailure (show $ ".golden/" <> show h  <> "\n" <>show res)
 
 main :: IO ()
 main = hspec spec
@@ -195,3 +202,8 @@ spec = do
 
     describe "lexical errors" $ do
       failCompile "foo\\Pbar"
+
+    describe "fileFailures" $ do
+      mapM_ fileFailCompile [
+        "test/failureCases/bug18.hs"
+        ]
