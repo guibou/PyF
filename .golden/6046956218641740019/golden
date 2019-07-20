@@ -1,9 +1,9 @@
 
 INITIALPATH:7:11: error:
     • No instance for (Integral [Char]) arising from a use of ‘PyF.Internal.QQ.formatAnyIntegral’
-    • In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely ‘(((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary) PyF.Formatters.Minus) (PyF.Internal.QQ.newPadding PyF.Internal.PythonSyntax.PaddingDefault)) ((PyF.Internal.QQ.toGrp Nothing) 4)) hello)’
-      In the first argument of ‘PyF.magicFormat’, namely ‘(Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary) PyF.Formatters.Minus) (PyF.Internal.QQ.newPadding PyF.Internal.PythonSyntax.PaddingDefault)) ((PyF.Internal.QQ.toGrp Nothing) 4)) hello))’
-      In the expression: (PyF.magicFormat (Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary) PyF.Formatters.Minus) (PyF.Internal.QQ.newPadding PyF.Internal.PythonSyntax.PaddingDefault)) ((PyF.Internal.QQ.toGrp Nothing) 4)) hello)))
+    • In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely ‘(((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary) PyF.Formatters.Minus) Nothing) Nothing) hello)’
+      In the first argument of ‘PyF.magicFormat’, namely ‘(Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary) PyF.Formatters.Minus) Nothing) Nothing) hello))’
+      In the expression: (PyF.magicFormat (Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary) PyF.Formatters.Minus) Nothing) Nothing) hello)))
   |
 7 | main = [f|{hello:b}|]
   |           ^^^^^^^^^^^

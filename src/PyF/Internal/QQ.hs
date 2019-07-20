@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -106,86 +107,72 @@ toFormat (Replacement expr y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (VarE 'Builder.fromString `AppE` (formatExpr `AppE` expr))
 
-changePrec :: Precision -> Maybe Int
-changePrec PrecisionDefault = Just 6
-changePrec (Precision n) = Just (fromIntegral n)
+changePrec :: Precision -> Q Exp
+changePrec PrecisionDefault = [| Just 6 |]
+changePrec (Precision n) = [| Just (fromIntegral n) |]
 
-changePrec' :: Precision -> Maybe Int
-changePrec' PrecisionDefault = Nothing
-changePrec' (Precision n) = Just (fromIntegral n)
+changePrec' :: Precision ->  Q Exp
+changePrec' PrecisionDefault = [| Nothing |]
+changePrec' (Precision n) = [| Just (fromIntegral n) |]
 
-toGrp :: Maybe b -> a -> Maybe (a, b)
-toGrp mb a = (a,) <$> mb
+toGrp :: Maybe Char -> Int -> Q Exp
+toGrp mb a = [| grp |]
+  where grp = (a,) <$> mb
 
 withAlt :: AlternateForm -> Formatters.Format t t' t'' -> Q Exp
 withAlt NormalForm e = [| e |]
 withAlt AlternateForm e = [| Formatters.Alternate e |]
 
--- Todo: Alternates for floating
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat (FormatMode padding tf grouping) = case tf of
   -- Integrals
-  BinaryF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Binary) s (newPadding padding) (toGrp grouping 4) |]
-  CharacterF -> [| formatAnyIntegral Formatters.Character Formatters.Minus (newPadding padding) Nothing |]
-  DecimalF s -> [| formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) |]
-  HexF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Hexa) s (newPadding padding) (toGrp grouping 4) |]
-  OctalF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Octal) s (newPadding padding) (toGrp grouping 4) |]
-  HexCapsF alt s -> [| formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s (newPadding padding) (toGrp grouping 4) |]
+  BinaryF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Binary) s $(newPaddingQ padding) $(toGrp grouping 4) |]
+  CharacterF -> [| formatAnyIntegral Formatters.Character Formatters.Minus $(newPaddingQ padding) Nothing |]
+  DecimalF s -> [| formatAnyIntegral Formatters.Decimal s $(newPaddingQ padding) $(toGrp grouping 3) |]
+  HexF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Hexa) s $(newPaddingQ padding) $(toGrp grouping 4) |]
+  OctalF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Octal) s $(newPaddingQ padding) $(toGrp grouping 4) |]
+  HexCapsF alt s -> [| formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s $(newPaddingQ padding) $(toGrp grouping 4) |]
 
   -- Floating
-  ExponentialF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Exponent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  ExponentialCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  GeneralF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Generic) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  GeneralCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  FixedF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Fixed) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  FixedCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
-  PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s (newPadding padding) (toGrp grouping 3) (changePrec prec) |]
+  ExponentialF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Exponent) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
+  ExponentialCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
+  GeneralF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Generic) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
+  GeneralCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
+  FixedF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Fixed) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
+  FixedCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
+  PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
 
   -- Default / String
+  DefaultF prec s -> [| formatAny s $(paddingToPaddingK padding) $(toGrp grouping 3) $(changePrec' prec) |]
+  StringF prec -> [| Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(changePrec' prec) . toString |]
 
-  -- Note: v / i / f uses pat and var to ensure stable name in error message
-  DefaultF prec s -> [| \($(pat "v")) ->
-      case categorise (Proxy :: Proxy $(typeAllowed)) $(var "v") of
-        Integral $(pat "i") -> formatAnyIntegral Formatters.Decimal s (newPadding padding) (toGrp grouping 3) $(var "i")
-        Fractional $(pat "f") -> formatAnyFractional Formatters.Generic s (newPadding padding) (toGrp grouping 3) (changePrec' prec) $(var "f")
-        StringType $(pat "f") -> Formatters.formatString (newPaddingForString padding) (changePrec' prec) $(var "f")
-                         |]
-   where
-     typeAllowed :: Q Type
-     typeAllowed = case padding of
-       PaddingDefault -> [t| EnableForString |]
-       Padding _ Nothing -> [t| EnableForString |]
-       Padding _ (Just (_, AnyAlign a)) -> case Formatters.getAlignForString a of
-         Nothing -> [t| DisableForString |]
-         Just _ -> [t| EnableForString |]
+newPaddingQ :: Padding -> Q Exp
+newPaddingQ pad = [| pad' |]
+  where pad' = newPaddingUnQ pad
 
-  StringF prec -> [| Formatters.formatString pad (changePrec' prec) |]
-    where pad = newPaddingForString padding
-
--- Generate stable name in TH slices
--- The name are postfixed by _PyF to limit the risk of shadowing
-
-pat :: String -> Q Pat
-pat name = pure (VarP (mkName (name ++ "_PyF")))
-
-var :: String -> Q Exp
-var name = pure (VarE (mkName (name ++ "_PyF")))
-
-newPaddingForString :: Padding -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
-newPaddingForString padding = case padding of
-    PaddingDefault -> Nothing
-    Padding i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
-    Padding i (Just (mc, AnyAlign a)) -> case Formatters.getAlignForString a of
-      Nothing -> error (symbolVal (Proxy @AlignErrorMsg))
-      Just al -> pure (fromIntegral i, al, fromMaybe ' ' mc)
-
-newPadding :: Padding -> Maybe (Integer, AnyAlign, Char)
-newPadding padding = case padding of
+newPaddingUnQ :: Padding -> Maybe (Integer, AnyAlign, Char)
+newPaddingUnQ padding = case padding of
     PaddingDefault -> Nothing
     (Padding i al) -> case al of
       Nothing -> Just (i, AnyAlign Formatters.AlignRight, ' ') -- Right align and space is default for any object, except string
       Just (Nothing, a) -> Just (i, a, ' ')
       Just (Just c, a) -> Just (i, a, c)
+
+data PaddingK k where
+  PaddingDefaultK :: PaddingK 'Formatters.AlignAll
+  PaddingK :: Integer -> (Maybe (Maybe Char, Formatters.AlignMode k)) -> PaddingK k
+
+paddingToPaddingK :: Padding -> Q Exp
+paddingToPaddingK p = case p of
+  PaddingDefault -> [| PaddingDefaultK |]
+  Padding i Nothing -> [| PaddingK i Nothing :: PaddingK 'Formatters.AlignAll |]
+  Padding i (Just (c, AnyAlign a)) -> [| PaddingK i (Just (c, a)) |]
+
+paddingKToPadding :: PaddingK k -> Padding
+paddingKToPadding p = case p of
+  PaddingDefaultK -> PaddingDefault
+  PaddingK i Nothing -> Padding i Nothing
+  PaddingK i (Just (c, a)) -> Padding i (Just (c, AnyAlign a))
 
 formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
 formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i
@@ -195,43 +182,66 @@ formatAnyFractional :: (RealFloat i) => Formatters.Format t t' 'Formatters.Fract
 formatAnyFractional f s Nothing grouping p i = Formatters.formatFractional f s Nothing grouping p i
 formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
 
-data FormattingType where
-  StringType :: String -> FormattingType
-  Fractional :: RealFloat t => t -> FormattingType
-  Integral :: (Show t, Integral t) => t -> FormattingType
+class FormatAny i k where
+  formatAny :: Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
 
-class Categorise k t where
-  categorise :: Proxy k -> t -> FormattingType
+instance (FormatAny2 (Classify t) t k) => FormatAny t k where
+  formatAny = formatAny2 (Proxy :: Proxy (Classify t))
 
-instance Categorise k Integer where categorise _  i = Integral i
-instance Categorise k Int where categorise _  i = Integral i
-instance Categorise k Int.Int8 where categorise _  i = Integral i
-instance Categorise k Int.Int16 where categorise _  i = Integral i
-instance Categorise k Int.Int32 where categorise _  i = Integral i
-instance Categorise k Int.Int64 where categorise _  i = Integral i
+class FormatAny2 (c :: FmtCategory) (i :: *) (k :: Formatters.AlignForString) where
+  formatAny2 :: Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
 
-instance Categorise k Natural where categorise _  i = Integral i
-instance Categorise k Word where categorise _  i = Integral i
-instance Categorise k Word.Word8 where categorise _  i = Integral i
-instance Categorise k Word.Word16 where categorise _  i = Integral i
-instance Categorise k Word.Word32 where categorise _  i = Integral i
-instance Categorise k Word.Word64 where categorise _  i = Integral i
+data FmtCategory = IntegralC | FractionalC | StringC
 
-instance Categorise k Float where categorise _  f = Fractional f
-instance Categorise k Double where categorise _  f = Fractional f
+instance (Show t, Integral t) => FormatAny2 'IntegralC t k where
+  formatAny2 _ s a p _precision i = formatAnyIntegral Formatters.Decimal s (newPaddingUnQ (paddingKToPadding a)) p i
 
--- This may use DataKinds extension, however the need for the
--- extension will leak inside the code calling the template haskell
--- quasi quotes.
-data EnableForString
-data DisableForString
+instance (RealFloat t) => FormatAny2 'FractionalC t k where
+  formatAny2 _ s a p precision t = formatAnyFractional Formatters.Generic s (newPaddingUnQ (paddingKToPadding a)) p precision t
 
-instance Categorise EnableForString LText.Text where categorise _  t = StringType (LText.unpack t)
-instance Categorise EnableForString SText.Text where categorise _  t = StringType (SText.unpack t)
-instance Categorise EnableForString String where categorise _  t = StringType t
+newPaddingKForString :: PaddingK 'Formatters.AlignAll -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
+newPaddingKForString padding = case padding of
+    PaddingDefaultK -> Nothing
+    PaddingK i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
+    PaddingK i (Just (mc, a)) -> Just (fromIntegral i, a, fromMaybe ' ' mc)
 
-type AlignErrorMsg = "String Cannot be aligned with the inside `=` mode"
 
-instance TypeError ('Text AlignErrorMsg) => Categorise DisableForString LText.Text where categorise _ _ = error "unreachable"
-instance TypeError ('Text AlignErrorMsg) => Categorise DisableForString SText.Text where categorise _ _ = error "unreachable"
-instance TypeError ('Text AlignErrorMsg) => Categorise DisableForString String where categorise _ _ = error "unreachable"
+-- TODO: _s(ign) and _grouping should trigger errors
+instance (Stringable t) => FormatAny2 'StringC t 'Formatters.AlignAll where
+  formatAny2 _ _s a _grouping precision t = Formatters.formatString (newPaddingKForString a) precision (toString t)
+
+instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'StringC t 'Formatters.AlignNumber where
+  formatAny2 = error "Unreachable"
+
+class Stringable t where
+  toString :: t -> String
+
+instance Stringable String where toString = id
+
+instance Stringable LText.Text where toString = LText.unpack
+instance Stringable SText.Text where toString = SText.unpack
+
+type family ToFmt t where
+  ToFmt 'IntegralC = 'Formatters.Integral
+  ToFmt 'FractionalC = 'Formatters.Fractional
+
+type family Classify t where
+  Classify Integer = 'IntegralC
+  Classify Int = 'IntegralC
+  Classify Int.Int8 = 'IntegralC
+  Classify Int.Int16 = 'IntegralC
+  Classify Int.Int32 = 'IntegralC
+  Classify Int.Int64 = 'IntegralC
+  Classify Natural = 'IntegralC
+  Classify Word = 'IntegralC
+  Classify Word.Word8 = 'IntegralC
+  Classify Word.Word16 = 'IntegralC
+  Classify Word.Word32 = 'IntegralC
+  Classify Word.Word64 = 'IntegralC
+
+  Classify Float = 'FractionalC
+  Classify Double = 'FractionalC
+
+  Classify String = 'StringC
+  Classify LText.Text = 'StringC
+  Classify SText.Text = 'StringC

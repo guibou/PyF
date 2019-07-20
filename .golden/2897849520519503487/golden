@@ -1,31 +1,10 @@
 
 INITIALPATH:25:3: error: [-Wmissing-fields, -Werror=missing-fields]
     • Fields of ‘Foo’ not initialised: fieldA
-    • In the expression:
-        Foo
-          {fieldB = (PyF.magicFormat
-                       (Data.Text.Internal.Builder.fromString "hello what's up "
-                          <>
-                            Data.Text.Internal.Builder.fromString
-                              ((\ v_PyF
-                                  -> case (PyF.Internal.QQ.categorise (Data.Proxy.Proxy :: Data.Proxy.Proxy PyF.Internal.QQ.EnableForString)) v_PyF of
-                                       PyF.Internal.QQ.Integral i_PyF -> ((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Decimal) PyF.Formatters.Minus) (PyF.Internal.QQ.newPadding PyF.Internal.PythonSyntax.PaddingDefault)) ((PyF.Internal.QQ.toGrp Nothing) 3)) i_PyF
-                                       PyF.Internal.QQ.Fractional f_PyF -> (((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Generic) PyF.Formatters.Minus) (PyF.Internal.QQ.newPadding PyF.Internal.PythonSyntax.PaddingDefault)) ((PyF.Internal.QQ.toGrp Nothing) 3)) (PyF.Internal.QQ.changePrec' PyF.Internal.PythonSyntax.PrecisionDefault)) f_PyF
-                                       PyF.Internal.QQ.StringType f_PyF -> ((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingForString PyF.Internal.PythonSyntax.PaddingDefault)) (PyF.Internal.QQ.changePrec' PyF.Internal.PythonSyntax.PrecisionDefault)) f_PyF)
-                                 x)))}
+    • In the expression: Foo {fieldB = (PyF.magicFormat (Data.Text.Internal.Builder.fromString "hello what's up " <> Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) PyF.Internal.QQ.PaddingDefaultK) Nothing) Nothing) x)))}
       In an equation for ‘yolo’:
           yolo
-            = Foo
-                {fieldB = (PyF.magicFormat
-                             (Data.Text.Internal.Builder.fromString "hello what's up "
-                                <>
-                                  Data.Text.Internal.Builder.fromString
-                                    ((\ v_PyF
-                                        -> case (PyF.Internal.QQ.categorise (Data.Proxy.Proxy :: Data.Proxy.Proxy PyF.Internal.QQ.EnableForString)) v_PyF of
-                                             PyF.Internal.QQ.Integral i_PyF -> ((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Decimal) PyF.Formatters.Minus) (PyF.Internal.QQ.newPadding PyF.Internal.PythonSyntax.PaddingDefault)) ((PyF.Internal.QQ.toGrp Nothing) 3)) i_PyF
-                                             PyF.Internal.QQ.Fractional f_PyF -> (((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Generic) PyF.Formatters.Minus) (PyF.Internal.QQ.newPadding PyF.Internal.PythonSyntax.PaddingDefault)) ((PyF.Internal.QQ.toGrp Nothing) 3)) (PyF.Internal.QQ.changePrec' PyF.Internal.PythonSyntax.PrecisionDefault)) f_PyF
-                                             PyF.Internal.QQ.StringType f_PyF -> ((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingForString PyF.Internal.PythonSyntax.PaddingDefault)) (PyF.Internal.QQ.changePrec' PyF.Internal.PythonSyntax.PrecisionDefault)) f_PyF)
-                                       x)))}
+            = Foo {fieldB = (PyF.magicFormat (Data.Text.Internal.Builder.fromString "hello what's up " <> Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) PyF.Internal.QQ.PaddingDefaultK) Nothing) Nothing) x)))}
             where
                 x :: T.Text
                 x = T.pack "hi"
