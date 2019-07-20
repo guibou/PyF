@@ -1,5 +1,5 @@
 
-INITIALPATH:7:11: error:
+INITIALPATH:7:20: error:
     • Ambiguous type variable ‘t0’ arising from a use of ‘PyF.Internal.QQ.toString’
       prevents the constraint ‘(PyF.Internal.QQ.Stringable t0)’ from being solved.
       Probable fix: use a type annotation to specify what ‘t0’ should be.
@@ -9,7 +9,7 @@ INITIALPATH:7:11: error:
         (use -fprint-potential-instances to see them all)
     • In the second argument of ‘(.)’, namely ‘PyF.Internal.QQ.toString’
       In the expression: (PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString
-      In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely ‘(((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString) (truncate number))’
+      In the first argument of ‘putStrLn’, namely ‘(((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString) (truncate number))’
   |
-7 | main = [f|{truncate number:s}|]
-  |           ^^^^^^^^^^^^^^^^^^^^^
+7 | main = putStrLn [f|{truncate number:s}|]
+  |                    ^^^^^^^^^^^^^^^^^^^^^
