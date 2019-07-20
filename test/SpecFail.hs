@@ -29,14 +29,17 @@ data CompilationStatus
   | Ok String
   deriving (Show, Eq)
 
+makeTemplate :: String -> String
+makeTemplate s = "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}\nimport PyF\ntruncate' = truncate @Float @Int\nhello = \"hello\"\nnumber = 3.14 :: Float\nmain :: IO ()\nmain = [f|" ++ s ++ "|]\n"
+
 {- | Compile a formatting string
 
->>> checkCompile "pi:x"
+>>> checkCompile fileContent
 CompileError "Bla bla bla, Floating cannot be formatted as hexa (`x`)
 -}
 checkCompile :: String -> IO CompilationStatus
-checkCompile s = withSystemTempFile "PyFTest.hs" $ \path fd -> do
-  IO.hPutStr fd $ "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}\nimport PyF\ntruncate' = truncate @Float @Int\nhello = \"hello\"\nnumber = 3.14 :: Float\nmain :: IO ()\nmain = [f|" ++ s ++ "|]\n"
+checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
+  IO.hPutStr fd content
   IO.hFlush fd
 
   (ecode, _stdout, stderr) <- readProcessWithExitCode "ghc" [path,
@@ -105,10 +108,13 @@ golden name output = do
 -- if the compilation fails, runs a golden test on compilation output
 -- else, fails the test
 failCompile :: HasCallStack => String -> Spec
-failCompile s = do
-  before (checkCompile s) $ it (s ++ " " ++ show (hash s)) $ \res -> case res of
-   CompileError output -> golden (show $ hash s) output
-   _ -> assertFailure (show res)
+failCompile s = failCompileContent (hash s) s (makeTemplate s)
+
+failCompileContent :: HasCallStack => Int -> String -> String -> Spec
+failCompileContent hash caption fileContent = do
+  before (checkCompile fileContent) $ it (show caption) $ \res -> case res of
+   CompileError output -> golden (show hash) output
+   _ -> assertFailure (show $ ".golden/" <> show hash  <> "\n" <>show res)
 
 main :: IO ()
 main = hspec spec
