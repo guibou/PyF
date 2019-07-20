@@ -9,6 +9,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeApplications #-}
 
 {- | This module uses the python mini language detailed in
 'PyF.Internal.PythonSyntax' to build an template haskell expression
@@ -175,7 +176,7 @@ newPaddingForString padding = case padding of
     PaddingDefault -> Nothing
     Padding i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
     Padding i (Just (mc, AnyAlign a)) -> case Formatters.getAlignForString a of
-      Nothing -> error alignErrorMsg
+      Nothing -> error (symbolVal (Proxy @AlignErrorMsg))
       Just al -> pure (fromIntegral i, al, fromMaybe ' ' mc)
 
 newPadding :: Padding -> Maybe (Integer, AnyAlign, Char)
@@ -229,9 +230,8 @@ instance Categorise EnableForString LText.Text where categorise _  t = StringTyp
 instance Categorise EnableForString SText.Text where categorise _  t = StringType (SText.unpack t)
 instance Categorise EnableForString String where categorise _  t = StringType t
 
-alignErrorMsg :: String
-alignErrorMsg = "String Cannot be aligned with the inside `=` mode"
+type AlignErrorMsg = "String Cannot be aligned with the inside `=` mode"
 
-instance TypeError ('Text "String Cannot be aligned with the inside `=` mode") => Categorise DisableForString LText.Text where categorise _ _ = error "unreachable"
-instance TypeError ('Text "String Cannot be aligned with the inside `=` mode") => Categorise DisableForString SText.Text where categorise _ _ = error "unreachable"
-instance TypeError ('Text "String Cannot be aligned with the inside `=` mode") => Categorise DisableForString String where categorise _ _ = error "unreachable"
+instance TypeError ('Text AlignErrorMsg) => Categorise DisableForString LText.Text where categorise _ _ = error "unreachable"
+instance TypeError ('Text AlignErrorMsg) => Categorise DisableForString SText.Text where categorise _ _ = error "unreachable"
+instance TypeError ('Text AlignErrorMsg) => Categorise DisableForString String where categorise _ _ = error "unreachable"
