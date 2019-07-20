@@ -28,12 +28,6 @@ import           Language.Haskell.TH
 
 import Data.Maybe (fromMaybe)
 
-import qualified Data.Text.Lazy as LText
-import qualified Data.Text as SText
-
-import qualified Data.Word as Word
-import qualified Data.Int as Int
-import Numeric.Natural
 import qualified Data.Maybe
 
 import PyF.Internal.PythonSyntax
@@ -44,6 +38,7 @@ import PyF.Formatters (AnyAlign(..))
 import Data.Proxy
 import GHC.TypeLits
 import Data.String
+import PyF.Class
 
 -- Be Careful: empty format string
 -- | Parse a string and return a formatter for it
@@ -195,18 +190,16 @@ formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = f
 class FormatAny i k where
   formatAny :: IsString s => Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> s
 
-instance (FormatAny2 (Classify t) t k) => FormatAny t k where
-  formatAny = formatAny2 (Proxy :: Proxy (Classify t))
+instance (FormatAny2 (PyFClassify t) t k) => FormatAny t k where
+  formatAny = formatAny2 (Proxy :: Proxy (PyFClassify t))
 
-class FormatAny2 (c :: FmtCategory) (i :: *) (k :: Formatters.AlignForString) where
+class FormatAny2 (c :: PyFCategory) (i :: *) (k :: Formatters.AlignForString) where
   formatAny2 :: IsString s => Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> s
 
-data FmtCategory = IntegralC | FractionalC | StringC
-
-instance (Show t, Integral t) => FormatAny2 'IntegralC t k where
+instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
   formatAny2 _ s a p _precision i = formatAnyIntegral Formatters.Decimal s (newPaddingUnQ (paddingKToPadding a)) p i
 
-instance (RealFloat t) => FormatAny2 'FractionalC t k where
+instance (RealFloat t) => FormatAny2 'PyFFractional t k where
   formatAny2 _ s a p precision t = formatAnyFractional Formatters.Generic s (newPaddingUnQ (paddingKToPadding a)) p precision t
 
 newPaddingKForString :: PaddingK 'Formatters.AlignAll -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
@@ -217,41 +210,12 @@ newPaddingKForString padding = case padding of
 
 
 -- TODO: _s(ign) and _grouping should trigger errors
-instance (Stringable t) => FormatAny2 'StringC t 'Formatters.AlignAll where
+instance (PyFToString t) => FormatAny2 'PyFString t 'Formatters.AlignAll where
   formatAny2 _ _s a _grouping precision t = fromString $ Formatters.formatString (newPaddingKForString a) precision (toString t)
 
-instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'StringC t 'Formatters.AlignNumber where
+instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'PyFString t 'Formatters.AlignNumber where
   formatAny2 = error "Unreachable"
 
-class Stringable t where
-  toString :: t -> String
-
-instance Stringable String where toString = id
-
-instance Stringable LText.Text where toString = LText.unpack
-instance Stringable SText.Text where toString = SText.unpack
-
 type family ToFmt t where
-  ToFmt 'IntegralC = 'Formatters.Integral
-  ToFmt 'FractionalC = 'Formatters.Fractional
-
-type family Classify t where
-  Classify Integer = 'IntegralC
-  Classify Int = 'IntegralC
-  Classify Int.Int8 = 'IntegralC
-  Classify Int.Int16 = 'IntegralC
-  Classify Int.Int32 = 'IntegralC
-  Classify Int.Int64 = 'IntegralC
-  Classify Natural = 'IntegralC
-  Classify Word = 'IntegralC
-  Classify Word.Word8 = 'IntegralC
-  Classify Word.Word16 = 'IntegralC
-  Classify Word.Word32 = 'IntegralC
-  Classify Word.Word64 = 'IntegralC
-
-  Classify Float = 'FractionalC
-  Classify Double = 'FractionalC
-
-  Classify String = 'StringC
-  Classify LText.Text = 'StringC
-  Classify SText.Text = 'StringC
+  ToFmt 'PyFIntegral = 'Formatters.Integral
+  ToFmt 'PyFFractional = 'Formatters.Fractional

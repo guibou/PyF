@@ -1,15 +1,15 @@
 
 INITIALPATH:7:20: error:
-    • Ambiguous type variable ‘t0’ arising from a use of ‘PyF.Internal.QQ.toString’
-      prevents the constraint ‘(PyF.Internal.QQ.Stringable t0)’ from being solved.
+    • Ambiguous type variable ‘t0’ arising from a use of ‘toString’
+      prevents the constraint ‘(PyFToString t0)’ from being solved.
       Probable fix: use a type annotation to specify what ‘t0’ should be.
       These potential instances exist:
-        instance PyF.Internal.QQ.Stringable String -- Defined in ‘PyF.Internal.QQ’
+        instance [safe] PyFToString String -- Defined in ‘PyF.Class’
         ...plus two instances involving out-of-scope types
         (use -fprint-potential-instances to see them all)
-    • In the second argument of ‘(.)’, namely ‘PyF.Internal.QQ.toString’
-      In the expression: (PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString
-      In the first argument of ‘putStrLn’, namely ‘(((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString) (truncate number))’
+    • In the second argument of ‘(.)’, namely ‘toString’
+      In the expression: (PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . toString
+      In the first argument of ‘putStrLn’, namely ‘(((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . toString) (truncate number))’
   |
 7 | main = putStrLn [f|{truncate number:s}|]
   |                    ^^^^^^^^^^^^^^^^^^^^^

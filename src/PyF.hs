@@ -7,15 +7,17 @@ module PyF
   ( f
    -- * With custom delimiters
   , fWithDelimiters
+  , module PyF.Class
   )
 where
 
 import           Language.Haskell.TH.Quote (QuasiQuoter(..))
-import qualified PyF.Internal.QQ as QQ
+import PyF.Internal.QQ (toExp)
+import PyF.Class
 
 templateF :: (Char, Char) -> String -> QuasiQuoter
 templateF delimiters fName = QuasiQuoter {
-    quoteExp = \s -> (QQ.toExp delimiters s)
+    quoteExp = \s -> (toExp delimiters s)
   , quotePat = err "pattern"
   , quoteType = err "type"
   , quoteDec = err "declaration"

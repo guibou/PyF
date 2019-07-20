@@ -150,6 +150,18 @@ For example:
 "hello 3.14"
 ```
 
+# Custom types
+
+PyF can format three categories of input types:
+
+- Floating. Using the `f`, `g`, `e`, ... type specifiers. Any type instance of `RealFloat` can be formated as such.
+- Integral. Using the `d`, `b`, `x`, `o`, ... type specifiers. Any type instance of `Integral` can be formated as such.
+- String. Using the `s` type specifier. Any type instance of `PyFToString` can be formated as such.
+
+See `PyF.Class` if you want to create new instances for the `PyFToString` class.
+
+By default, if you do not provide any type specifier, PyF uses the `PyFClassify` type class to decide if your type must be formated as a Floating, Integral or String.
+
 # Caveats
 
 ## Type inference
@@ -259,7 +271,7 @@ The implementation is unit-tested against the reference python implementation (p
 
 - Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator. There is no plan to support that because of the impure interface needed to read the locale.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too. However should we accept `String` parameter (such as `<`), with a possible runtime error, or should we use the `ADT` such as `AlignRight`?
-- Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones, hdece in to plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
+- Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones, I don't have a plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
 - Python support adding custom formatters for new types, such as date. This may be really cool, for example `[f|{today:%Y-%M-%D}`. I don't know how to support that now.
 
 ### Difference
@@ -277,15 +289,6 @@ nix-shell # Optional, if you use nix
 cabal new-build
 cabal new-test
 ```
-
-# TODO
-
-- Improve the error reporting with more Parsec annotation
-- Improve the parser for sub-expression (handle the `:` and `}` cases if possible).
-- Allow extension to others type / custom formatters (for date for example)
-- Improve code quality. This code is really ugly, but there is a really strong test suite so, well.
-- Work on performance, do we really care? For now, everything is internally done with `String`.
-- Directly expose the formatter to be used as a template haskell splice
 
 # Library note
 

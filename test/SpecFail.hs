@@ -212,3 +212,9 @@ spec = do
       mapM_ fileFailCompile [
         "test/failureCases/bug18.hs"
         ]
+
+    describe "Wrong type" $ do
+      failCompile "{True:s}"
+      failCompile "{True}"
+      failCompile "{True:f}"
+      failCompile "{True:d}"
