@@ -134,8 +134,7 @@ spec = do
         failCompile "{hello:=100s}"
         failCompile "{hello:=100}"
 
-      -- XXX: this are not failing for now, it should be fixed
-      xdescribe "grouping" $ do
+      describe "grouping" $ do
         failCompile "{hello:_s}"
         failCompile "{hello:,s}"
 

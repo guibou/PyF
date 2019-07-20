@@ -205,21 +205,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 ...
 ```
 
-- There is also one class of error related to alignement which can be triggered, when using alignement inside sign (i.e. `=`) with string. This can fail in two flavors:
-
-```haskell
->>> [f|{"hello":=10s}|]
-
-<interactive>:88:1: error:
-    • Exception when trying to run compile-time code:
-        String Cannot be aligned with the inside `=` mode
-CallStack (from HasCallStack):
-  error, called at src/PyF/Internal/QQ.hs:143:18 in PyF-0.4.0.0-inplace:PyF.Internal.QQ
-      Code: quoteExp f "{\"hello\":=10s}"
-    • In the quasi-quotation: [f|{"hello":=10s}|]
-```
-
-And
+- There is also one class of error related to alignement which can be triggered, when using alignement inside sign (i.e. `=`) with string:
 
 ```haskell
 *PyF PyF.Internal.QQ> [f|{"hello":=10}|]
