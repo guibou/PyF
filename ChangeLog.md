@@ -1,5 +1,8 @@
 # Revision history for PyF
 
+- PyF now uses `Data.String.IsString t` as its output type. It means that it behaves as a string literal as if the `OverloadedStrings` was enabled. This also works that PyF can outputs any standard string.
+- A caveat of the previous change is that PyF does not have instances for `IO` anymore.
+
 ### bugfixes and general improvements
 
 - An important amount of bugfixs

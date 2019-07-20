@@ -1,5 +1,5 @@
 
-INITIALPATH:7:11: error:
+INITIALPATH:7:20: error:
     • INITIALPATH:10:5:
    |
 10 | {pi:l}|]
@@ -12,5 +12,5 @@ expecting '#', '%', '+', '-', '.', '0', 'E', 'F', 'G', 'X', 'b', 'c', 'd', 'e', 
 
 {pi:l}|]
   |
-7 | main = [f|hello
-  |           ^^^^^...
+7 | main = putStrLn [f|hello
+  |                    ^^^^^...

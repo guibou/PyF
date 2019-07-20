@@ -14,7 +14,7 @@
 
 {- | This module uses the python mini language detailed in
 'PyF.Internal.PythonSyntax' to build an template haskell expression
-representing a formatted string ('String', 'LText.Text', 'SText.Text' or 'Builder.Builder').
+representing a formatted string.
 
 -}
 module PyF.Internal.QQ (
@@ -27,8 +27,6 @@ import Text.Megaparsec
 import           Language.Haskell.TH
 
 import Data.Maybe (fromMaybe)
-
-import qualified Data.Text.Lazy.Builder as Builder
 
 import qualified Data.Text.Lazy as LText
 import qualified Data.Text as SText
@@ -45,6 +43,7 @@ import qualified PyF.Formatters as Formatters
 import PyF.Formatters (AnyAlign(..))
 import Data.Proxy
 import GHC.TypeLits
+import Data.String
 
 -- Be Careful: empty format string
 -- | Parse a string and return a formatter for it
@@ -53,12 +52,13 @@ toExp delimiters s = do
   filename <- loc_filename <$> location
 
   exts <- Data.Maybe.mapMaybe thExtToMetaExt <$> extsEnabled
+  wrapString <- wrapOverloadedStrings
 
   case parse (parseGenericFormatString exts delimiters) filename s of
     Left err -> do
       err' <- overrideErrorForFile filename err
       fail (errorBundlePretty err')
-    Right items -> goFormat items
+    Right items -> goFormat wrapString items
 
 -- Megaparsec displays error relative to what they parsed
 -- However the formatting string is part of a more complex file and we
@@ -92,20 +92,30 @@ overrideErrorForFile filename err = do
 toExpPython :: String -> Q Exp
 toExpPython = toExp ('{', '}')
 
-goFormat :: [Item] -> Q Exp
-goFormat [] = [| "" |]
-goFormat items = foldl1 fofo <$> (mapM toFormat items)
+-- | Detect if overloaded string is enabled
+--   And returns a wrapping function which wraps literal strings inside
+--   'fromString' if @OverloadedStrings@ is not enabled.
+wrapOverloadedStrings :: Q (String -> Q Exp)
+wrapOverloadedStrings = do
+  thExtsEnabled <- extsEnabled
+  if OverloadedStrings `elem` thExtsEnabled
+    then pure $ \s -> [| s |]
+    else pure $ \s -> [| fromString s |]
+
+goFormat :: (String -> Q Exp) -> [Item] -> Q Exp
+goFormat wrapString [] = wrapString ""
+goFormat wrapString items = foldl1 fofo <$> (mapM (toFormat wrapString) items)
 
 fofo :: Exp -> Exp -> Exp
 fofo s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 -- Real formatting is here
 
-toFormat :: Item -> Q Exp
-toFormat (Raw x) = [| Builder.fromString x |]
-toFormat (Replacement expr y) = do
+toFormat :: (String -> Q Exp) -> Item -> Q Exp
+toFormat wrapString (Raw x) = wrapString x
+toFormat _ (Replacement expr y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
-  pure (VarE 'Builder.fromString `AppE` (formatExpr `AppE` expr))
+  pure (formatExpr `AppE` expr)
 
 changePrec :: Precision -> Q Exp
 changePrec PrecisionDefault = [| Just 6 |]
@@ -174,22 +184,22 @@ paddingKToPadding p = case p of
   PaddingK i Nothing -> Padding i Nothing
   PaddingK i (Just (c, a)) -> Padding i (Just (c, AnyAlign a))
 
-formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
-formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i
-formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = Formatters.formatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
+formatAnyIntegral :: (Show i, Integral i, IsString s) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> s
+formatAnyIntegral f s Nothing grouping i = fromString $ Formatters.formatIntegral f s Nothing grouping i
+formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = fromString $ Formatters.formatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
 
-formatAnyFractional :: (RealFloat i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
-formatAnyFractional f s Nothing grouping p i = Formatters.formatFractional f s Nothing grouping p i
-formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
+formatAnyFractional :: (RealFloat i, IsString s) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> s
+formatAnyFractional f s Nothing grouping p i = fromString $ Formatters.formatFractional f s Nothing grouping p i
+formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = fromString $ Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
 
 class FormatAny i k where
-  formatAny :: Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
+  formatAny :: IsString s => Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> s
 
 instance (FormatAny2 (Classify t) t k) => FormatAny t k where
   formatAny = formatAny2 (Proxy :: Proxy (Classify t))
 
 class FormatAny2 (c :: FmtCategory) (i :: *) (k :: Formatters.AlignForString) where
-  formatAny2 :: Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
+  formatAny2 :: IsString s => Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> s
 
 data FmtCategory = IntegralC | FractionalC | StringC
 
@@ -208,7 +218,7 @@ newPaddingKForString padding = case padding of
 
 -- TODO: _s(ign) and _grouping should trigger errors
 instance (Stringable t) => FormatAny2 'StringC t 'Formatters.AlignAll where
-  formatAny2 _ _s a _grouping precision t = Formatters.formatString (newPaddingKForString a) precision (toString t)
+  formatAny2 _ _s a _grouping precision t = fromString $ Formatters.formatString (newPaddingKForString a) precision (toString t)
 
 instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'StringC t 'Formatters.AlignNumber where
   formatAny2 = error "Unreachable"

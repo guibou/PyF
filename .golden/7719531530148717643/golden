@@ -1,12 +1,12 @@
 
-INITIALPATH:7:11: error:
-    • INITIALPATH:7:30:
+INITIALPATH:7:20: error:
+    • INITIALPATH:7:39:
   |
-7 | main = [f|{truncate number:.3d}|]
-  |                              ^
+7 | main = putStrLn [f|{truncate number:.3d}|]
+  |                                       ^
 Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.
 
     • In the quasi-quotation: [f|{truncate number:.3d}|]
   |
-7 | main = [f|{truncate number:.3d}|]
-  |           ^^^^^^^^^^^^^^^^^^^^^^^
+7 | main = putStrLn [f|{truncate number:.3d}|]
+  |                    ^^^^^^^^^^^^^^^^^^^^^^^

@@ -141,7 +141,7 @@ Will returns `-a\n-b`. Note how the first and last line breaks are ignored.
 
 # Output type
 
-*PyF* main entry point `f` is polymorphic and can represents `Text`, lazy `Text`, `String`, lazy text `Builder` or `IO` operations. Most of the time, type inference will do the right thing for you, but you may need to add type annotations.
+*PyF* main entry point `f` is polymorphic and can represents any type of string, it uses the [`IsString`](http://hackage.haskell.org/package/base/docs/Data-String.html#t:IsString) interface. Most of the time, type inference will do the right thing for you, but you may need to add type annotations.
 
 For example:
 
@@ -149,9 +149,6 @@ For example:
 >>> [f|hello {pi.2}|] :: String
 "hello 3.14"
 ```
-
-Note: it works in ghci without any type annotation if the extensions
-`OverloadedStrings` and `ExtendedDefaultRules` are enabled.
 
 # Caveats
 

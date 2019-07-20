@@ -1,9 +1,9 @@
 
-INITIALPATH:7:11: error:
+INITIALPATH:7:20: error:
     • No instance for (PyF.Internal.QQ.Stringable Float) arising from a use of ‘PyF.Internal.QQ.toString’
     • In the second argument of ‘(.)’, namely ‘PyF.Internal.QQ.toString’
       In the expression: (PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString
-      In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely ‘(((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString) number)’
+      In the first argument of ‘putStrLn’, namely ‘(((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . PyF.Internal.QQ.toString) number)’
   |
-7 | main = [f|{number:s}|]
-  |           ^^^^^^^^^^^^
+7 | main = putStrLn [f|{number:s}|]
+  |                    ^^^^^^^^^^^^

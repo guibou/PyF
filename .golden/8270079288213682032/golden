@@ -1,9 +1,9 @@
 
-INITIALPATH:7:11: error:
+INITIALPATH:7:20: error:
     • String type is incompatible with inside padding (=).
-    • In the first argument of ‘Data.Text.Internal.Builder.fromString’, namely ‘(((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) ((PyF.Internal.QQ.PaddingK 100) (Just (Nothing, PyF.Formatters.AlignInside)))) Nothing) Nothing) hello)’
-      In the first argument of ‘PyF.magicFormat’, namely ‘(Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) ((PyF.Internal.QQ.PaddingK 100) (Just (Nothing, PyF.Formatters.AlignInside)))) Nothing) Nothing) hello))’
-      In the expression: (PyF.magicFormat (Data.Text.Internal.Builder.fromString (((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) ((PyF.Internal.QQ.PaddingK 100) (Just (Nothing, PyF.Formatters.AlignInside)))) Nothing) Nothing) hello)))
+    • In the first argument of ‘putStrLn’, namely ‘(((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) ((PyF.Internal.QQ.PaddingK 100) (Just (Nothing, PyF.Formatters.AlignInside)))) Nothing) Nothing) hello)’
+      In the expression: putStrLn (((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) ((PyF.Internal.QQ.PaddingK 100) (Just (Nothing, PyF.Formatters.AlignInside)))) Nothing) Nothing) hello)
+      In an equation for ‘main’: main = putStrLn (((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) ((PyF.Internal.QQ.PaddingK 100) (Just (Nothing, PyF.Formatters.AlignInside)))) Nothing) Nothing) hello)
   |
-7 | main = [f|{hello:=100}|]
-  |           ^^^^^^^^^^^^^^
+7 | main = putStrLn [f|{hello:=100}|]
+  |                    ^^^^^^^^^^^^^^

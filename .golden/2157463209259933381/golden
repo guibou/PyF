@@ -1,12 +1,12 @@
 
-INITIALPATH:7:11: error:
-    • INITIALPATH:7:14:
+INITIALPATH:7:20: error:
+    • INITIALPATH:7:23:
   |
-7 | main = [f|foo\Pbar|]
-  |              ^
+7 | main = putStrLn [f|foo\Pbar|]
+  |                       ^
 lexical error in literal section
 
     • In the quasi-quotation: [f|foo\Pbar|]
   |
-7 | main = [f|foo\Pbar|]
-  |           ^^^^^^^^^^
+7 | main = putStrLn [f|foo\Pbar|]
+  |                    ^^^^^^^^^^
