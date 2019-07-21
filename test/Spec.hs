@@ -39,7 +39,7 @@ data FooDefault = FooDefault
 instance PyFToString FooDefault
 
 instance PyFToString Foo where
-  toString Foo = "I'm a Foo"
+  pyfToString Foo = "I'm a Foo"
 
 type instance PyFClassify Foo = 'PyFString
 type instance PyFClassify FooFloating = 'PyFFractional

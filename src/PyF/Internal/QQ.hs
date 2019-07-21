@@ -149,7 +149,7 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
 
   -- Default / String
   DefaultF prec s -> [| formatAny s $(paddingToPaddingK padding) $(toGrp grouping 3) $(changePrec' prec) |]
-  StringF prec -> [| Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(changePrec' prec) . toString |]
+  StringF prec -> [| Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(changePrec' prec) . pyfToString |]
 
 newPaddingQ :: Padding -> Q Exp
 newPaddingQ pad = [| pad' |]
@@ -211,7 +211,7 @@ newPaddingKForString padding = case padding of
 
 -- TODO: _s(ign) and _grouping should trigger errors
 instance (PyFToString t) => FormatAny2 'PyFString t 'Formatters.AlignAll where
-  formatAny2 _ _s a _grouping precision t = fromString $ Formatters.formatString (newPaddingKForString a) precision (toString t)
+  formatAny2 _ _s a _grouping precision t = fromString $ Formatters.formatString (newPaddingKForString a) precision (pyfToString t)
 
 instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'PyFString t 'Formatters.AlignNumber where
   formatAny2 = error "Unreachable"

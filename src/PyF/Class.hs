@@ -49,10 +49,10 @@ type instance PyFClassify SText.Text = 'PyFString
 -- | Convert a type to string
 --   The default implementation uses `Show`
 class PyFToString t where
-  toString :: t -> String
-  default toString :: Show t => t -> String
-  toString = show
+  pyfToString :: t -> String
+  default pyfToString :: Show t => t -> String
+  pyfToString = show
 
-instance PyFToString String where toString = id
-instance PyFToString LText.Text where toString = LText.unpack
-instance PyFToString SText.Text where toString = SText.unpack
+instance PyFToString String where pyfToString = id
+instance PyFToString LText.Text where pyfToString = LText.unpack
+instance PyFToString SText.Text where pyfToString = SText.unpack
