@@ -94,7 +94,9 @@ wrapOverloadedStrings :: Q (String -> Q Exp)
 wrapOverloadedStrings = do
   thExtsEnabled <- extsEnabled
   if OverloadedStrings `elem` thExtsEnabled
-    then pure $ \s -> [| s |]
+    -- NOTE: we cannot use [| s |] because empty string is lifted as
+    -- [], which breaks OverloadedStrings
+    then pure $ \s -> pure $ LitE (StringL s)
     else pure $ \s -> [| fromString s |]
 
 goFormat :: (String -> Q Exp) -> [Item] -> Q Exp

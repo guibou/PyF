@@ -14,6 +14,7 @@ import Test.Hspec
 import PyF
 import SpecUtils
 import SpecCustomDelimiters
+import Data.Text
 
 {-
    - Normal tests are done using the recommanded API: [f|.....|]
@@ -255,6 +256,16 @@ yeah\
 - b
 \
 |] `shouldBe` "\\\n- a\n- b\n"
+
+  describe "empty trailing value" $ do
+    it "Text" $ do
+      ([f|\
+{pi:.0}
+|] :: Text) `shouldBe` "3\n"
+    it "String" $ do
+      ([f|\
+{pi:.0}
+|] :: String) `shouldBe` "3\n"
 
   describe "language extensions" $ do
      it "parses @Int" $ do
