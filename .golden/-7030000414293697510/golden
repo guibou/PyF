@@ -1,9 +1,9 @@
 
-INITIALPATH:7:20: error:
+INITIALPATH:7:22: error:
     • No instance for (Integral Bool) arising from a use of ‘PyF.Internal.QQ.formatAnyIntegral’
     • In the first argument of ‘putStrLn’, namely ‘(((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Decimal) PyF.Formatters.Minus) Nothing) Nothing) True)’
       In the expression: putStrLn (((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Decimal) PyF.Formatters.Minus) Nothing) Nothing) True)
       In an equation for ‘main’: main = putStrLn (((((PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Decimal) PyF.Formatters.Minus) Nothing) Nothing) True)
   |
-7 | main = putStrLn [f|{True:d}|]
-  |                    ^^^^^^^^^^
+7 | main = putStrLn [fmt|{True:d}|]
+  |                      ^^^^^^^^^^

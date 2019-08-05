@@ -1,12 +1,12 @@
 
-INITIALPATH:7:20: error:
-    • INITIALPATH:7:27:
+INITIALPATH:7:22: error:
+    • INITIALPATH:7:29:
   |
-7 | main = putStrLn [f|{1 + - / lalalal}|]
-  |                           ^
+7 | main = putStrLn [fmt|{1 + - / lalalal}|]
+  |                             ^
 Parse error: /
 
-    • In the quasi-quotation: [f|{1 + - / lalalal}|]
+    • In the quasi-quotation: [fmt|{1 + - / lalalal}|]
   |
-7 | main = putStrLn [f|{1 + - / lalalal}|]
-  |                    ^^^^^^^^^^^^^^^^^^^
+7 | main = putStrLn [fmt|{1 + - / lalalal}|]
+  |                      ^^^^^^^^^^^^^^^^^^^

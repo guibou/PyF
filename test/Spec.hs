@@ -15,7 +15,7 @@ import SpecCustomDelimiters
 import Data.Text
 
 {-
-   - Normal tests are done using the recommanded API: [f|.....|]
+   - Normal tests are done using the recommanded API: [fmt|.....|]
    - Test with $(checkExample formatString result) are checked against the python reference implementation. Result is provided as documentation.
    - Test with $(checkExampleDiff formatString result) are not checked against the python reference implementation. This is known (and documented) differences.
    - Test with $(check formatString) are only tested against the python reference implementation.
@@ -52,9 +52,9 @@ spec = do
       anInt = 123
       aFloat = 0.234
       aString = "hello"
-    it "int" $ [f|{anInt}|] `shouldBe` "123"
-    it "float" $ [f|{aFloat}|] `shouldBe` "0.234"
-    it "string" $ [f|{aString}|] `shouldBe` "hello"
+    it "int" $ [fmt|{anInt}|] `shouldBe` "123"
+    it "float" $ [fmt|{aFloat}|] `shouldBe` "0.234"
+    it "string" $ [fmt|{aString}|] `shouldBe` "hello"
   describe "only expression" $ do
     describe "default" $ do
       it "int" $(checkExample "{123}" "123")
@@ -201,7 +201,7 @@ spec = do
         age = 31
         euroToFrancs = 6.55957
       in
-        [f|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
+        [fmt|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
 
 
   describe "error reporting" $ do
@@ -209,14 +209,14 @@ spec = do
 
   describe "sub expressions" $ do
     it "works" $ do
-      [f|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
+      [fmt|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
 
   describe "escape strings" $ do
     it "works" $ do
-      [f|hello \n\b|] `shouldBe` "hello \n\b"
+      [fmt|hello \n\b|] `shouldBe` "hello \n\b"
 
   it "escape chars" $ do
-     [f|}}{{}}{{|] `shouldBe` "}{}{"
+     [fmt|}}{{}}{{|] `shouldBe` "}{}{"
 
   describe "custom delimiters" $ do
     it "works" $ do
@@ -226,22 +226,22 @@ spec = do
 
   describe "empty line" $ do
     it "works" $ do
-      [f||] `shouldBe` ""
+      [fmt||] `shouldBe` ""
 
   describe "multi line escape" $ do
     it "works" $ do
-      [f|\
+      [fmt|\
 - a
 - b
 \
 |] `shouldBe` "- a\n- b\n"
 
     it "escapes in middle of line" $ do
-      [f|Example goes \
+      [fmt|Example goes \
 here!|] `shouldBe` "Example goes here!"
 
     it "escapes a lot of things" $ do
-      [f|\
+      [fmt|\
 I'm a line with \n and \\ and a correct line
 ending, but that one is escaped\
 And I'm escaping before and after: \\{pi:.3f}\\
@@ -249,7 +249,7 @@ yeah\
 |] `shouldBe` "I'm a line with \n and \\ and a correct line\nending, but that one is escapedAnd I'm escaping before and after: \\3.142\\\nyeah"
 
     it "escapes" $ do
-      [f|\\
+      [fmt|\\
 - a
 - b
 \
@@ -257,27 +257,27 @@ yeah\
 
   describe "empty trailing value" $ do
     it "String" $ do
-      ([f|\
+      ([fmt|\
 {pi:.0}
 |] :: String) `shouldBe` "3\n"
 
   describe "language extensions" $ do
      it "parses @Int" $ do
-       [f|hello {show @Int 10}|] `shouldBe` "hello 10"
+       [fmt|hello {show @Int 10}|] `shouldBe` "hello 10"
      it "parses BinaryLiterals" $ do
-       [f|hello {0b1111}|] `shouldBe` "hello 15"
+       [fmt|hello {0b1111}|] `shouldBe` "hello 15"
 
 
   describe "custom types" $ do
       it "works with integral" $ do
-        [f|{FooIntegral 10:d}|] `shouldBe` "10"
+        [fmt|{FooIntegral 10:d}|] `shouldBe` "10"
       it "works with floating" $ do
-        [f|{FooFloating 25.123:f}|] `shouldBe` "25.123000"
+        [fmt|{FooFloating 25.123:f}|] `shouldBe` "25.123000"
       it "works with string" $ do
-        [f|{Foo:s}|] `shouldBe` "I'm a Foo"
-        [f|{FooDefault:s}|] `shouldBe` "FooDefault"
+        [fmt|{Foo:s}|] `shouldBe` "I'm a Foo"
+        [fmt|{FooDefault:s}|] `shouldBe` "FooDefault"
       it "works with classify" $ do
-        [f|{Foo}|] `shouldBe` "I'm a Foo"
-        [f|{FooIntegral 100}|] `shouldBe` "100"
-        [f|{FooFloating 100.123}|] `shouldBe` "100.123"
-        [f|{FooDefault}|] `shouldBe` "FooDefault"
+        [fmt|{Foo}|] `shouldBe` "I'm a Foo"
+        [fmt|{FooIntegral 100}|] `shouldBe` "100"
+        [fmt|{FooFloating 100.123}|] `shouldBe` "100.123"
+        [fmt|{FooDefault}|] `shouldBe` "FooDefault"

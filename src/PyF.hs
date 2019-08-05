@@ -4,9 +4,9 @@
 {- | A lot of quasiquoters to format and interpolate string expression
 -}
 module PyF
-  ( f
+  ( fmt
    -- * With custom delimiters
-  , fWithDelimiters
+  , fmtWithDelimiters
   , module PyF.Class
   )
 where
@@ -27,11 +27,11 @@ templateF delimiters fName = QuasiQuoter {
 
 -- | Generic formatter, can format an expression to any @t@ as long as
 --   @t@ is an instance of 'IsString'.
-f :: QuasiQuoter
-f = templateF pythonDelimiters "f"
+fmt :: QuasiQuoter
+fmt = templateF pythonDelimiters "fmt"
 
-fWithDelimiters :: (Char, Char) -> QuasiQuoter
-fWithDelimiters delimiters = templateF delimiters "fWithDelimiters"
+fmtWithDelimiters :: (Char, Char) -> QuasiQuoter
+fmtWithDelimiters delimiters = templateF delimiters "fmtWithDelimiters"
 
 pythonDelimiters :: (Char, Char)
 pythonDelimiters = ('{', '}')

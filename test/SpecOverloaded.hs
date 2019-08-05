@@ -15,8 +15,8 @@ spec :: Spec
 spec = do
   describe "Test formatting with different types" $ do
     it "String" $ do
-      [f|hello {10:d}|] `shouldBe` ("hello 10" :: String)
+      [fmt|hello {10:d}|] `shouldBe` ("hello 10" :: String)
     it "Text" $ do
-      [f|hello {10:d}|] `shouldBe` ("hello 10" :: Text)
+      [fmt|hello {10:d}|] `shouldBe` ("hello 10" :: Text)
     it "ByteString" $ do
-      [f|hello {10:d}|] `shouldBe` ("hello 10" :: ByteString)
+      [fmt|hello {10:d}|] `shouldBe` ("hello 10" :: ByteString)

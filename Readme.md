@@ -14,7 +14,7 @@
 >>> name = "Dave"
 >>> age = 54
 
->>> [f|Person's name is {name}, age is {age:x}|]
+>>> [fmt|Person's name is {name}, age is {age:x}|]
 "Person's name is Dave, age is 36"
 ```
 
@@ -39,25 +39,25 @@ Left `<` / Right `>` / Around `^` padding:
 
 ```haskell
 >>> name = "Guillaume"
->>> [f|{name:<11}|]
+>>> [fmt|{name:<11}|]
 "Guillaume  "
->>> [f|{name:>11}|]
+>>> [fmt|{name:>11}|]
 "  Guillaume"
->>> [f|{name:|^13}|]
+>>> [fmt|{name:|^13}|]
 "||Guillaume||"
 ```
 
 Padding inside `=` the sign:
 
 ```haskell
->>> [f|{-pi:=10.3}|]
+>>> [fmt|{-pi:=10.3}|]
 "-    3.142"
 ```
 
 ## Float rounding
 
 ```haskell
->>> [f|{pi:.2}|]
+>>> [fmt|{pi:.2}|]
 "3.14"
 ```
 
@@ -65,11 +65,11 @@ Padding inside `=` the sign:
 
 ```haskell
 >>> v = 31
->>> [f|Binary: {v:#b}|]
+>>> [fmt|Binary: {v:#b}|]
 "Binary: 0b11111"
->>> [f|Octal (no prefix): {age:o}|]
+>>> [fmt|Octal (no prefix): {age:o}|]
 "Octal (no prefix): 37"
->>> [f|Hexa (caps and prefix): {age:#X}|]
+>>> [fmt|Hexa (caps and prefix): {age:#X}|]
 "Hexa (caps and prefix): 0x1F"
 ```
 
@@ -78,9 +78,9 @@ Padding inside `=` the sign:
 Using `,` or `_`.
 
 ```haskell
->>> [f|{10 ^ 9 - 1:,}|]
+>>> [fmt|{10 ^ 9 - 1:,}|]
 "999,999,999"
->>> [f|{2 ^ 32  -1:_b}|]
+>>> [fmt|{2 ^ 32  -1:_b}|]
 "1111_1111_1111_1111_1111_1111_1111_1111"
 ```
 
@@ -89,9 +89,9 @@ Using `,` or `_`.
 Using `+` to display the positive sign (if any) or ` ` to display a space instead:
 
 ```haskell
->>> [f|{pi:+.3}|]
+>>> [fmt|{pi:+.3}|]
 "+3.142"
->>> [f|{pi: .3}|]
+>>> [fmt|{pi: .3}|]
 " 3.142"
 ```
 
@@ -109,9 +109,9 @@ Preceding the width with a `0` enables sign-aware zero-padding, this is equivale
 First argument inside the curly braces can be a valid Haskell expression, for example:
 
 ```haskell
->>> [f|2pi = {2* pi:.2}|]
+>>> [fmt|2pi = {2* pi:.2}|]
 6.28
->>> [f|tail "hello" = {tail "hello":->6}|]
+>>> [fmt|tail "hello" = {tail "hello":->6}|]
 "tail \"hello\" = --ello"
 ```
 
@@ -122,7 +122,7 @@ However the expression must not contain `}` or `:` characters.
 Most options can be combined. This generally leads to totally unreadable format string ;)
 
 ```haskell
->>> [f|{pi:~>5.2}|]
+>>> [fmt|{pi:~>5.2}|]
 "~~3.14"
 ```
 
@@ -131,7 +131,7 @@ Most options can be combined. This generally leads to totally unreadable format 
 You can ignore a line break with `\` if needed. For example:
 
 ```haskell
-[f|\
+[fmt|\
 - a
 - b\
 |]
@@ -144,7 +144,7 @@ Will returns `-a\n-b`. Note how the first and last line breaks are ignored.
 *PyF* aims at extending the string literal syntax. As such, it default to `String` type. However, if the `OverloadedString` is enabled, PyF will happilly generate `IsString t => t` instead. This means that you can use PyF to generate `String`, but also `Text` and why not `ByteString`, with all the caveats known to this extension.
 
 ```haskell
->>> [f|hello {pi.2}|] :: String
+>>> [fmt|hello {pi.2}|] :: String
 "hello 3.14"
 ```
 
@@ -168,7 +168,7 @@ Type inference with numeric literals can be unreliable if your variables are too
 
 ```haskell
 >>> v = 10 :: Double
->>> [f|A float: {v}|]
+>>> [fmt|A float: {v}|]
 A float: 10
 ```
 
@@ -183,7 +183,7 @@ However, in PyF, we took great care to provide clear error reporting, this means
 - Any parsing error on the mini language results in a clear indication of the error, for example:
 
 ```haskell
->>> [f|{age:.3d}|]
+>>> [fmt|{age:.3d}|]
 
 <interactive>:77:4: error:
     • <interactive>:1:8:
@@ -196,7 +196,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Error in variable name are also readable:
 
 ```haskell
->>> [f|{toto}|]
+>>> [fmt|{toto}|]
 <interactive>:78:4: error: Variable not in scope: toto
 ```
 
@@ -204,7 +204,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
   too polymorphic), you will get an awful error:
 
 ```haskell
->>*> [f|{True:d}|]
+>>*> [fmt|{True:d}|]
 
 <interactive>:80:10: error:
     • No instance for (Integral Bool)
@@ -215,7 +215,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - There is also one class of error related to alignement which can be triggered, when using alignement inside sign (i.e. `=`) with string:
 
 ```haskell
-*PyF PyF.Internal.QQ> [f|{"hello":=10}|]
+*PyF PyF.Internal.QQ> [fmt|{"hello":=10}|]
 
 <interactive>:89:10: error:
     • String Cannot be aligned with the inside `=` mode
@@ -225,7 +225,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 - Finally, if you make any type error inside the expression field, you are on your own:
 
 ```haskell
->>> [f|{3 + pi + "hello":10}|]
+>>> [fmt|{3 + pi + "hello":10}|]
 
 <interactive>:99:10: error:
     • No instance for (Floating [Char]) arising from a use of ‘pi’
@@ -246,7 +246,7 @@ import Language.Haskell.TH.Quote
 import PyF
 
 myCustomFormatter :: QuasiQuoter
-myCustomFormatter = fWithDelimiters ('@','!')
+myCustomFormatter = fmtWithDelimiters ('@','!')
 ```
 
 Later, in another module:
@@ -270,7 +270,7 @@ The implementation is unit-tested against the reference python implementation (p
 - Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator. There is no plan to support that because of the impure interface needed to read the locale.
 - Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too. However should we accept `String` parameter (such as `<`), with a possible runtime error, or should we use the `ADT` such as `AlignRight`?
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones, I don't have a plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
-- Python support adding custom formatters for new types, such as date. This may be really cool, for example `[f|{today:%Y-%M-%D}`. I don't know how to support that now.
+- Python support adding custom formatters for new types, such as date. This may be really cool, for example `[fmt|{today:%Y-%M-%D}`. I don't know how to support that now.
 
 ### Difference
 
@@ -300,4 +300,3 @@ cabal new-test
 # Conclusion
 
 Don't hesitate to make any suggestion, I'll be more than happy to work on it.
-

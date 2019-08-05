@@ -76,8 +76,8 @@ overrideErrorForFile filename err = do
   let
     -- drop the first lines of the file up to the line containing the quasiquote
     -- then, split in what is before the QQ and what is after.
-    -- e.g.  blablabla [f|hello|] will split to
-    -- "blablabla [f|" and "hello|]"
+    -- e.g.  blablabla [fmt|hello|] will split to
+    -- "blablabla [fmt|" and "hello|]"
     (prefix, postfix) = splitAt (col - 1) $ unlines $ drop (line - 1) (lines fileContent)
 
 

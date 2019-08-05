@@ -24,7 +24,7 @@ data Foo =
 yolo :: Foo
 yolo =
   Foo
-  { fieldB = [f|hello what's up {x}|]
+  { fieldB = [fmt|hello what's up {x}|]
   }
   where
     x :: T.Text

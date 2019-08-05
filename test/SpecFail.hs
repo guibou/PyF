@@ -30,7 +30,7 @@ data CompilationStatus
   deriving (Show, Eq)
 
 makeTemplate :: String -> String
-makeTemplate s = "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}\nimport PyF\ntruncate' = truncate @Float @Int\nhello = \"hello\"\nnumber = 3.14 :: Float\nmain :: IO ()\nmain = putStrLn [f|" ++ s ++ "|]\n"
+makeTemplate s = "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}\nimport PyF\ntruncate' = truncate @Float @Int\nhello = \"hello\"\nnumber = 3.14 :: Float\nmain :: IO ()\nmain = putStrLn [fmt|" ++ s ++ "|]\n"
 
 {- | Compile a formatting string
 

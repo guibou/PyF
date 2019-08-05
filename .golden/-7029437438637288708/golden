@@ -1,9 +1,9 @@
 
-INITIALPATH:7:20: error:
+INITIALPATH:7:22: error:
     • No instance for (RealFloat Bool) arising from a use of ‘PyF.Internal.QQ.formatAnyFractional’
     • In the first argument of ‘putStrLn’, namely ‘((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Fixed) PyF.Formatters.Minus) Nothing) Nothing) (Just 6)) True)’
       In the expression: putStrLn ((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Fixed) PyF.Formatters.Minus) Nothing) Nothing) (Just 6)) True)
       In an equation for ‘main’: main = putStrLn ((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Fixed) PyF.Formatters.Minus) Nothing) Nothing) (Just 6)) True)
   |
-7 | main = putStrLn [f|{True:f}|]
-  |                    ^^^^^^^^^^
+7 | main = putStrLn [fmt|{True:f}|]
+  |                      ^^^^^^^^^^
