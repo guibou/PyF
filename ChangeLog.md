@@ -1,5 +1,6 @@
 # Revision history for PyF
 
+- `f` (and `fWithDelimiters`) were renamed `fmt` (`fmtWithDelimiters`). `f` was causing too much shadowing in any codebase.
 - PyF now longer emit unnecessary default typing.
 - PyF now exposes the typeclass `PyFToString` and `PyFClassify` which can be extended to support any type as input for the formatters.
 - PyF now uses `Data.String.IsString t` as its output type if `OverloadedString` is enabled. It means that it behaves as a real haskell string literal.
