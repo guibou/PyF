@@ -116,11 +116,11 @@ toFormat _ (Replacement expr y) = do
 
 changePrec :: Precision -> Q Exp
 changePrec PrecisionDefault = [| Just 6 |]
-changePrec (Precision n) = [| Just (fromIntegral n) |]
+changePrec (Precision n) = [| Just n |]
 
 changePrec' :: Precision ->  Q Exp
 changePrec' PrecisionDefault = [| Nothing |]
-changePrec' (Precision n) = [| Just (fromIntegral n) |]
+changePrec' (Precision n) = [| Just n |]
 
 toGrp :: Maybe Char -> Int -> Q Exp
 toGrp mb a = [| grp |]
