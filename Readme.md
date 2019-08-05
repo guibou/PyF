@@ -141,9 +141,7 @@ Will returns `-a\n-b`. Note how the first and last line breaks are ignored.
 
 # Output type
 
-*PyF* main entry point `f` is polymorphic and can represents any type of string, it uses the [`IsString`](http://hackage.haskell.org/package/base/docs/Data-String.html#t:IsString) interface. Most of the time, type inference will do the right thing for you, but you may need to add type annotations.
-
-For example:
+*PyF* aims at extending the string literal syntax. As such, it default to `String` type. However, if the `OverloadedString` is enabled, PyF will happilly generate `IsString t => t` instead. This means that you can use PyF to generate `String`, but also `Text` and why not `ByteString`, with all the caveats known to this extension.
 
 ```haskell
 >>> [f|hello {pi.2}|] :: String

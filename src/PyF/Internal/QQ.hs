@@ -37,8 +37,8 @@ import qualified PyF.Formatters as Formatters
 import PyF.Formatters (AnyAlign(..))
 import Data.Proxy
 import GHC.TypeLits
-import Data.String
 import PyF.Class
+import Data.String (fromString)
 
 -- Be Careful: empty format string
 -- | Parse a string and return a formatter for it
@@ -46,14 +46,19 @@ toExp:: (Char, Char) -> String -> Q Exp
 toExp delimiters s = do
   filename <- loc_filename <$> location
 
-  exts <- Data.Maybe.mapMaybe thExtToMetaExt <$> extsEnabled
-  wrapString <- wrapOverloadedStrings
+  thExts <- extsEnabled
+  let exts = Data.Maybe.mapMaybe thExtToMetaExt thExts
+
+  let
+    wrapFromString e = if OverloadedStrings `elem` thExts
+                       then [| fromString $(e) |]
+                       else e
 
   case parse (parseGenericFormatString exts delimiters) filename s of
     Left err -> do
       err' <- overrideErrorForFile filename err
       fail (errorBundlePretty err')
-    Right items -> goFormat wrapString items
+    Right items -> wrapFromString (goFormat items)
 
 -- Megaparsec displays error relative to what they parsed
 -- However the formatting string is part of a more complex file and we
@@ -87,30 +92,24 @@ overrideErrorForFile filename err = do
 toExpPython :: String -> Q Exp
 toExpPython = toExp ('{', '}')
 
--- | Detect if overloaded string is enabled
---   And returns a wrapping function which wraps literal strings inside
---   'fromString' if @OverloadedStrings@ is not enabled.
-wrapOverloadedStrings :: Q (String -> Q Exp)
-wrapOverloadedStrings = do
-  thExtsEnabled <- extsEnabled
-  if OverloadedStrings `elem` thExtsEnabled
-    -- NOTE: we cannot use [| s |] because empty string is lifted as
-    -- [], which breaks OverloadedStrings
-    then pure $ \s -> pure $ LitE (StringL s)
-    else pure $ \s -> [| fromString s |]
+{-
+Note: Empty String Lifting
 
-goFormat :: (String -> Q Exp) -> [Item] -> Q Exp
-goFormat wrapString [] = wrapString ""
-goFormat wrapString items = foldl1 fofo <$> (mapM (toFormat wrapString) items)
+Empty string are lifter as [] instead of "", so I'm using LitE (String L) instead
+-}
+
+goFormat :: [Item] -> Q Exp
+goFormat [] = pure $ LitE (StringL "") -- see [Empty String Lifting]
+goFormat items = foldl1 fofo <$> (mapM toFormat items)
 
 fofo :: Exp -> Exp -> Exp
 fofo s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 -- Real formatting is here
 
-toFormat :: (String -> Q Exp) -> Item -> Q Exp
-toFormat wrapString (Raw x) = wrapString x
-toFormat _ (Replacement expr y) = do
+toFormat :: Item -> Q Exp
+toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
+toFormat (Replacement expr y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
@@ -181,22 +180,22 @@ paddingKToPadding p = case p of
   PaddingK i Nothing -> Padding i Nothing
   PaddingK i (Just (c, a)) -> Padding i (Just (c, AnyAlign a))
 
-formatAnyIntegral :: (Show i, Integral i, IsString s) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> s
-formatAnyIntegral f s Nothing grouping i = fromString $ Formatters.formatIntegral f s Nothing grouping i
-formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = fromString $ Formatters.formatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
+formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
+formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i
+formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = Formatters.formatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
 
-formatAnyFractional :: (RealFloat i, IsString s) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> s
-formatAnyFractional f s Nothing grouping p i = fromString $ Formatters.formatFractional f s Nothing grouping p i
-formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = fromString $ Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
+formatAnyFractional :: (RealFloat i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
+formatAnyFractional f s Nothing grouping p i = Formatters.formatFractional f s Nothing grouping p i
+formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
 
 class FormatAny i k where
-  formatAny :: IsString s => Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> s
+  formatAny :: Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
 
 instance (FormatAny2 (PyFClassify t) t k) => FormatAny t k where
   formatAny = formatAny2 (Proxy :: Proxy (PyFClassify t))
 
 class FormatAny2 (c :: PyFCategory) (i :: *) (k :: Formatters.AlignForString) where
-  formatAny2 :: IsString s => Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> s
+  formatAny2 :: Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
 
 instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
   formatAny2 _ s a p _precision i = formatAnyIntegral Formatters.Decimal s (newPaddingUnQ (paddingKToPadding a)) p i
@@ -213,7 +212,7 @@ newPaddingKForString padding = case padding of
 
 -- TODO: _s(ign) and _grouping should trigger errors
 instance (PyFToString t) => FormatAny2 'PyFString t 'Formatters.AlignAll where
-  formatAny2 _ _s a _grouping precision t = fromString $ Formatters.formatString (newPaddingKForString a) precision (pyfToString t)
+  formatAny2 _ _s a _grouping precision t = Formatters.formatString (newPaddingKForString a) precision (pyfToString t)
 
 instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'PyFString t 'Formatters.AlignNumber where
   formatAny2 = error "Unreachable"
