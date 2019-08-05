@@ -1,5 +1,3 @@
-{-# OPTIONS -Wno-type-defaults #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -261,7 +259,7 @@ yeah\
     it "Text" $ do
       ([f|\
 {pi:.0}
-|] :: Text) `shouldBe` "3\n"
+|] :: Text) `shouldBe` (pack "3\n")
     it "String" $ do
       ([f|\
 {pi:.0}
