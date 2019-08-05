@@ -256,10 +256,6 @@ yeah\
 |] `shouldBe` "\\\n- a\n- b\n"
 
   describe "empty trailing value" $ do
-    it "Text" $ do
-      ([f|\
-{pi:.0}
-|] :: Text) `shouldBe` (pack "3\n")
     it "String" $ do
       ([f|\
 {pi:.0}
