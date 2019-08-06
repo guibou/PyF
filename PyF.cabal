@@ -1,5 +1,5 @@
 name:                PyF
-version:             0.7.3.0
+version:             0.8.0.0
 synopsis: Quasiquotations for a python like interpolated string formater
 description: Quasiquotations for a python like interpolated string formater.
 license:             BSD3

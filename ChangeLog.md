@@ -1,7 +1,8 @@
 # Revision history for PyF
 
+## 0.8.0.0 -- 2019-08-06
+
 - `f` (and `fWithDelimiters`) were renamed `fmt` (`fmtWithDelimiters`). `f` was causing too much shadowing in any codebase.
-- PyF now longer emit unnecessary default typing.
 - PyF now exposes the typeclass `PyFToString` and `PyFClassify` which can be extended to support any type as input for the formatters.
 - PyF now uses `Data.String.IsString t` as its output type if `OverloadedString` is enabled. It means that it behaves as a real haskell string literal.
 - A caveat of the previous change is that PyF does not have instances for `IO` anymore.
@@ -11,6 +12,7 @@
 - An important amount of bugfixs
 - Error reporting for generic formatting (i.e. formatting without a specified type) is now more robust
 - Template haskell splices are simpler. This leads to more efficient / small generated code and in the event of this code appears in a GHC error message, it is more readable.
+- PyF now longer emit unnecessary default typing.
 
 
 ## 0.7.3.0 -- 2019-02-28
