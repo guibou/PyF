@@ -1,5 +1,9 @@
 # Revision history for PyF
 
+## 0.8.0.0 -- 2019-08-27
+
+- Stack support
+
 ## 0.8.0.0 -- 2019-08-06
 
 - `f` (and `fWithDelimiters`) were renamed `fmt` (`fmtWithDelimiters`). `f` was causing too much shadowing in any codebase.
