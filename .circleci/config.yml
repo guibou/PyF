@@ -8,5 +8,8 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Build
+          name: Build (Cabal+nix)
           command: nix-build -A pyf-sdist
+      - run:
+          name: Build (Stack+nix)
+          command: nix-shell -p stack --run 'stack test'
