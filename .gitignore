@@ -3,3 +3,4 @@ dist-newstyle
 .stack-work
 test/golden/*.actual
 result
+stack.yaml.lock
