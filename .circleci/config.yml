@@ -9,4 +9,4 @@ jobs:
       - checkout
       - run:
           name: Build
-          command: nix-build
+          command: nix-build -A pyf-sdist
