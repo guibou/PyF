@@ -19,7 +19,6 @@ import Data.Hashable
 import System.FilePath
 import Control.Exception
 import Control.DeepSeq
-import System.Directory
 
 -- * Check compilation with external GHC (this is usefull to test compilation failure)
 
@@ -73,10 +72,8 @@ sanitize path s =
 golden :: HasCallStack => String -> String -> IO ()
 golden name output = do
   let
-    goldenFile = ".golden" </> name </> "golden"
-    actualFile = ".golden" </> name </> "actual"
-
-  createDirectoryIfMissing True (".golden" </> name)
+    goldenFile = "test/golden" </> (name <> ".golden")
+    actualFile = "test/golden" </> (name <> ".actual")
 
   -- It can fail if the golden file does not exists
   goldenContentE :: Either SomeException String <- try $ readFile goldenFile

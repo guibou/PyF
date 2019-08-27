@@ -1,15 +1,15 @@
+cabal-version:       2.4
 name:                PyF
 version:             0.8.0.0
 synopsis: Quasiquotations for a python like interpolated string formater
 description: Quasiquotations for a python like interpolated string formater.
-license:             BSD3
+license:             BSD-3-Clause
 license-file:        LICENSE
 author:              Guillaume Bouchard
 maintainer:          guillaum.bouchard@gmail.com
 category:            Text
 build-type:          Simple
-extra-source-files:  ChangeLog.md Readme.md
-cabal-version:       >=1.10
+extra-source-files:  ChangeLog.md Readme.md test/failureCases/*.hs test/golden/*.golden
 
 library
   exposed-modules:

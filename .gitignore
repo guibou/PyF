@@ -1,4 +1,5 @@
 dist
 dist-newstyle
 .stack-work
-.golden/*/actual
+test/golden/*.actual
+result
