@@ -1,6 +1,10 @@
 # Revision history for PyF
 
-## 0.8.0.0 -- 2019-08-27
+## 0.8.0.2 -- 2019-08-27
+
+- (minor bugfix in tests): Use python3 instead of "python" to help build on environment with both python2 and python3
+
+## 0.8.0.1 -- 2019-08-27
 
 - Stack support
 

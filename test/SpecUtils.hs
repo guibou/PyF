@@ -27,7 +27,7 @@ For conveniance, it exports a few python symbols, `inf`, `nan` and pi.
 runPythonExample :: String -> IO (Maybe String)
 runPythonExample s = do
   let
-    pythonPath = "python"
+    pythonPath = "python3"
     args = ["-c", "from math import pi;nan = float('NaN');inf = float('inf');print(f\'''" ++ s ++ "''', end='')"]
   (ecode, stdout, _stderr) <- readProcessWithExitCode pythonPath args ""
   pure $ case ecode of
