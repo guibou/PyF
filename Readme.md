@@ -139,6 +139,15 @@ You can ignore a line break with `\` if needed. For example:
 
 Will returns `-a\n-b`. Note how the first and last line breaks are ignored.
 
+## Arbitrary value for precision
+
+The precision field can be any haskell expression instead of a fixed number:
+
+```haskell
+>>> [fmt|{pi:.{1+2}}|]
+3.142
+```
+
 # Output type
 
 *PyF* aims at extending the string literal syntax. As such, it default to `String` type. However, if the `OverloadedString` is enabled, PyF will happilly generate `IsString t => t` instead. This means that you can use PyF to generate `String`, but also `Text` and why not `ByteString`, with all the caveats known to this extension.
@@ -268,7 +277,7 @@ The implementation is unit-tested against the reference python implementation (p
 ### Not supported
 
 - Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator. There is no plan to support that because of the impure interface needed to read the locale.
-- Python support sub variables in the formatting options, such as `{varname:.{precision}}`, we should too. However should we accept `String` parameter (such as `<`), with a possible runtime error, or should we use the `ADT` such as `AlignRight`?
+- Python support sub variables in the formatting options in every places, such as `{expression:.{precision}}`. We only support it for `precision`. This is more complexe to setup for others fields.
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones, I don't have a plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
 - Python support adding custom formatters for new types, such as date. This may be really cool, for example `[fmt|{today:%Y-%M-%D}`. I don't know how to support that now.
 

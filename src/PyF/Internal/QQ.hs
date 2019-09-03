@@ -122,7 +122,9 @@ defaultFloatPrecision = Just 6
 -- | Precision to maybe
 splicePrecision :: Maybe Int -> Precision -> Q Exp
 splicePrecision def PrecisionDefault = [| def |]
-splicePrecision _ (Precision n) = [| Just n |]
+splicePrecision _ (Precision p) = case p of
+  Value n -> [| Just n |]
+  HaskellExpr e -> [| Just $(pure e) |]
 
 toGrp :: Maybe Char -> Int -> Q Exp
 toGrp mb a = [| grp |]

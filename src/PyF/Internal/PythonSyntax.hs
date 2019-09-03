@@ -19,6 +19,7 @@ module PyF.Internal.PythonSyntax
   , pattern DefaultFormatMode
   , Parser
   , ParsingContext(..)
+  , ExprOrValue(..)
   )
 where
 
@@ -155,9 +156,15 @@ data Padding = PaddingDefault
              | Padding Integer (Maybe (Maybe Char, AnyAlign))
              deriving (Show)
 
+-- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
+data ExprOrValue t
+  = Value t
+  | HaskellExpr Exp
+  deriving (Show)
+
 -- | Floating point precision
 data Precision = PrecisionDefault
-               | Precision Integer
+               | Precision (ExprOrValue Integer)
                deriving (Show)
 {-
 
@@ -244,7 +251,7 @@ format_spec = do
 
   grouping <- optional grouping_option
 
-  prec <- option PrecisionDefault (char '.' *> (Precision <$> precision))
+  prec <- option PrecisionDefault parsePrecision
   t <- optional type_
 
   let padding = case w of
@@ -257,6 +264,17 @@ format_spec = do
       Right fmt -> pure (FormatMode padding fmt grouping)
       Left typeError -> do
         lastCharFailed typeError
+
+parsePrecision :: Parser Precision
+parsePrecision = do
+  exts <- enabledExtensions <$> ask
+  (charOpening, charClosing) <- delimiters <$> ask
+
+  _ <- char '.'
+  choice [
+    Precision . Value <$> precision,
+    char charOpening *> (Precision . HaskellExpr <$> evalExpr exts (manyTill anySingle (char charClosing)))
+    ]
 
 evalFlag :: TypeFlag -> Padding -> Maybe Char -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
 evalFlag Flagb _pad _grouping prec alt s = failIfPrec prec (BinaryF alt (defSign s))
@@ -292,7 +310,11 @@ errgGn = "Use one of {'b', 'c', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 's'
 
 failIfPrec :: Precision -> TypeFormat -> Either String TypeFormat
 failIfPrec PrecisionDefault i = Right i
-failIfPrec (Precision i) _ = Left ("Type incompatible with precision (." ++ show i ++ "), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.")
+failIfPrec (Precision e) _ = Left ("Type incompatible with precision (." ++ showExpr ++ "), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.")
+  where
+    showExpr = case e of
+      Value v -> show v
+      HaskellExpr expr -> show expr
 
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i
@@ -366,8 +388,3 @@ type_ = choice [
   FlagX <$ char 'X',
   FlagPercent <$ char '%'
   ]
-
-
-  -- TODO: remove !
-deriving instance Lift Precision
-deriving instance Lift Padding
