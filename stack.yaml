@@ -4,5 +4,6 @@ packages:
 - .
 
 nix:
-  enable: true
+  # Not enabled by default. It will be on nixos, but not on CI
+  enable: false
   packages: [ python3 ]
