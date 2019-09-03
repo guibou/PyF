@@ -29,6 +29,7 @@ import           Language.Haskell.TH
 import Data.Maybe (fromMaybe)
 
 import qualified Data.Maybe
+import Control.Monad.Reader
 
 import PyF.Internal.PythonSyntax
 import PyF.Internal.Extensions
@@ -43,7 +44,7 @@ import Data.String (fromString)
 -- Be Careful: empty format string
 -- | Parse a string and return a formatter for it
 toExp:: (Char, Char) -> String -> Q Exp
-toExp delimiters s = do
+toExp expressionDelimiters s = do
   filename <- loc_filename <$> location
 
   thExts <- extsEnabled
@@ -54,7 +55,8 @@ toExp delimiters s = do
                        then [| fromString $(e) |]
                        else e
 
-  case parse (parseGenericFormatString exts delimiters) filename s of
+  let context = ParsingContext expressionDelimiters exts
+  case runReader (runParserT parseGenericFormatString filename s) context of
     Left err -> do
       err' <- overrideErrorForFile filename err
       fail (errorBundlePretty err')
@@ -113,13 +115,16 @@ toFormat (Replacement expr y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
-changePrec :: Precision -> Q Exp
-changePrec PrecisionDefault = [| Just 6 |]
-changePrec (Precision n) = [| Just n |]
+-- | Default precision for floating point
+defaultFloatPrecision :: Maybe Int
+defaultFloatPrecision = Just 6
 
-changePrec' :: Precision ->  Q Exp
-changePrec' PrecisionDefault = [| Nothing |]
-changePrec' (Precision n) = [| Just n |]
+-- | Precision to maybe
+splicePrecision :: Maybe Int -> Precision -> Q Exp
+splicePrecision def PrecisionDefault = [| def |]
+splicePrecision _ (Precision p) = case p of
+  Value n -> [| Just n |]
+  HaskellExpr e -> [| Just $(pure e) |]
 
 toGrp :: Maybe Char -> Int -> Q Exp
 toGrp mb a = [| grp |]
@@ -140,17 +145,17 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
   HexCapsF alt s -> [| formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s $(newPaddingQ padding) $(toGrp grouping 4) |]
 
   -- Floating
-  ExponentialF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Exponent) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
-  ExponentialCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
-  GeneralF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Generic) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
-  GeneralCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
-  FixedF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Fixed) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
-  FixedCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
-  PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s $(newPaddingQ padding) $(toGrp grouping 3) $(changePrec prec) |]
+  ExponentialF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Exponent) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
+  ExponentialCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
+  GeneralF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Generic) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
+  GeneralCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
+  FixedF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Fixed) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
+  FixedCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
+  PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
 
   -- Default / String
-  DefaultF prec s -> [| formatAny s $(paddingToPaddingK padding) $(toGrp grouping 3) $(changePrec' prec) |]
-  StringF prec -> [| Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(changePrec' prec) . pyfToString |]
+  DefaultF prec s -> [| formatAny s $(paddingToPaddingK padding) $(toGrp grouping 3) $(splicePrecision Nothing prec) |]
+  StringF prec -> [| Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(splicePrecision Nothing prec) . pyfToString |]
 
 newPaddingQ :: Padding -> Q Exp
 newPaddingQ pad = [| pad' |]

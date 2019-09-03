@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+- Precision can now be any arbitrary haskell expression, such as `[fmt|hello pi = {pi:.{1 + 3}}|]`.
+
 ## 0.8.0.2 -- 2019-08-27
 
 - (minor bugfix in tests): Use python3 instead of "python" to help build on environment with both python2 and python3

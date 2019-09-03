@@ -215,14 +215,22 @@ spec = do
     it "works" $ do
       [fmt|hello \n\b|] `shouldBe` "hello \n\b"
 
+  describe "variable precision" $ do
+    it "works" $ do
+      let n = 3 :: Int
+      [fmt|{pi:.{n}}|] `shouldBe` "3.142"
+
   it "escape chars" $ do
      [fmt|}}{{}}{{|] `shouldBe` "}{}{"
+
 
   describe "custom delimiters" $ do
     it "works" $ do
       [myCustomFormatter|2 * pi = @2*pi:.2f!|] `shouldBe` "2 * pi = 6.28"
     it "escape chars" $ do
        [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
+    it "works for custom precision" $ do
+       [myCustomFormatter|@pi:.@2!!|] `shouldBe` "3.14"
 
   describe "empty line" $ do
     it "works" $ do
