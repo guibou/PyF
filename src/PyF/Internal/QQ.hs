@@ -29,6 +29,7 @@ import           Language.Haskell.TH
 import Data.Maybe (fromMaybe)
 
 import qualified Data.Maybe
+import Control.Monad.Reader
 
 import PyF.Internal.PythonSyntax
 import PyF.Internal.Extensions
@@ -43,7 +44,7 @@ import Data.String (fromString)
 -- Be Careful: empty format string
 -- | Parse a string and return a formatter for it
 toExp:: (Char, Char) -> String -> Q Exp
-toExp delimiters s = do
+toExp expressionDelimiters s = do
   filename <- loc_filename <$> location
 
   thExts <- extsEnabled
@@ -54,7 +55,8 @@ toExp delimiters s = do
                        then [| fromString $(e) |]
                        else e
 
-  case parse (parseGenericFormatString exts delimiters) filename s of
+  let context = ParsingContext expressionDelimiters exts
+  case runReader (runParserT parseGenericFormatString filename s) context of
     Left err -> do
       err' <- overrideErrorForFile filename err
       fail (errorBundlePretty err')

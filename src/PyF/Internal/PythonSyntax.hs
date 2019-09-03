@@ -9,8 +9,7 @@
 This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
 -}
 module PyF.Internal.PythonSyntax
-  ( parsePythonFormatString
-  , parseGenericFormatString
+  ( parseGenericFormatString
   , Item(..)
   , FormatMode(..)
   , Padding(..)
@@ -19,6 +18,7 @@ module PyF.Internal.PythonSyntax
   , AlternateForm(..)
   , pattern DefaultFormatMode
   , Parser
+  , ParsingContext(..)
   )
 where
 
@@ -28,6 +28,7 @@ import Text.Megaparsec
 import qualified Text.Megaparsec.Char.Lexer as L
 import Text.Megaparsec.Char
 import Data.Void (Void)
+import Control.Monad.Reader
 
 import qualified Data.Char
 
@@ -40,7 +41,13 @@ import qualified Language.Haskell.Exts.Extension as ParseExtension
 import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
 import PyF.Formatters
 
-type Parser t = Parsec Void String t
+type Parser t = ParsecT Void String (Reader ParsingContext) t
+
+data ParsingContext = ParsingContext
+  { delimiters :: (Char, Char)
+  , enabledExtensions :: [ParseExtension.Extension]
+  }
+  deriving (Show)
 
 {-
 -- TODO:
@@ -82,14 +89,14 @@ Right [
                       (FixedF (Precision 2) NormalForm Minus)
                        Nothing))]
 -}
-parsePythonFormatString :: [ParseExtension.Extension] -> Parser [Item]
-parsePythonFormatString exts = parseGenericFormatString exts ('{', '}')
 
-parseGenericFormatString :: [ParseExtension.Extension] -> (Char, Char) -> Parser [Item]
-parseGenericFormatString exts delimiters = many (rawString delimiters <|> escapedParenthesis delimiters <|> replacementField exts delimiters) <* eof
+parseGenericFormatString :: Parser [Item]
+parseGenericFormatString = do
+  many (rawString <|> escapedParenthesis <|> replacementField) <* eof
 
-rawString :: (Char, Char) -> Parser Item
-rawString (openingChar,closingChar) = do
+rawString :: Parser Item
+rawString = do
+  (openingChar, closingChar) <- delimiters <$> ask
   chars <- some (noneOf ([openingChar, closingChar]))
   case escapeChars chars of
     Left remaining -> do
@@ -98,8 +105,11 @@ rawString (openingChar,closingChar) = do
       fancyFailure (Set.singleton (ErrorFail "lexical error in literal section"))
     Right escaped -> return (Raw escaped)
 
-escapedParenthesis :: (Char, Char) -> Parser Item
-escapedParenthesis (openingChar, closingChar) = Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
+escapedParenthesis :: Parser Item
+escapedParenthesis = do
+  (openingChar, closingChar) <- delimiters <$> ask
+
+  Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
   where parseRaw c = c:[] <$ string (replicate 2 c)
 
 {- | Replace escape chars with their value. Results in a Left with the
@@ -118,8 +128,11 @@ escapeChars s = case Data.Char.readLitChar s of
                   ((c, xs):_) -> (c :) <$> escapeChars xs
                   _ -> Left s
 
-replacementField :: [ParseExtension.Extension] -> (Char, Char) -> Parser Item
-replacementField exts (charOpening, charClosing) = do
+replacementField :: Parser Item
+replacementField = do
+  exts <- enabledExtensions <$> ask
+  (charOpening, charClosing) <- delimiters <$> ask
+
   _ <- char charOpening
   expr <- evalExpr exts (many (noneOf (charClosing:":" :: [Char])))
   fmt <- optional $ do
