@@ -7,6 +7,19 @@ jobs:
     working_directory: ~/PyF
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - cci-nix-{{ checksum "nixpkgs.nix" }}-{{ checksum "default.nix" }}-{{ checksum "PyF.cabal" }}
+            - cci-nix-{{ checksum "nixpkgs.nix" }}-{{ checksum "default.nix" }}
+            - cci-nix-{{ checksum "nixpkgs.nix" }}
+      - run:
+          name: Prefetch
+          command: nix-shell --command true
+      - save_cache:
+          name: Cache Dependencies
+          key: cci-nix-{{ checksum "nixpkgs.nix" }}-{{ checksum "default.nix" }}-{{ checksum "PyF.cabal" }}
+          paths:
+            - "/nix/store"
       - run:
           name: Build
           command: nix-build -A pyf-sdist
