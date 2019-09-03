@@ -1,15 +1,52 @@
 version: 2
 
 jobs:
-  build:
+  nix:
     docker:
       - image: nixos/nix:latest
     working_directory: ~/PyF
     steps:
       - checkout
       - run:
-          name: Build (Cabal+nix)
+          name: Build
           command: nix-build -A pyf-sdist
+
+  stack:
+    docker:
+      - image: fpco/stack-build:lts
+    working_directory: ~/PyF
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - cci-demo-haskell-v1-{{ checksum "stack.yaml" }}-{{ checksum "PyF.cabal" }}
+            - cci-demo-haskell-v1-{{ checksum "stack.yaml" }}
       - run:
-          name: Build (Stack+nix)
-          command: nix-shell -p stack --run 'stack test'
+          # see: https://github.com/commercialhaskell/stackage/issues/4783
+          # `ghc-lib-parser` conflicts with `template-haskell` for module Language.Haskell.TH.Syntax
+          # The test suite uses a bare GHC (with all the provided
+          # packages). This is fine in nix, but does not work in the
+          # stackage CI context where GHC comes with a world of
+          # packages.
+          # This is here to ensure that it will continue to work in stack CI.
+          name: Trash the environment
+          command: stack install ghc-lib-parser
+      - run:
+          name: Build dependencies
+          command: stack test --only-dependencies
+      - save_cache:
+          name: Cache Dependencies
+          key: cci-demo-haskell-v1-{{ checksum "stack.yaml" }}-{{ checksum "PyF.cabal" }}
+          paths:
+            - "/root/.stack"
+            - ".stack-work"
+      - run:
+          name: Build
+          command: stack test
+
+workflows:
+  version: 2
+  nix_stack:
+    jobs:
+      - nix
+      - stack

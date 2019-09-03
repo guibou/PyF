@@ -49,7 +49,17 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
                                                             -- Tests use a filename in a temporary directory which may have a long filename which triggers
                                                             -- line wrapping, reducing the reproducibility of error message
                                                             -- By setting the column size to a high value, we ensure reproducible error messages
-                                                             "-dppr-cols=10000000000000"
+                                                             "-dppr-cols=10000000000000",
+                                                            -- Clean package environment
+                                                            "-hide-all-packages",
+                                                            "-package base",
+                                                            "-package megaparsec",
+                                                            "-package text",
+                                                            "-package template-haskell",
+                                                            "-package haskell-src-exts",
+                                                            "-package haskell-src-meta",
+                                                            "-package mtl",
+                                                            "-package containers"
                                                             ] ""
   case ecode of
     ExitFailure _ -> pure (CompileError (sanitize path stderr))
@@ -67,7 +77,7 @@ sanitize path s =
   -- strip the filename
   let
     t = Text.pack s
-  in Text.unpack (Text.replace (Text.pack path) (Text.pack "INITIALPATH") t) 
+  in Text.unpack (Text.replace (Text.pack path) (Text.pack "INITIALPATH") t)
 
 golden :: HasCallStack => String -> String -> IO ()
 golden name output = do
