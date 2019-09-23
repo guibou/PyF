@@ -14,7 +14,7 @@
 >>> name = "Dave"
 >>> age = 54
 
->>> [fmt|Person's name is {name}, age is {age:x}|]
+>>> [fmt|Person's name is {name}, age is {age}|]
 "Person's name is Dave, age is 54"
 ```
 
