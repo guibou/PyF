@@ -14,8 +14,8 @@
 >>> name = "Dave"
 >>> age = 54
 
->>> [fmt|Person's name is {name}, age is {age:x}|]
-"Person's name is Dave, age is 36"
+>>> [fmt|Person's name is {name}, age is {age}|]
+"Person's name is Dave, age is 54"
 ```
 
 The formatting mini language can represent:
@@ -47,11 +47,11 @@ Left `<` / Right `>` / Around `^` padding:
 "||Guillaume||"
 ```
 
-Padding inside `=` the sign:
+Padding inside `=` the sign
 
 ```haskell
->>> [fmt|{-pi:=10.3}|]
-"-    3.142"
+>>> [fmt|{-3:=6}|]
+"-    3"
 ```
 
 ## Float rounding
@@ -61,15 +61,17 @@ Padding inside `=` the sign:
 "3.14"
 ```
 
-## Binary / Octal / Hex representation (with or without prefix)
+## Binary / Octal / Hex representation (with or without prefix using `#`)
 
 ```haskell
 >>> v = 31
 >>> [fmt|Binary: {v:#b}|]
 "Binary: 0b11111"
->>> [fmt|Octal (no prefix): {age:o}|]
+>>> [fmt|Octal: {v:#o}|]
+"Octal: 0o37"
+>>> [fmt|Octal (no prefix): {v:o}|]
 "Octal (no prefix): 37"
->>> [fmt|Hexa (caps and prefix): {age:#X}|]
+>>> [fmt|Hexa (caps and prefix): {v:#X}|]
 "Hexa (caps and prefix): 0x1F"
 ```
 
@@ -91,8 +93,12 @@ Using `+` to display the positive sign (if any) or ` ` to display a space instea
 ```haskell
 >>> [fmt|{pi:+.3}|]
 "+3.142"
+>>> [fmt|{-pi:+.3} (Negative number)|]
+"-3.142 (Negative number)"
 >>> [fmt|{pi: .3}|]
 " 3.142"
+>>> [fmt|{-pi: .3} (Negative number)|]
+"-3.142 (Negative number)"
 ```
 
 ## 0
@@ -100,6 +106,8 @@ Using `+` to display the positive sign (if any) or ` ` to display a space instea
 Preceding the width with a `0` enables sign-aware zero-padding, this is equivalent to inside `=` padding with a fill char of `0`.
 
 ```haskell
+>>> [f{10:010}|]
+0000000010
 >>> [f{-10:010}|]
 -000000010
 ```
@@ -110,7 +118,7 @@ First argument inside the curly braces can be a valid Haskell expression, for ex
 
 ```haskell
 >>> [fmt|2pi = {2* pi:.2}|]
-6.28
+2pi = 6.28
 >>> [fmt|tail "hello" = {tail "hello":->6}|]
 "tail \"hello\" = --ello"
 ```
