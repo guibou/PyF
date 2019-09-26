@@ -22,7 +22,7 @@ jobs:
             - "/nix/store"
       - run:
           name: Build
-          command: nix-build -A pyf-sdist
+          command: nix-build
 
   stack:
     docker:
