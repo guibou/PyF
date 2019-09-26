@@ -8,7 +8,7 @@ rec {
     # which are not part of the build
     root = lib.sources.cleanSourceWith {
       filter = name: type: let baseName = baseNameOf (toString name); in
-      !(lib.hasPrefix ".ghc.environment." baseName) && (baseName != "default.nix");
+         !(lib.hasPrefix ".ghc.environment." baseName) && (builtins.match ".+\\.nix" (toString name) == null);
       src = lib.sources.cleanSource ./.;
     };
 
