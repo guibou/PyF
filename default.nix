@@ -1,7 +1,7 @@
 { nixpkgs ? ./nixpkgs.nix }:
 with import nixpkgs {};
 rec {
-  pyf = haskellPackages.developPackage {
+  pyfBuilder = hPkgs: hPkgs.developPackage {
     name = "PyF";
 
     # Filter temp files, git files, .ghc.environment and .nix files
@@ -15,6 +15,11 @@ rec {
     overrides = self : super : {
     };
   };
+
+  pyf_86 = pyfBuilder haskell.packages.ghc865;
+  pyf_88 = pyfBuilder haskell.packages.ghc881;
+
+  pyf = pyf_88;
 
   pyf-sdist = haskell.lib.buildFromSdist pyf;
 }
