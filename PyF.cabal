@@ -21,7 +21,7 @@ library
                   PyF.Formatters
 
   build-depends:       base >= 4.9 && < 5.0
-                     , template-haskell >= 2.11 && < 2.15
+                     , template-haskell >= 2.14 && < 2.16
 
                      -- Parsec and some transitive deps
                      , megaparsec >= 7.0 && < 8.0
