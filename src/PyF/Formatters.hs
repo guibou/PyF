@@ -43,7 +43,6 @@ module PyF.Formatters
 )
 where
 
-import Data.Monoid ((<>))
 import Data.List (intercalate)
 import Data.Char (toUpper, chr)
 import qualified Numeric
