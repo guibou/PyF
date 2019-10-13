@@ -1,5 +1,9 @@
 # Revision history for PyF
 
+## 0.8.1.1 -- 2019-10-13
+
+- Compatibility with GHC 8.8
+
 ## 0.8.1.0 -- 2019-09-03
 
 - Precision can now be any arbitrary haskell expression, such as `[fmt|hello pi = {pi:.{1 + 3}}|]`.
