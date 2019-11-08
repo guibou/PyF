@@ -1,5 +1,9 @@
 # Revision history for PyF
 
+## 0.8.1.2 -- 2019-11-08
+
+- Bump megaparsec bounds
+
 ## 0.8.1.1 -- 2019-10-13
 
 - Compatibility with GHC 8.8
