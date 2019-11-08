@@ -13,6 +13,11 @@ rec {
     };
 
     overrides = self : super : {
+      megaparsec = super.callHackageDirect {
+        pkg = "megaparsec";
+        ver = "8.0.0";
+        sha256 = "1bk4jsa69maryj97jcvxxc211icvnkr21xrj2bqq9ddfizkq5lg0";
+      } {};
     };
   };
 
