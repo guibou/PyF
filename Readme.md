@@ -25,7 +25,7 @@ The formatting mini language can represent:
 - Sign handling, to display or not the `+` for positive number
 - Number grouping
 - Floating point representation
-- The interpolated value can be any Haskell expression
+- The interpolated value can be any Haskell expression.
 
 You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session. `ExtendedDefaultRules` and `OverloadedStrings` may be more convenient.
 

@@ -170,7 +170,6 @@ spec = do
       failCompile "{truncate' number:e}"
       failCompile "{truncate' number:E}"
       failCompile "{truncate' number:%}"
-      failCompile "{truncate number:s}"
 
     describe "number with precision" $ do
       failCompile "{truncate number:.3d}"
@@ -184,7 +183,6 @@ spec = do
       failCompile "{number:x}"
       failCompile "{number:X}"
       failCompile "{number:d}"
-      failCompile "{number:s}"
 
     -- XXX: this are not failing for now, it should be fixed
     xdescribe "not specified" $ do
@@ -221,7 +219,6 @@ spec = do
         ]
 
     describe "Wrong type" $ do
-      failCompile "{True:s}"
       failCompile "{True}"
       failCompile "{True:f}"
       failCompile "{True:d}"

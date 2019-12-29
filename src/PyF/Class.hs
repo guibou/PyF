@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE UndecidableInstances #-}
 module PyF.Class where
 
 import Data.Int
@@ -56,3 +57,4 @@ class PyFToString t where
 instance PyFToString String where pyfToString = id
 instance PyFToString LText.Text where pyfToString = LText.unpack
 instance PyFToString SText.Text where pyfToString = SText.unpack
+instance {-# OVERLAPPABLE #-} Show t => PyFToString t where pyfToString = show
