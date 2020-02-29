@@ -1,18 +1,19 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DeriveAnyClass, GeneralizedNewtypeDeriving, DerivingStrategies #-}
 
-import Test.Hspec
-
-import PyF
-import SpecUtils
-import SpecCustomDelimiters
 import Data.Text
+import PyF
+import SpecCustomDelimiters
+import SpecUtils
+import Test.Hspec
 
 {-
    - Normal tests are done using the recommanded API: [fmt|.....|]
@@ -41,17 +42,19 @@ instance PyFToString Foo where
   pyfToString Foo = "I'm a Foo"
 
 type instance PyFClassify Foo = 'PyFString
+
 type instance PyFClassify FooFloating = 'PyFFractional
+
 type instance PyFClassify FooIntegral = 'PyFIntegral
+
 type instance PyFClassify FooDefault = 'PyFString
 
 spec :: Spec
 spec = do
   describe "simple with external variable" $ do
-    let
-      anInt = 123
-      aFloat = 0.234
-      aString = "hello"
+    let anInt = 123
+        aFloat = 0.234
+        aString = "hello"
     it "int" $ [fmt|{anInt}|] `shouldBe` "123"
     it "float" $ [fmt|{aFloat}|] `shouldBe` "0.234"
     it "string" $ [fmt|{aString}|] `shouldBe` "hello"
@@ -115,10 +118,8 @@ spec = do
     describe "percent" $ do
       it "simple" $(checkExample "{0.234:%}" "23.400000%")
       it "precision" $(checkExample "{0.234:.2%}" "23.40%")
-
     describe "string truncating" $ do
       it "works" $ $(checkExample "{\"hello\":.3}" "hel")
-
     describe "padding" $ do
       describe "default char" $ do
         it "left" $(checkExample "{\"hello\":<10}" "hello     ")
@@ -142,43 +143,42 @@ spec = do
         it "default" $(checkExample "{1.0:10}" "       1.0")
         it "default" $(checkExample "{\"h\":10}" "h         ")
     describe "NaN" $ do
-        let nan = 0.0 / 0
-        it "nan" $(checkExample "{nan}" "nan")
-        it "nan f" $(checkExample "{nan:f}" "nan")
-        it "nan e" $(checkExample "{nan:e}" "nan")
-        it "nan g" $(checkExample "{nan:g}" "nan")
-        it "nan F" $(checkExample "{nan:F}" "NAN")
-        it "nan G" $(checkExample "{nan:G}" "NAN")
-        it "nan E" $(checkExample "{nan:E}" "NAN")
+      let nan = 0.0 / 0
+      it "nan" $(checkExample "{nan}" "nan")
+      it "nan f" $(checkExample "{nan:f}" "nan")
+      it "nan e" $(checkExample "{nan:e}" "nan")
+      it "nan g" $(checkExample "{nan:g}" "nan")
+      it "nan F" $(checkExample "{nan:F}" "NAN")
+      it "nan G" $(checkExample "{nan:G}" "NAN")
+      it "nan E" $(checkExample "{nan:E}" "NAN")
     describe "Infinite" $ do
-        let inf = 1.0 / 0
-        it "infinite" $(checkExample "{inf}" "inf")
-        it "infinite f" $(checkExample "{inf:f}" "inf")
-        it "infinite e" $(checkExample "{inf:e}" "inf")
-        it "infinite g" $(checkExample "{inf:g}" "inf")
-        it "infinite F" $(checkExample "{inf:F}" "INF")
-        it "infinite G" $(checkExample "{inf:G}" "INF")
-        it "infinite E" $(checkExample "{inf:E}" "INF")
+      let inf = 1.0 / 0
+      it "infinite" $(checkExample "{inf}" "inf")
+      it "infinite f" $(checkExample "{inf:f}" "inf")
+      it "infinite e" $(checkExample "{inf:e}" "inf")
+      it "infinite g" $(checkExample "{inf:g}" "inf")
+      it "infinite F" $(checkExample "{inf:F}" "INF")
+      it "infinite G" $(checkExample "{inf:G}" "INF")
+      it "infinite E" $(checkExample "{inf:E}" "INF")
     describe "Grouping" $ do
-        it "groups int" $(checkExample "{123456789:,d}" "123,456,789")
-        it "groups int with _" $(checkExample "{123456789:_d}" "123_456_789")
-        it "groups float" $(checkExample "{123456789.234:,f}" "123,456,789.234000")
-        it "groups bin" $(checkExample "{123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
-        it "groups hex" $(checkExample "{123456789:_x}" "75b_cd15")
-        it "groups oct" $(checkExample "{123456789:_o}" "7_2674_6425")
+      it "groups int" $(checkExample "{123456789:,d}" "123,456,789")
+      it "groups int with _" $(checkExample "{123456789:_d}" "123_456_789")
+      it "groups float" $(checkExample "{123456789.234:,f}" "123,456,789.234000")
+      it "groups bin" $(checkExample "{123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
+      it "groups hex" $(checkExample "{123456789:_x}" "75b_cd15")
+      it "groups oct" $(checkExample "{123456789:_o}" "7_2674_6425")
     describe "negative zero" $ do
-        it "f" $(checkExample "{-0.0:f}" "-0.000000")
-        it "e" $(checkExample "{-0.0:e}" "-0.000000e+00")
-        it "g" $(checkExampleDiff "{-0.0:g}" "-0.000000")
-        it "F" $(checkExample "{-0.0:F}" "-0.000000")
-        it "G" $(checkExampleDiff "{-0.0:G}" "-0.000000")
-        it "E" $(checkExample "{-0.0:E}" "-0.000000E+00")
+      it "f" $(checkExample "{-0.0:f}" "-0.000000")
+      it "e" $(checkExample "{-0.0:e}" "-0.000000e+00")
+      it "g" $(checkExampleDiff "{-0.0:g}" "-0.000000")
+      it "F" $(checkExample "{-0.0:F}" "-0.000000")
+      it "G" $(checkExampleDiff "{-0.0:G}" "-0.000000")
+      it "E" $(checkExample "{-0.0:E}" "-0.000000E+00")
     describe "0" $ do
-        it "works" $(checkExample "{123:010}" "0000000123")
-        it "works with sign" $(checkExample "{-123:010}" "-000000123")
-        it "accept mode override" $(checkExample "{-123:<010}" "-123000000")
-        it "accept mode and char override" $(checkExample "{-123:.<010}" "-123......")
-
+      it "works" $(checkExample "{123:010}" "0000000123")
+      it "works with sign" $(checkExample "{-123:010}" "-000000123")
+      it "accept mode override" $(checkExample "{-123:<010}" "-123000000")
+      it "accept mode and char override" $(checkExample "{-123:.<010}" "-123......")
     describe "no digit no dot" $ do
       it "f" $(checkExample "{1.0:.0f}" "1")
       it "e" $(checkExample "{1.0:.0e}" "1e+00")
@@ -193,99 +193,86 @@ spec = do
       it "E" $(checkExample "{1.0:#.0E}" "1.E+00")
       it "G" $(checkExample "{1.0:#.0G}" "1.")
       it "percent" $(checkExample "{1.0:#.0%}" "100.%")
-
   describe "complex" $ do
     it "works with many things at once" $
-      let
-        name = "Guillaume"
-        age = 31
-        euroToFrancs = 6.55957
-      in
-        [fmt|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
-
-
+      let name = "Guillaume"
+          age = 31
+          euroToFrancs = 6.55957
+       in [fmt|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
   describe "error reporting" $ do
     pure () -- TODO: find a way to test error reporting
-
   describe "sub expressions" $ do
     it "works" $ do
       [fmt|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
-
   describe "escape strings" $ do
     it "works" $ do
       [fmt|hello \n\b|] `shouldBe` "hello \n\b"
-
   describe "variable precision" $ do
     it "works" $ do
       let n = 3 :: Int
       [fmt|{pi:.{n}}|] `shouldBe` "3.142"
-
   it "escape chars" $ do
-     [fmt|}}{{}}{{|] `shouldBe` "}{}{"
-
-
+    [fmt|}}{{}}{{|] `shouldBe` "}{}{"
   describe "custom delimiters" $ do
     it "works" $ do
       [myCustomFormatter|2 * pi = @2*pi:.2f!|] `shouldBe` "2 * pi = 6.28"
     it "escape chars" $ do
-       [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
+      [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
     it "works for custom precision" $ do
-       [myCustomFormatter|@pi:.@2!!|] `shouldBe` "3.14"
-
+      [myCustomFormatter|@pi:.@2!!|] `shouldBe` "3.14"
   describe "empty line" $ do
     it "works" $ do
       [fmt||] `shouldBe` ""
-
   describe "multi line escape" $ do
     it "works" $ do
       [fmt|\
 - a
 - b
 \
-|] `shouldBe` "- a\n- b\n"
-
+|]
+        `shouldBe` "- a\n- b\n"
     it "escapes in middle of line" $ do
       [fmt|Example goes \
-here!|] `shouldBe` "Example goes here!"
-
+here!|]
+        `shouldBe` "Example goes here!"
     it "escapes a lot of things" $ do
       [fmt|\
 I'm a line with \n and \\ and a correct line
 ending, but that one is escaped\
 And I'm escaping before and after: \\{pi:.3f}\\
 yeah\
-|] `shouldBe` "I'm a line with \n and \\ and a correct line\nending, but that one is escapedAnd I'm escaping before and after: \\3.142\\\nyeah"
-
+|]
+        `shouldBe` "I'm a line with \n and \\ and a correct line\nending, but that one is escapedAnd I'm escaping before and after: \\3.142\\\nyeah"
     it "escapes" $ do
       [fmt|\\
 - a
 - b
 \
-|] `shouldBe` "\\\n- a\n- b\n"
-
+|]
+        `shouldBe` "\\\n- a\n- b\n"
   describe "empty trailing value" $ do
     it "String" $ do
-      ([fmt|\
+      ( [fmt|\
 {pi:.0}
-|] :: String) `shouldBe` "3\n"
-
+|] ::
+          String
+        )
+        `shouldBe` "3\n"
   describe "language extensions" $ do
-     it "parses @Int" $ do
-       [fmt|hello {show @Int 10}|] `shouldBe` "hello 10"
-     it "parses BinaryLiterals" $ do
-       [fmt|hello {0b1111}|] `shouldBe` "hello 15"
-
-
+    it "parses @Int" $ do
+      [fmt|hello {show @Int 10}|] `shouldBe` "hello 10"
+    it "parses BinaryLiterals" $ do
+      [fmt|hello {0b1111}|] `shouldBe` "hello 15"
   describe "custom types" $ do
-      it "works with integral" $ do
-        [fmt|{FooIntegral 10:d}|] `shouldBe` "10"
-      it "works with floating" $ do
-        [fmt|{FooFloating 25.123:f}|] `shouldBe` "25.123000"
-      it "works with string" $ do
-        [fmt|{Foo:s}|] `shouldBe` "I'm a Foo"
-        [fmt|{FooDefault:s}|] `shouldBe` "FooDefault"
-      it "works with classify" $ do
-        [fmt|{Foo}|] `shouldBe` "I'm a Foo"
-        [fmt|{FooIntegral 100}|] `shouldBe` "100"
-        [fmt|{FooFloating 100.123}|] `shouldBe` "100.123"
-        [fmt|{FooDefault}|] `shouldBe` "FooDefault"
+    it "works with integral" $ do
+      [fmt|{FooIntegral 10:d}|] `shouldBe` "10"
+    it "works with floating" $ do
+      [fmt|{FooFloating 25.123:f}|] `shouldBe` "25.123000"
+    it "works with string" $ do
+      [fmt|{Foo:s}|] `shouldBe` "I'm a Foo"
+      [fmt|{FooDefault:s}|] `shouldBe` "FooDefault"
+    it "works with classify" $ do
+      [fmt|{Foo}|] `shouldBe` "I'm a Foo"
+      [fmt|{FooIntegral 100}|] `shouldBe` "100"
+      [fmt|{FooFloating 100.123}|] `shouldBe` "100.123"
+      [fmt|{FooDefault}|] `shouldBe` "FooDefault"

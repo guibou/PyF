@@ -1,5 +1,6 @@
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
+
 {-# OPTIONS -Wall -Werror #-}
 
 {-
@@ -14,18 +15,18 @@
 import qualified Data.Text as T
 import PyF
 
-data Foo =
-  Foo
-  { fieldA :: ()
-  , fieldB :: T.Text
-  }
+data Foo
+  = Foo
+      { fieldA :: (),
+        fieldB :: T.Text
+      }
   deriving (Show)
 
 yolo :: Foo
 yolo =
   Foo
-  { fieldB = [fmt|hello what's up {x}|]
-  }
+    { fieldB = [fmt|hello what's up {x}|]
+    }
   where
     x :: T.Text
     x = T.pack "hi"

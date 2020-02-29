@@ -1,60 +1,52 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
-{- | This module uses the python mini language detailed in
-'PyF.Internal.PythonSyntax' to build an template haskell expression
-representing a formatted string.
-
--}
-module PyF.Internal.QQ (
-  toExp,
-  toExpPython)
+-- | This module uses the python mini language detailed in
+-- 'PyF.Internal.PythonSyntax' to build an template haskell expression
+-- representing a formatted string.
+module PyF.Internal.QQ
+  ( toExp,
+    toExpPython,
+  )
 where
 
+import Control.Monad.Reader
+import Data.Maybe (fromMaybe)
+import qualified Data.Maybe
+import Data.Proxy
+import Data.String (fromString)
+import GHC.TypeLits
+import Language.Haskell.TH
+import PyF.Class
+import qualified PyF.Formatters as Formatters
+import PyF.Formatters (AnyAlign (..))
+import PyF.Internal.Extensions
+import PyF.Internal.PythonSyntax
 import Text.Megaparsec
 
-import           Language.Haskell.TH
-
-import Data.Maybe (fromMaybe)
-
-import qualified Data.Maybe
-import Control.Monad.Reader
-
-import PyF.Internal.PythonSyntax
-import PyF.Internal.Extensions
-
-import qualified PyF.Formatters as Formatters
-import PyF.Formatters (AnyAlign(..))
-import Data.Proxy
-import GHC.TypeLits
-import PyF.Class
-import Data.String (fromString)
-
 -- Be Careful: empty format string
+
 -- | Parse a string and return a formatter for it
-toExp:: (Char, Char) -> String -> Q Exp
+toExp :: (Char, Char) -> String -> Q Exp
 toExp expressionDelimiters s = do
   filename <- loc_filename <$> location
-
   thExts <- extsEnabled
   let exts = Data.Maybe.mapMaybe thExtToMetaExt thExts
-
-  let
-    wrapFromString e = if OverloadedStrings `elem` thExts
-                       then [| fromString $(e) |]
-                       else e
-
+  let wrapFromString e =
+        if OverloadedStrings `elem` thExts
+          then [|fromString $(e)|]
+          else e
   let context = ParsingContext expressionDelimiters exts
   case runReader (runParserT parseGenericFormatString filename s) context of
     Left err -> do
@@ -74,22 +66,21 @@ overrideErrorForFile "<interactive>" err = pure err
 overrideErrorForFile filename err = do
   (line, col) <- loc_start <$> location
   fileContent <- runIO (readFile filename)
-
-  let
-    -- drop the first lines of the file up to the line containing the quasiquote
-    -- then, split in what is before the QQ and what is after.
-    -- e.g.  blablabla [fmt|hello|] will split to
-    -- "blablabla [fmt|" and "hello|]"
-    (prefix, postfix) = splitAt (col - 1) $ unlines $ drop (line - 1) (lines fileContent)
-
-
-  pure $ err {
-    bundlePosState = (bundlePosState err) {
-        pstateInput = postfix,
-        pstateSourcePos = SourcePos filename (mkPos line) (mkPos col),
-        pstateOffset = 0,
-        pstateLinePrefix = prefix
-        }}
+  let -- drop the first lines of the file up to the line containing the quasiquote
+      -- then, split in what is before the QQ and what is after.
+      -- e.g.  blablabla [fmt|hello|] will split to
+      -- "blablabla [fmt|" and "hello|]"
+      (prefix, postfix) = splitAt (col - 1) $ unlines $ drop (line - 1) (lines fileContent)
+  pure $
+    err
+      { bundlePosState =
+          (bundlePosState err)
+            { pstateInput = postfix,
+              pstateSourcePos = SourcePos filename (mkPos line) (mkPos col),
+              pstateOffset = 0,
+              pstateLinePrefix = prefix
+            }
+      }
 
 toExpPython :: String -> Q Exp
 toExpPython = toExp ('{', '}')
@@ -121,53 +112,53 @@ defaultFloatPrecision = Just 6
 
 -- | Precision to maybe
 splicePrecision :: Maybe Int -> Precision -> Q Exp
-splicePrecision def PrecisionDefault = [| def |]
+splicePrecision def PrecisionDefault = [|def|]
 splicePrecision _ (Precision p) = case p of
-  Value n -> [| Just n |]
-  HaskellExpr e -> [| Just $(pure e) |]
+  Value n -> [|Just n|]
+  HaskellExpr e -> [|Just $(pure e)|]
 
 toGrp :: Maybe Char -> Int -> Q Exp
-toGrp mb a = [| grp |]
-  where grp = (a,) <$> mb
+toGrp mb a = [|grp|]
+  where
+    grp = (a,) <$> mb
 
 withAlt :: AlternateForm -> Formatters.Format t t' t'' -> Q Exp
-withAlt NormalForm e = [| e |]
-withAlt AlternateForm e = [| Formatters.Alternate e |]
+withAlt NormalForm e = [|e|]
+withAlt AlternateForm e = [|Formatters.Alternate e|]
 
 padAndFormat :: FormatMode -> Q Exp
 padAndFormat (FormatMode padding tf grouping) = case tf of
   -- Integrals
-  BinaryF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Binary) s $(newPaddingQ padding) $(toGrp grouping 4) |]
-  CharacterF -> [| formatAnyIntegral Formatters.Character Formatters.Minus $(newPaddingQ padding) Nothing |]
-  DecimalF s -> [| formatAnyIntegral Formatters.Decimal s $(newPaddingQ padding) $(toGrp grouping 3) |]
-  HexF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Hexa) s $(newPaddingQ padding) $(toGrp grouping 4) |]
-  OctalF alt s -> [| formatAnyIntegral $(withAlt alt Formatters.Octal) s $(newPaddingQ padding) $(toGrp grouping 4) |]
-  HexCapsF alt s -> [| formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s $(newPaddingQ padding) $(toGrp grouping 4) |]
-
+  BinaryF alt s -> [|formatAnyIntegral $(withAlt alt Formatters.Binary) s $(newPaddingQ padding) $(toGrp grouping 4)|]
+  CharacterF -> [|formatAnyIntegral Formatters.Character Formatters.Minus $(newPaddingQ padding) Nothing|]
+  DecimalF s -> [|formatAnyIntegral Formatters.Decimal s $(newPaddingQ padding) $(toGrp grouping 3)|]
+  HexF alt s -> [|formatAnyIntegral $(withAlt alt Formatters.Hexa) s $(newPaddingQ padding) $(toGrp grouping 4)|]
+  OctalF alt s -> [|formatAnyIntegral $(withAlt alt Formatters.Octal) s $(newPaddingQ padding) $(toGrp grouping 4)|]
+  HexCapsF alt s -> [|formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s $(newPaddingQ padding) $(toGrp grouping 4)|]
   -- Floating
-  ExponentialF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Exponent) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
-  ExponentialCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
-  GeneralF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Generic) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
-  GeneralCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
-  FixedF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Fixed) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
-  FixedCapsF prec alt s -> [| formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
-  PercentF prec alt s -> [| formatAnyFractional $(withAlt alt Formatters.Percent) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec) |]
-
+  ExponentialF prec alt s -> [|formatAnyFractional $(withAlt alt Formatters.Exponent) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
+  ExponentialCapsF prec alt s -> [|formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
+  GeneralF prec alt s -> [|formatAnyFractional $(withAlt alt Formatters.Generic) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
+  GeneralCapsF prec alt s -> [|formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
+  FixedF prec alt s -> [|formatAnyFractional $(withAlt alt Formatters.Fixed) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
+  FixedCapsF prec alt s -> [|formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
+  PercentF prec alt s -> [|formatAnyFractional $(withAlt alt Formatters.Percent) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
   -- Default / String
-  DefaultF prec s -> [| formatAny s $(paddingToPaddingK padding) $(toGrp grouping 3) $(splicePrecision Nothing prec) |]
-  StringF prec -> [| Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(splicePrecision Nothing prec) . pyfToString |]
+  DefaultF prec s -> [|formatAny s $(paddingToPaddingK padding) $(toGrp grouping 3) $(splicePrecision Nothing prec)|]
+  StringF prec -> [|Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(splicePrecision Nothing prec) . pyfToString|]
 
 newPaddingQ :: Padding -> Q Exp
-newPaddingQ pad = [| pad' |]
-  where pad' = newPaddingUnQ pad
+newPaddingQ pad = [|pad'|]
+  where
+    pad' = newPaddingUnQ pad
 
 newPaddingUnQ :: Padding -> Maybe (Integer, AnyAlign, Char)
 newPaddingUnQ padding = case padding of
-    PaddingDefault -> Nothing
-    (Padding i al) -> case al of
-      Nothing -> Just (i, AnyAlign Formatters.AlignRight, ' ') -- Right align and space is default for any object, except string
-      Just (Nothing, a) -> Just (i, a, ' ')
-      Just (Just c, a) -> Just (i, a, c)
+  PaddingDefault -> Nothing
+  (Padding i al) -> case al of
+    Nothing -> Just (i, AnyAlign Formatters.AlignRight, ' ') -- Right align and space is default for any object, except string
+    Just (Nothing, a) -> Just (i, a, ' ')
+    Just (Just c, a) -> Just (i, a, c)
 
 data PaddingK k where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll
@@ -175,9 +166,9 @@ data PaddingK k where
 
 paddingToPaddingK :: Padding -> Q Exp
 paddingToPaddingK p = case p of
-  PaddingDefault -> [| PaddingDefaultK |]
-  Padding i Nothing -> [| PaddingK i Nothing :: PaddingK 'Formatters.AlignAll |]
-  Padding i (Just (c, AnyAlign a)) -> [| PaddingK i (Just (c, a)) |]
+  PaddingDefault -> [|PaddingDefaultK|]
+  Padding i Nothing -> [|PaddingK i Nothing :: PaddingK 'Formatters.AlignAll|]
+  Padding i (Just (c, AnyAlign a)) -> [|PaddingK i (Just (c, a))|]
 
 paddingKToPadding :: PaddingK k -> Padding
 paddingKToPadding p = case p of
@@ -210,10 +201,9 @@ instance (RealFloat t) => FormatAny2 'PyFFractional t k where
 
 newPaddingKForString :: PaddingK 'Formatters.AlignAll -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingKForString padding = case padding of
-    PaddingDefaultK -> Nothing
-    PaddingK i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
-    PaddingK i (Just (mc, a)) -> Just (fromIntegral i, a, fromMaybe ' ' mc)
-
+  PaddingDefaultK -> Nothing
+  PaddingK i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
+  PaddingK i (Just (mc, a)) -> Just (fromIntegral i, a, fromMaybe ' ' mc)
 
 -- TODO: _s(ign) and _grouping should trigger errors
 instance (PyFToString t) => FormatAny2 'PyFString t 'Formatters.AlignAll where

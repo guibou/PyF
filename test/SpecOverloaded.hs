@@ -1,12 +1,11 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE OverloadedStrings #-}
 
-import Test.Hspec
-
-import PyF
-import Data.Text
 import Data.ByteString
+import Data.Text
+import PyF
+import Test.Hspec
 
 main :: IO ()
 main = hspec spec

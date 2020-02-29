@@ -1,26 +1,27 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
-{- | A lot of quasiquoters to format and interpolate string expression
--}
+
+-- | A lot of quasiquoters to format and interpolate string expression
 module PyF
-  ( fmt
-   -- * With custom delimiters
-  , fmtWithDelimiters
-  , module PyF.Class
+  ( fmt,
+
+    -- * With custom delimiters
+    fmtWithDelimiters,
+    module PyF.Class,
   )
 where
 
-import           Language.Haskell.TH.Quote (QuasiQuoter(..))
-import PyF.Internal.QQ (toExp)
+import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
+import PyF.Internal.QQ (toExp)
 
 templateF :: (Char, Char) -> String -> QuasiQuoter
-templateF delimiters fName = QuasiQuoter {
-    quoteExp = \s -> (toExp delimiters s)
-  , quotePat = err "pattern"
-  , quoteType = err "type"
-  , quoteDec = err "declaration"
+templateF delimiters fName = QuasiQuoter
+  { quoteExp = \s -> (toExp delimiters s),
+    quotePat = err "pattern",
+    quoteType = err "type",
+    quoteDec = err "declaration"
   }
   where
     err name = error (fName ++ ": This QuasiQuoter can not be used as a " ++ name ++ "!")
