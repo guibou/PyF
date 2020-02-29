@@ -1,10 +1,10 @@
 module PyF.Internal.Extensions
-  ( thExtToMetaExt
-  ) where
+  ( thExtToMetaExt,
+  )
+where
 
 import qualified Language.Haskell.Exts.Extension as Exts
 import qualified Language.Haskell.TH as TH
-
 
 -- | Associate a template haskell extension to an haskell-src-ext extension
 thExtToMetaExt :: TH.Extension -> Maybe Exts.Extension
@@ -94,7 +94,6 @@ thExtToMetaExt e = Exts.EnableExtension <$> case e of
   TH.PartialTypeSignatures -> Just Exts.PartialTypeSignatures
   TH.NamedWildCards -> Just Exts.NamedWildCards
   TH.TypeApplications -> Just Exts.TypeApplications
-
   -- Theses extensions have no associated extensions in haskell-src-exts
   TH.UndecidableSuperClasses -> Nothing
   TH.TemplateHaskellQuotes -> Nothing

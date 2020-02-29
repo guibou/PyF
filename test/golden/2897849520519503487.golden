@@ -1,5 +1,5 @@
 
-INITIALPATH:26:3: error: [-Wmissing-fields, -Werror=missing-fields]
+INITIALPATH:27:3: error: [-Wmissing-fields, -Werror=missing-fields]
     • Fields of ‘Foo’ not initialised: fieldA
     • In the expression: Foo {fieldB = (Data.String.fromString ("hello what's up " <> ((((PyF.Internal.QQ.formatAny PyF.Formatters.Minus) PyF.Internal.QQ.PaddingDefaultK) Nothing) Nothing) x))}
       In an equation for ‘yolo’:
@@ -9,10 +9,10 @@ INITIALPATH:26:3: error: [-Wmissing-fields, -Werror=missing-fields]
                 x :: T.Text
                 x = T.pack "hi"
    |
-26 |   Foo
+27 |   Foo
    |   ^^^...
 
-INITIALPATH:33:1: error: [-Wmissing-signatures, -Werror=missing-signatures] Top-level binding with no type signature: main :: IO ()
+INITIALPATH:34:1: error: [-Wmissing-signatures, -Werror=missing-signatures] Top-level binding with no type signature: main :: IO ()
    |
-33 | main = print yolo
+34 | main = print yolo
    | ^^^^
