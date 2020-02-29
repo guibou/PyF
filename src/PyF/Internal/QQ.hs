@@ -2,7 +2,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -93,7 +92,7 @@ Empty string are lifter as [] instead of "", so I'm using LitE (String L) instea
 
 goFormat :: [Item] -> Q Exp
 goFormat [] = pure $ LitE (StringL "") -- see [Empty String Lifting]
-goFormat items = foldl1 fofo <$> (mapM toFormat items)
+goFormat items = foldl1 fofo <$> mapM toFormat items
 
 fofo :: Exp -> Exp -> Exp
 fofo s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
@@ -162,7 +161,7 @@ newPaddingUnQ padding = case padding of
 
 data PaddingK k where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll
-  PaddingK :: Integer -> (Maybe (Maybe Char, Formatters.AlignMode k)) -> PaddingK k
+  PaddingK :: Integer -> Maybe (Maybe Char, Formatters.AlignMode k) -> PaddingK k
 
 paddingToPaddingK :: Padding -> Q Exp
 paddingToPaddingK p = case p of
@@ -194,10 +193,10 @@ class FormatAny2 (c :: PyFCategory) (i :: *) (k :: Formatters.AlignForString) wh
   formatAny2 :: Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
 
 instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
-  formatAny2 _ s a p _precision i = formatAnyIntegral Formatters.Decimal s (newPaddingUnQ (paddingKToPadding a)) p i
+  formatAny2 _ s a p _precision = formatAnyIntegral Formatters.Decimal s (newPaddingUnQ (paddingKToPadding a)) p
 
 instance (RealFloat t) => FormatAny2 'PyFFractional t k where
-  formatAny2 _ s a p precision t = formatAnyFractional Formatters.Generic s (newPaddingUnQ (paddingKToPadding a)) p precision t
+  formatAny2 _ s a = formatAnyFractional Formatters.Generic s (newPaddingUnQ (paddingKToPadding a))
 
 newPaddingKForString :: PaddingK 'Formatters.AlignAll -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingKForString padding = case padding of

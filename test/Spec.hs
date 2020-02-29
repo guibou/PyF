@@ -72,7 +72,7 @@ spec = do
       it "simple" $(checkExample "{123:b}" "1111011")
       it "alt" $(checkExample "{123:#b}" "0b1111011")
       it "sign" $(checkExample "{123:+#b}" "+0b1111011")
-    describe "character" $ do
+    describe "character" $
       it "simple" $(checkExample "{123:c}" "{")
     describe "decimal" $ do
       it "simple" $(checkExample "{123:d}" "123")
@@ -118,8 +118,8 @@ spec = do
     describe "percent" $ do
       it "simple" $(checkExample "{0.234:%}" "23.400000%")
       it "precision" $(checkExample "{0.234:.2%}" "23.40%")
-    describe "string truncating" $ do
-      it "works" $ $(checkExample "{\"hello\":.3}" "hel")
+    describe "string truncating" $
+      it "works" $(checkExample "{\"hello\":.3}" "hel")
     describe "padding" $ do
       describe "default char" $ do
         it "left" $(checkExample "{\"hello\":<10}" "hello     ")
@@ -193,49 +193,50 @@ spec = do
       it "E" $(checkExample "{1.0:#.0E}" "1.E+00")
       it "G" $(checkExample "{1.0:#.0G}" "1.")
       it "percent" $(checkExample "{1.0:#.0%}" "100.%")
-  describe "complex" $ do
-    it "works with many things at once" $
-      let name = "Guillaume"
+  describe "complex"
+    $ it "works with many things at once"
+    $ let name = "Guillaume"
           age = 31
           euroToFrancs = 6.55957
-       in [fmt|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` ("hello Guillaume you are 31 years old and the conversion rate of euro is 6.56")
-  describe "error reporting" $ do
+       in [fmt|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` "hello Guillaume you are 31 years old and the conversion rate of euro is 6.56"
+  describe "error reporting" $
     pure () -- TODO: find a way to test error reporting
-  describe "sub expressions" $ do
-    it "works" $ do
-      [fmt|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
-  describe "escape strings" $ do
-    it "works" $ do
-      [fmt|hello \n\b|] `shouldBe` "hello \n\b"
-  describe "variable precision" $ do
-    it "works" $ do
+  describe "sub expressions"
+    $ it "works"
+    $ [fmt|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
+  describe "escape strings"
+    $ it "works"
+    $ [fmt|hello \n\b|] `shouldBe` "hello \n\b"
+  describe "variable precision"
+    $ it "works"
+    $ do
       let n = 3 :: Int
       [fmt|{pi:.{n}}|] `shouldBe` "3.142"
-  it "escape chars" $ do
+  it "escape chars" $
     [fmt|}}{{}}{{|] `shouldBe` "}{}{"
   describe "custom delimiters" $ do
-    it "works" $ do
+    it "works" $
       [myCustomFormatter|2 * pi = @2*pi:.2f!|] `shouldBe` "2 * pi = 6.28"
-    it "escape chars" $ do
+    it "escape chars" $
       [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
-    it "works for custom precision" $ do
+    it "works for custom precision" $
       [myCustomFormatter|@pi:.@2!!|] `shouldBe` "3.14"
-  describe "empty line" $ do
-    it "works" $ do
-      [fmt||] `shouldBe` ""
+  describe "empty line"
+    $ it "works"
+    $ [fmt||] `shouldBe` ""
   describe "multi line escape" $ do
-    it "works" $ do
+    it "works" $
       [fmt|\
 - a
 - b
 \
 |]
         `shouldBe` "- a\n- b\n"
-    it "escapes in middle of line" $ do
+    it "escapes in middle of line" $
       [fmt|Example goes \
 here!|]
         `shouldBe` "Example goes here!"
-    it "escapes a lot of things" $ do
+    it "escapes a lot of things" $
       [fmt|\
 I'm a line with \n and \\ and a correct line
 ending, but that one is escaped\
@@ -243,30 +244,30 @@ And I'm escaping before and after: \\{pi:.3f}\\
 yeah\
 |]
         `shouldBe` "I'm a line with \n and \\ and a correct line\nending, but that one is escapedAnd I'm escaping before and after: \\3.142\\\nyeah"
-    it "escapes" $ do
+    it "escapes" $
       [fmt|\\
 - a
 - b
 \
 |]
         `shouldBe` "\\\n- a\n- b\n"
-  describe "empty trailing value" $ do
-    it "String" $ do
-      ( [fmt|\
+  describe "empty trailing value"
+    $ it "String"
+    $ ( [fmt|\
 {pi:.0}
 |] ::
           String
-        )
-        `shouldBe` "3\n"
+      )
+      `shouldBe` "3\n"
   describe "language extensions" $ do
-    it "parses @Int" $ do
+    it "parses @Int" $
       [fmt|hello {show @Int 10}|] `shouldBe` "hello 10"
-    it "parses BinaryLiterals" $ do
+    it "parses BinaryLiterals" $
       [fmt|hello {0b1111}|] `shouldBe` "hello 15"
   describe "custom types" $ do
-    it "works with integral" $ do
+    it "works with integral" $
       [fmt|{FooIntegral 10:d}|] `shouldBe` "10"
-    it "works with floating" $ do
+    it "works with floating" $
       [fmt|{FooFloating 25.123:f}|] `shouldBe` "25.123000"
     it "works with string" $ do
       [fmt|{Foo:s}|] `shouldBe` "I'm a Foo"

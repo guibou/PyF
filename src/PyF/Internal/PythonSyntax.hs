@@ -1,10 +1,8 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -89,13 +87,13 @@ data Item
 --                       (FixedF (Precision 2) NormalForm Minus)
 --                        Nothing))]
 parseGenericFormatString :: Parser [Item]
-parseGenericFormatString = do
+parseGenericFormatString =
   many (rawString <|> escapedParenthesis <|> replacementField) <* eof
 
 rawString :: Parser Item
 rawString = do
-  (openingChar, closingChar) <- delimiters <$> ask
-  chars <- some (noneOf ([openingChar, closingChar]))
+  (openingChar, closingChar) <- asks delimiters
+  chars <- some (noneOf [openingChar, closingChar])
   case escapeChars chars of
     Left remaining -> do
       offset <- getOffset
@@ -105,10 +103,10 @@ rawString = do
 
 escapedParenthesis :: Parser Item
 escapedParenthesis = do
-  (openingChar, closingChar) <- delimiters <$> ask
+  (openingChar, closingChar) <- asks delimiters
   Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
   where
-    parseRaw c = c : [] <$ string (replicate 2 c)
+    parseRaw c = [c] <$ string (replicate 2 c)
 
 -- | Replace escape chars with their value. Results in a Left with the
 -- remainder of the string on encountering a lexical error (such as a bad escape
@@ -127,13 +125,13 @@ escapeChars s = case Data.Char.readLitChar s of
 
 replacementField :: Parser Item
 replacementField = do
-  exts <- enabledExtensions <$> ask
-  (charOpening, charClosing) <- delimiters <$> ask
+  exts <- asks enabledExtensions
+  (charOpening, charClosing) <- asks delimiters
   _ <- char charOpening
-  expr <- evalExpr exts (many (noneOf (charClosing : ":" :: [Char])))
+  expr <- evalExpr exts (many (noneOf (charClosing : ":" :: String)))
   fmt <- optional $ do
     _ <- char ':'
-    format_spec
+    formatSpec
   _ <- char charClosing
   pure (Replacement expr fmt)
 
@@ -244,15 +242,15 @@ overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)
 overrideAlignmentIfZero True (Just (Nothing, al)) = Just (Just '0', al)
 overrideAlignmentIfZero _ v = v
 
-format_spec :: Parser FormatMode
-format_spec = do
+formatSpec :: Parser FormatMode
+formatSpec = do
   al' <- optional alignment
   s <- optional sign
   alternateForm <- option NormalForm (AlternateForm <$ char '#')
   hasZero <- option False (True <$ char '0')
   let al = overrideAlignmentIfZero hasZero al'
   w <- optional width
-  grouping <- optional grouping_option
+  grouping <- optional groupingOption
   prec <- option PrecisionDefault parsePrecision
   t <- optional type_
   let padding = case w of
@@ -262,13 +260,13 @@ format_spec = do
     Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Minus s)) grouping)
     Just flag -> case evalFlag flag padding grouping prec alternateForm s of
       Right fmt -> pure (FormatMode padding fmt grouping)
-      Left typeError -> do
+      Left typeError ->
         lastCharFailed typeError
 
 parsePrecision :: Parser Precision
 parsePrecision = do
-  exts <- enabledExtensions <$> ask
-  (charOpening, charClosing) <- delimiters <$> ask
+  exts <- asks enabledExtensions
+  (charOpening, charClosing) <- asks delimiters
   _ <- char '.'
   choice
     [ Precision . Value <$> precision,
@@ -287,7 +285,7 @@ evalFlag Flagg _pad _grouping prec alt s = pure $ GeneralF prec alt (defSign s)
 evalFlag FlagG _pad _grouping prec alt s = pure $ GeneralCapsF prec alt (defSign s)
 evalFlag Flagn _pad _grouping _prec _alt _s = Left ("Type 'n' not handled (yet). " ++ errgGn)
 evalFlag Flago _pad _grouping prec alt s = failIfPrec prec $ OctalF alt (defSign s)
-evalFlag Flags pad grouping prec alt s = failIfGrouping grouping =<< failIfInsidePadding pad =<< failIfS s =<< (failIfAlt alt $ StringF prec)
+evalFlag Flags pad grouping prec alt s = failIfGrouping grouping =<< failIfInsidePadding pad =<< failIfS s =<< failIfAlt alt (StringF prec)
 evalFlag Flagx _pad _grouping prec alt s = failIfPrec prec $ HexF alt (defSign s)
 evalFlag FlagX _pad _grouping prec alt s = failIfPrec prec $ HexCapsF alt (defSign s)
 evalFlag FlagPercent _pad _grouping prec alt s = pure $ PercentF prec alt (defSign s)
@@ -366,8 +364,8 @@ width = integer
 integer :: Parser Integer
 integer = L.decimal -- incomplete: see: https://docs.python.org/3/reference/lexical_analysis.html#grammar-token-integer
 
-grouping_option :: Parser Char
-grouping_option = oneOf ("_," :: [Char])
+groupingOption :: Parser Char
+groupingOption = oneOf ("_," :: String)
 
 precision :: Parser Integer
 precision = integer

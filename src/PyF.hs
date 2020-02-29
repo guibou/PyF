@@ -1,6 +1,4 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TypeApplications #-}
 
 -- | A lot of quasiquoters to format and interpolate string expression
 module PyF
@@ -18,7 +16,7 @@ import PyF.Internal.QQ (toExp)
 
 templateF :: (Char, Char) -> String -> QuasiQuoter
 templateF delimiters fName = QuasiQuoter
-  { quoteExp = \s -> (toExp delimiters s),
+  { quoteExp = toExp delimiters,
     quotePat = err "pattern",
     quoteType = err "type",
     quoteDec = err "declaration"

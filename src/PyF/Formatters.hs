@@ -5,7 +5,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE ViewPatterns #-}
 
 -- |
 --

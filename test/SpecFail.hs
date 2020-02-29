@@ -1,8 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 import Control.DeepSeq
 import Control.Exception
@@ -97,8 +95,7 @@ golden name output = do
       -- Update golden file
       writeFile goldenFile output
       assertFailure diffOutput
-    else do
-      writeFile goldenFile output
+    else writeFile goldenFile output
 
 -- if the compilation fails, runs a golden test on compilation output
 -- else, fails the test
@@ -112,7 +109,7 @@ failCompile :: HasCallStack => String -> Spec
 failCompile s = failCompileContent (hash s) s (makeTemplate s)
 
 failCompileContent :: HasCallStack => Int -> String -> String -> Spec
-failCompileContent h caption fileContent = do
+failCompileContent h caption fileContent =
   before (checkCompile fileContent) $ it (show caption) $ \res -> case res of
     CompileError output -> golden (show h) output
     _ -> assertFailure (show $ ".golden/" <> show h <> "\n" <> show res)
@@ -121,7 +118,7 @@ main :: IO ()
 main = hspec spec
 
 spec :: Spec
-spec = do
+spec =
   describe "error reporting" $ do
     describe "string" $ do
       describe "integral / fractional qualifiers" $ do
@@ -173,21 +170,21 @@ spec = do
       failCompile "{hello:-}"
       failCompile "{hello:_}"
       failCompile "{hello:,}"
-    describe "multiples lines" $ do
+    describe "multiples lines" $
       failCompile "hello\n\n\n{pi:l}"
     describe "on haskell expression parsing" $ do
-      describe "single line" $ do
+      describe "single line" $
         failCompile "{1 + - / lalalal}"
-      describe "multiples lines" $ do
+      describe "multiples lines" $
         failCompile "hello\n    {\nlet a = 5\n    b = 10\nin 1 + - / lalalal}"
     describe "non-doubled delimiters" $ do
       failCompile "hello } world"
       failCompile "hello { world"
-    describe "fail is not enabled extension" $ do
+    describe "fail is not enabled extension" $
       failCompile "{0b0001}"
-    describe "lexical errors" $ do
+    describe "lexical errors" $
       failCompile "foo\\Pbar"
-    describe "fileFailures" $ do
+    describe "fileFailures" $
       mapM_
         fileFailCompile
         [ "test/failureCases/bug18.hs"
