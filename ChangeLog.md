@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+- Fixs for GHC 8.10
+
 ## 0.9.0.0 -- 2019-12-29
 
 - Any type with `Show` instance can be formatted using `:s` formatter. For example, `[fmt|hello {(True, 10):s}|]`. This breaks compatibility because previous version of PyF was generating an error when try to format to string anything which was not a string, now it accepts roughly anything (with a `Show` instance).

@@ -63,9 +63,7 @@ type instance PyFClassify SText.Text = 'PyFString
 -- | Convert a type to string
 --   The default implementation uses `Show`
 class PyFToString t where
-
   pyfToString :: t -> String
-
   default pyfToString :: Show t => t -> String
   pyfToString = show
 
