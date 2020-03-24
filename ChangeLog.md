@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+## 0.9.0.1 -- 2020-03-25
+
 - Fixs for GHC 8.10
 
 ## 0.9.0.0 -- 2019-12-29
