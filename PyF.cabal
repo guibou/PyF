@@ -20,7 +20,7 @@ library
                   PyF.Internal.Extensions
                   PyF.Formatters
 
-  build-depends:       base
+  build-depends:      base >= 4.9 && < 5.0
                      , template-haskell
                      , text
                      , containers
