@@ -3,6 +3,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE PackageImports #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -26,15 +27,18 @@ import qualified Data.Char
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set -- For fancyFailure
 import Data.Void (Void)
-import qualified Language.Haskell.Exts.Extension as ParseExtension
-import qualified Language.Haskell.Exts.Parser as ParseExp
-import qualified Language.Haskell.Exts.SrcLoc as SrcLoc
-import qualified Language.Haskell.Meta.Syntax.Translate as SyntaxTranslate
-import Language.Haskell.TH.Syntax
+import qualified "template-haskell" Language.Haskell.TH.LanguageExtensions as ParseExtension
+import qualified Language.Haskell.GhclibParserEx.GHC.Parser as ParseExp
+import Language.Haskell.GhclibParserEx.Fixity (applyFixities, preludeFixities, baseFixities)
+import Lexer (ParseResult (..), PState (..), loc)
+import qualified SrcLoc 
+import "template-haskell" Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
+
+import PyF.Internal.Meta
 
 type Parser t = ParsecT Void String (Reader ParsingContext) t
 
@@ -226,16 +230,22 @@ evalExpr :: [ParseExtension.Extension] -> Parser String -> Parser Exp
 evalExpr exts exprParser = do
   offset <- getOffset
   s <- exprParser
-  -- Setup the parser using the provided list of extensions
-  -- Which are detected by template haskell at splice position
-  let parseMode = ParseExp.defaultParseMode {ParseExp.extensions = exts}
-  case SyntaxTranslate.toExp <$> ParseExp.parseExpWithMode parseMode s of
-    ParseExp.ParseOk expr -> pure expr
-    ParseExp.ParseFailed (SrcLoc.SrcLoc _name' line col) err -> do
-      let linesBefore = take (line - 1) (lines s)
-          currentOffset = length (unlines linesBefore) + col - 1
+  -- Setup the dyn flags using the provided list of extensions
+  let exts' = fmap translateTHtoGHCExt exts
+  let dynFlags = baseDynFlags exts'
+  case ParseExp.parseExpression s dynFlags of
+    POk _ locatedExpr ->
+      let expr = SrcLoc.unLoc locatedExpr
+      in  pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
+    PFailed PState{loc=srcLoc} -> do
+      let err = "Parse error"
+          line = SrcLoc.srcLocLine srcLoc
+          col = SrcLoc.srcLocCol srcLoc
+          linesBefore = take (line - 1) (lines s)
+          currentOffset = length (unlines linesBefore) + col - 2
       setOffset (offset + currentOffset)
       fancyFailure (Set.singleton (ErrorFail err))
+
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
 overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)

@@ -50,11 +50,12 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
         -- Clean package environment
         "-hide-all-packages",
         "-package base",
+        "-package bytestring",
         "-package megaparsec",
         "-package text",
         "-package template-haskell",
-        "-package haskell-src-exts",
-        "-package haskell-src-meta",
+        "-package ghc-lib-parser",
+        "-package ghc-lib-parser-ex",
         "-package mtl",
         "-package containers"
       ]

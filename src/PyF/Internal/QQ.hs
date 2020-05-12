@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE PackageImports #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
@@ -22,15 +23,13 @@ where
 
 import Control.Monad.Reader
 import Data.Maybe (fromMaybe)
-import qualified Data.Maybe
 import Data.Proxy
 import Data.String (fromString)
 import GHC.TypeLits
-import Language.Haskell.TH
+import "template-haskell" Language.Haskell.TH
 import PyF.Class
 import qualified PyF.Formatters as Formatters
 import PyF.Formatters (AnyAlign (..))
-import PyF.Internal.Extensions
 import PyF.Internal.PythonSyntax
 import Text.Megaparsec
 
@@ -40,10 +39,9 @@ import Text.Megaparsec
 toExp :: (Char, Char) -> String -> Q Exp
 toExp expressionDelimiters s = do
   filename <- loc_filename <$> location
-  thExts <- extsEnabled
-  let exts = Data.Maybe.mapMaybe thExtToMetaExt thExts
+  exts <- extsEnabled
   let wrapFromString e =
-        if OverloadedStrings `elem` thExts
+        if OverloadedStrings `elem` exts
           then [|fromString $(e)|]
           else e
   let context = ParsingContext expressionDelimiters exts
