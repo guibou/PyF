@@ -4,7 +4,7 @@ INITIALPATH:7:22: error:
    |
 11 | in 1 + - / lalalal}|]
    |          ^
-Parse error: /
+Parse error
 
     • In the quasi-quotation: [fmt|hello
     {
