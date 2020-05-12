@@ -49,11 +49,13 @@ rec {
 
   pyf_88 = pyfBuilder (haskell.packages.ghc884.override {
     overrides = self: super: with hasell.lib; {
+      ghc-lib-parser-ex = haskell.lib.disableCabalFlag super.ghc-lib-parser-ex "no-ghc-lib";
     };
   });
 
   pyf_810 = pyfBuilder (haskell.packages.ghc8103.override {
     overrides = self: super: with haskell.lib; {
+      ghc-lib-parser-ex = haskell.lib.addBuildDepend (haskell.lib.disableCabalFlag (haskell.lib.disableCabalFlag super.ghc-lib-parser-ex "no-ghc-lib") "auto") super.ghc-lib-parser;
     };
   });
 
