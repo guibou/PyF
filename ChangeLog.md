@@ -1,5 +1,9 @@
 # Revision history for PyF
 
+## 0.9.0.2 -- 2020-09-11
+
+- Version bump for megaparsec 9.0
+
 ## 0.9.0.1 -- 2020-03-25
 
 - Fixs for GHC 8.10
