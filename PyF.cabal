@@ -26,7 +26,7 @@ library
                      , containers
 
                      -- Parsec and some transitive deps
-                     , megaparsec >= 7.0 && < 9.0
+                     , megaparsec >= 7.0 && < 10.0
                      , mtl
 
                      -- haskell-src-meta < 0.8.2 does not correctly handle TypeApplication
