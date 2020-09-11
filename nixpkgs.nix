@@ -1,7 +1,7 @@
 let
-  # nixpkgs-unstable 2020-03-21
-  sha256 = "05n27wz5ln9ni5cy5rhjcy612i44gmblkq5m0g827v8pd0nk00da";
-  rev = "d96bd3394b734487d1c3bfbac0e8f17465e03afe";
+  # nixpkgs-unstable 2020-09-11
+  sha256 = "1vx7kyaq0i287dragjgfdj94ggwr3ky2b7bq32l8rkd2k3vc3gl5";
+  rev = "3c0e3697520cbe7d9eb3a64bfd87de840bf4aa77";
 in
 import (fetchTarball {
   inherit sha256;

@@ -23,8 +23,8 @@ rec {
   pyfBuilder = hPkgs: haskell.lib.buildFromSdist (hPkgs.callCabal2nix "PyF" sources {});
 
   pyf_86 = pyfBuilder haskell.packages.ghc865;
-  pyf_88 = pyfBuilder haskell.packages.ghc883;
-  pyf_810 = pyfBuilder (haskell.packages.ghc8101.override {
+  pyf_88 = pyfBuilder haskell.packages.ghc884;
+  pyf_810 = pyfBuilder (haskell.packages.ghc8102.override {
     overrides = self: super: with haskell.lib; {
       th-expand-syns = doJailbreak super.th-expand-syns;
     };
