@@ -20,7 +20,10 @@ rec {
     "LICENSE"
   ];
 
-  pyfBuilder = hPkgs: haskell.lib.buildFromSdist (hPkgs.callCabal2nix "PyF" sources {});
+  pyfBuilder = hPkgs: (haskell.lib.buildFromSdist (hPkgs.callCabal2nix "PyF" sources {})).overrideAttrs(
+    oldAttrs: {
+      buildInputs = oldAttrs.buildInputs ++ [python3];
+    });
 
   pyf_86 = pyfBuilder haskell.packages.ghc865;
   pyf_88 = pyfBuilder (haskell.packages.ghc884.override {
