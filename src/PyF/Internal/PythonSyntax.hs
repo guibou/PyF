@@ -38,11 +38,10 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 type Parser t = ParsecT Void String (Reader ParsingContext) t
 
-data ParsingContext
-  = ParsingContext
-      { delimiters :: (Char, Char),
-        enabledExtensions :: [ParseExtension.Extension]
-      }
+data ParsingContext = ParsingContext
+  { delimiters :: (Char, Char),
+    enabledExtensions :: [ParseExtension.Extension]
+  }
   deriving (Show)
 
 {-

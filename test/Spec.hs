@@ -193,25 +193,25 @@ spec = do
       it "E" $(checkExample "{1.0:#.0E}" "1.E+00")
       it "G" $(checkExample "{1.0:#.0G}" "1.")
       it "percent" $(checkExample "{1.0:#.0%}" "100.%")
-  describe "complex"
-    $ it "works with many things at once"
-    $ let name = "Guillaume"
+  describe "complex" $
+    it "works with many things at once" $
+      let name = "Guillaume"
           age = 31
           euroToFrancs = 6.55957
        in [fmt|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` "hello Guillaume you are 31 years old and the conversion rate of euro is 6.56"
   describe "error reporting" $
     pure () -- TODO: find a way to test error reporting
-  describe "sub expressions"
-    $ it "works"
-    $ [fmt|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
-  describe "escape strings"
-    $ it "works"
-    $ [fmt|hello \n\b|] `shouldBe` "hello \n\b"
-  describe "variable precision"
-    $ it "works"
-    $ do
-      let n = 3 :: Int
-      [fmt|{pi:.{n}}|] `shouldBe` "3.142"
+  describe "sub expressions" $
+    it "works" $
+      [fmt|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
+  describe "escape strings" $
+    it "works" $
+      [fmt|hello \n\b|] `shouldBe` "hello \n\b"
+  describe "variable precision" $
+    it "works" $
+      do
+        let n = 3 :: Int
+        [fmt|{pi:.{n}}|] `shouldBe` "3.142"
   it "escape chars" $
     [fmt|}}{{}}{{|] `shouldBe` "}{}{"
   describe "custom delimiters" $ do
@@ -221,9 +221,9 @@ spec = do
       [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
     it "works for custom precision" $
       [myCustomFormatter|@pi:.@2!!|] `shouldBe` "3.14"
-  describe "empty line"
-    $ it "works"
-    $ [fmt||] `shouldBe` ""
+  describe "empty line" $
+    it "works" $
+      [fmt||] `shouldBe` ""
   describe "multi line escape" $ do
     it "works" $
       [fmt|\
@@ -251,14 +251,14 @@ yeah\
 \
 |]
         `shouldBe` "\\\n- a\n- b\n"
-  describe "empty trailing value"
-    $ it "String"
-    $ ( [fmt|\
+  describe "empty trailing value" $
+    it "String" $
+      ( [fmt|\
 {pi:.0}
 |] ::
           String
       )
-      `shouldBe` "3\n"
+        `shouldBe` "3\n"
   describe "language extensions" $ do
     it "parses @Int" $
       [fmt|hello {show @Int 10}|] `shouldBe` "hello 10"

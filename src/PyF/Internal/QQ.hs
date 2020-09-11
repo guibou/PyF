@@ -28,8 +28,8 @@ import Data.String (fromString)
 import GHC.TypeLits
 import Language.Haskell.TH
 import PyF.Class
-import qualified PyF.Formatters as Formatters
 import PyF.Formatters (AnyAlign (..))
+import qualified PyF.Formatters as Formatters
 import PyF.Internal.Extensions
 import PyF.Internal.PythonSyntax
 import Text.Megaparsec

@@ -15,11 +15,10 @@
 import qualified Data.Text as T
 import PyF
 
-data Foo
-  = Foo
-      { fieldA :: (),
-        fieldB :: T.Text
-      }
+data Foo = Foo
+  { fieldA :: (),
+    fieldB :: T.Text
+  }
   deriving (Show)
 
 yolo :: Foo

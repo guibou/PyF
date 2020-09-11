@@ -110,9 +110,10 @@ failCompile s = failCompileContent (hash s) s (makeTemplate s)
 
 failCompileContent :: HasCallStack => Int -> String -> String -> Spec
 failCompileContent h caption fileContent =
-  before (checkCompile fileContent) $ it (show caption) $ \res -> case res of
-    CompileError output -> golden (show h) output
-    _ -> assertFailure (show $ ".golden/" <> show h <> "\n" <> show res)
+  before (checkCompile fileContent) $
+    it (show caption) $ \res -> case res of
+      CompileError output -> golden (show h) output
+      _ -> assertFailure (show $ ".golden/" <> show h <> "\n" <> show res)
 
 main :: IO ()
 main = hspec spec
