@@ -1,0 +1,32 @@
+name: Haskell CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v12
+    - name: Cache
+      uses: actions/cache@v1
+      env:
+        cache-name: cache-cabal
+      with:
+        path: /nix/store
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}-${{ hashFiles('**/*.nix') }}-${{ hashFiles('**/*.cabal') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}-${{ hashFiles('**/*.nix') }}-${{ hashFiles('**/*.cabal') }}
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}-${{ hashFiles('**/*.nix') }}
+          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}
+          ${{ runner.os }}-build-${{ env.cache-name }}
+          ${{ runner.os }}
+
+    - name: Build
+      run: nix-build -A pyf
