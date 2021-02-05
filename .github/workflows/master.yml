@@ -1,4 +1,4 @@
-name: Haskell CI
+name: Master
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  nix_build:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,6 +24,20 @@ jobs:
     - name: Check ormolu
       run: nix-build -A ormolu
 
-    # Builds
-    - name: Build current GHC
-      run: nix-build -A pyf
+    # Builds cabal (nix)
+    - name: Build with all supported GHC
+      run: nix-build -A pyf_all
+
+  stack_build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Stack
+      run: sudo apt-get install haskell-stack
+
+    # Build stack
+    - name: Stack 8.8
+      run: stack --resolver lts-16.31 test
+    - name: Stack 8.6
+      run: stack --resolver lts-14.27 test
