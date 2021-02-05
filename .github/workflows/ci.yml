@@ -14,19 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: cachix/install-nix-action@v12
-    - name: Cache
-      uses: actions/cache@v1
-      env:
-        cache-name: cache-cabal
+    - uses: cachix/cachix-action@v8
       with:
-        path: /nix/store
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}-${{ hashFiles('**/*.nix') }}-${{ hashFiles('**/*.cabal') }}
-        restore-keys: |
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}-${{ hashFiles('**/*.nix') }}-${{ hashFiles('**/*.cabal') }}
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}-${{ hashFiles('**/*.nix') }}
-          ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('nixpkgs.nix') }}
-          ${{ runner.os }}-build-${{ env.cache-name }}
-          ${{ runner.os }}
-
+        name: guibou
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Build
       run: nix-build -A pyf
