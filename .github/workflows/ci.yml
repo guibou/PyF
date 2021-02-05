@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -18,5 +17,17 @@ jobs:
       with:
         name: guibou
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Build
+
+    # Linters
+    - name: Check hlint
+      run: nix-build -A hlint
+    - name: Check ormolu
+      run: nix-build -A ormolu
+
+    # Builds
+    - name: Build current GHC - 8.8
       run: nix-build -A pyf
+    #- name: Build GHC 8.6
+    #  run: nix-build -A pyf_86
+    #- name: Build GHC 8.10
+    #  run: nix-build -A pyf_810
