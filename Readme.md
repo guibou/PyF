@@ -314,6 +314,11 @@ cabal new-test
 "+~~~~~~~~~~1111,1111"
 ```
 
+# GHC compatibility
+
+This library is tested with ghc 8.6, 8.8, 8.10 and 9.0.
+
 # Conclusion
 
 Don't hesitate to make any suggestion, I'll be more than happy to work on it.
+
