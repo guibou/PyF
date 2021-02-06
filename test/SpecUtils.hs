@@ -2,8 +2,7 @@
 
 module SpecUtils
   ( checkExample,
-    checkExampleDiff,
-    check,
+    checkExampleDiff
   )
 where
 
@@ -65,7 +64,3 @@ checkExample s res = pyCheck s (Just res)
 --     against the python implementation
 checkExampleDiff :: String -> String -> Q Exp
 checkExampleDiff s res = [|$(toExpPython s) `shouldBe` res|]
-
--- | `check formatString` checks only with the python implementation
-check :: String -> Q Exp
-check s = pyCheck s Nothing
