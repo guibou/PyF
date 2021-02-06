@@ -1,4 +1,4 @@
-name: Haskell CI
+name: (fast) CI
 
 on:
   push:
