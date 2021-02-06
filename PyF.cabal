@@ -11,6 +11,11 @@ category:            Text
 build-type:          Simple
 extra-source-files:  ChangeLog.md Readme.md test/failureCases/*.hs test/golden/*.golden
 
+Flag python_test
+    Description: Enable extensive python testing
+    Manual: True
+    Default: False
+
 library
   exposed-modules:
                   PyF
@@ -42,9 +47,12 @@ test-suite pyf-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules: SpecUtils SpecCustomDelimiters
-  build-depends:       base, PyF, hspec, text, template-haskell, process
+  build-depends:       base, PyF, hspec, text, template-haskell
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
+  if flag(python_test)
+    cpp-options: -DPYTHON_TEST
+    build-depends:       process
 
 test-suite pyf-overloaded
   type:                exitcode-stdio-1.0

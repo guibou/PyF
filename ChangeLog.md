@@ -1,5 +1,8 @@
 # Revision history for PyF
 
+- Test phase do not depend anymore on python (unless cabal flag `python_test` is
+  set). This ease the deployement / packaging process.
+
 ## 0.9.0.2 -- 2020-09-11
 
 - Version bump for megaparsec 9.0
