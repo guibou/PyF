@@ -1,0 +1,43 @@
+name: Complete CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  nix_build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v12
+    - uses: cachix/cachix-action@v8
+      with:
+        name: guibou
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    # Linters
+    - name: Check hlint
+      run: nix-build -A hlint
+    - name: Check ormolu
+      run: nix-build -A ormolu
+
+    # Builds cabal (nix)
+    - name: Build with all supported GHC
+      run: nix-build -A pyf_all
+
+  stack_build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup Stack
+      run: sudo apt-get install haskell-stack
+
+    # Build stack
+    - name: Stack 8.8
+      run: stack --resolver lts-16.31 test
+    - name: Stack 8.6
+      run: stack --resolver lts-14.27 test

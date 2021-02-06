@@ -40,7 +40,7 @@ rec {
   pyf = pyf_88;
 
   # Run hlint on the codebase
-  hlint = runCommand "hlint-krank" {
+  hlint = runCommand "hlint-pyf" {
     nativeBuildInputs = [haskellPackages.hlint];
   }
   ''
@@ -51,7 +51,7 @@ rec {
 
   # Run ormolu on the codebase
   # Fails if there is something to format
-  ormolu = runCommand "ormolu-krank" {
+  ormolu = runCommand "ormolu-pyf" {
     nativeBuildInputs = [haskellPackages.ormolu];
   }
   ''
@@ -78,4 +78,6 @@ rec {
       exit 0
     '';
   };
+
+  pyf_all = [pyf_88 pyf_86 pyf_810];
 }

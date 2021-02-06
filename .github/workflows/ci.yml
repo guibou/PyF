@@ -1,0 +1,29 @@
+name: (fast) CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: cachix/install-nix-action@v12
+    - uses: cachix/cachix-action@v8
+      with:
+        name: guibou
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    # Linters
+    - name: Check hlint
+      run: nix-build -A hlint
+    - name: Check ormolu
+      run: nix-build -A ormolu
+
+    # Builds
+    - name: Build current GHC
+      run: nix-build -A pyf
