@@ -1,7 +1,9 @@
 # Revision history for PyF
 
+## 0.9.0.3 -- 2021-02-06
+
 - Test phase do not depend anymore on python (unless cabal flag `python_test` is
-  set). This ease the deployement / packaging process.
+  set). This ease the deployment / packaging process.
 
 ## 0.9.0.2 -- 2020-09-11
 
