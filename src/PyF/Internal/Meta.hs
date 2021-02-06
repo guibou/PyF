@@ -1,16 +1,24 @@
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE CPP #-}
 
 module PyF.Internal.Meta (toExp, baseDynFlags, translateTHtoGHCExt) where
-
+#if MIN_VERSION_ghc(8,10,0)
 import GHC.Hs.Expr as Expr
 import GHC.Hs.Extension as Ext
 import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..))
 import GHC.Hs.Pat (HsRecFields (..))
 import GHC.Hs.Lit
+#else
+import HsExpr as Expr
+import HsExtension as Ext
+import HsTypes (HsWildCardBndrs (..), HsType (..))
+import HsPat (HsRecFields (..))
+import HsLit
+#endif
 import qualified "template-haskell" Language.Haskell.TH.Syntax as TH
-import qualified "ghc-lib-parser" Language.Haskell.TH.Syntax as GhcTH
+import qualified Language.Haskell.TH.Syntax as GhcTH
 import Language.Haskell.GhclibParserEx.GHC.Settings.Config (fakeLlvmConfig, fakeSettings)
 import qualified Data.ByteString as B
 import SrcLoc
@@ -227,5 +235,7 @@ translateTHtoGHCExt TH.EmptyDataDeriving                 = GhcTH.EmptyDataDerivi
 translateTHtoGHCExt TH.NumericUnderscores                = GhcTH.NumericUnderscores
 translateTHtoGHCExt TH.QuantifiedConstraints             = GhcTH.QuantifiedConstraints
 translateTHtoGHCExt TH.StarIsType                        = GhcTH.StarIsType
+#if MIN_VERSION_ghc(8,10,0)
 translateTHtoGHCExt TH.CUSKs = GhcTH.CUSKs
+#endif
 translateTHtoGHCExt e = error (show e)

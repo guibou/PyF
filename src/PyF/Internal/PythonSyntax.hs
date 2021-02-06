@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE CPP #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -236,6 +237,17 @@ evalExpr exts exprParser = do
     POk _ locatedExpr ->
       let expr = SrcLoc.unLoc locatedExpr
       in  pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
+#if MIN_VERSION_ghc(9,0,0)
+    PFailed PState{loc=psLoc} -> do
+      let err = "Parse error"
+          srcLoc = SrcLoc.psRealLoc psLoc
+          line = SrcLoc.srcLocLine srcLoc
+          col = SrcLoc.srcLocCol srcLoc
+          linesBefore = take (line - 1) (lines s)
+          currentOffset = length (unlines linesBefore) + col - 2
+      setOffset (offset + currentOffset)
+      fancyFailure (Set.singleton (ErrorFail err))
+#elif MIN_VERSION_ghc(8,10,0)
     PFailed PState{loc=srcLoc} -> do
       let err = "Parse error"
           line = SrcLoc.srcLocLine srcLoc
@@ -244,6 +256,18 @@ evalExpr exts exprParser = do
           currentOffset = length (unlines linesBefore) + col - 2
       setOffset (offset + currentOffset)
       fancyFailure (Set.singleton (ErrorFail err))
+#else
+    PFailed _ srcSpan _ -> do
+      let err = "Parse error"
+          -- TODO: check for pattern failure
+          SrcLoc.RealSrcLoc srcLoc = SrcLoc.srcSpanEnd srcSpan
+          line = SrcLoc.srcLocLine srcLoc
+          col = SrcLoc.srcLocCol srcLoc
+          linesBefore = take (line - 1) (lines s)
+          currentOffset = length (unlines linesBefore) + col - 2
+      setOffset (offset + currentOffset)
+      fancyFailure (Set.singleton (ErrorFail err))
+#endif
 
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
