@@ -22,7 +22,7 @@ rec {
 
   pyfBuilder = hPkgs: (haskell.lib.buildFromSdist (hPkgs.callCabal2nix "PyF" sources {})).overrideAttrs(
     oldAttrs: {
-      buildInputs = oldAttrs.buildInputs ++ [python3];
+      buildInputs = oldAttrs.buildInputs;
     });
 
   pyf_86 = pyfBuilder haskell.packages.ghc865;
@@ -37,7 +37,11 @@ rec {
     };
   });
 
-  pyf = pyf_88;
+  # Only the current build is built with python3 support
+  # (i.e. extended tests)
+  pyf = haskell.lib.enableCabalFlag (pyf_88.overrideAttrs(old: {
+    buildInputs = old.buildInputs ++ [python3];
+  })) "python_test";
 
   # Run hlint on the codebase
   hlint = runCommand "hlint-pyf" {

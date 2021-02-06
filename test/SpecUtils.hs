@@ -1,21 +1,24 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module SpecUtils
   ( checkExample,
     checkExampleDiff,
-    check,
   )
 where
 
 import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
 import PyF.Internal.QQ
+#ifdef PYTHON_TEST
+import Language.Haskell.TH.Syntax
 import System.Exit
 import System.Process
+#endif
 import Test.Hspec
 
 -- * Utils
 
+#ifdef PYTHON_TEST
 -- | Runs a python formatter example
 --
 -- For conveniance, it exports a few python symbols, `inf`, `nan` and pi.
@@ -59,13 +62,14 @@ pyCheck s exampleStr = do
 --     the same as the one provided by python.
 checkExample :: String -> String -> Q Exp
 checkExample s res = pyCheck s (Just res)
+#else
+-- | Alias for checkExampleDiff
+checkExample :: String -> String -> Q Exp
+checkExample = checkExampleDiff
+#endif
 
 -- | `checkExampleDiff formatString result` checks if, once formated,
 --     `formatString` is equal to result. It does not check the result
 --     against the python implementation
 checkExampleDiff :: String -> String -> Q Exp
 checkExampleDiff s res = [|$(toExpPython s) `shouldBe` res|]
-
--- | `check formatString` checks only with the python implementation
-check :: String -> Q Exp
-check s = pyCheck s Nothing
