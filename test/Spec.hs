@@ -5,11 +5,11 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-import Data.Text
 import PyF
 import SpecCustomDelimiters
 import SpecUtils
@@ -49,75 +49,83 @@ type instance PyFClassify FooIntegral = 'PyFIntegral
 
 type instance PyFClassify FooDefault = 'PyFString
 
+-- | Rename identity and force the explicit forall
+--   There are many polymorphic literals in the formatting strings which are
+--   triggering the Defaulting rule, as well as a warning.
+--   In order to remove the warning, we use `cast`. We cannot (due to parsing)
+--   use an explicit type signature (i.e. @::@).
+cast :: forall t. t -> t
+cast = id
+
 spec :: Spec
 spec = do
   describe "simple with external variable" $ do
-    let anInt = 123
-        aFloat = 0.234
+    let anInt = 123 :: Integer
+        aFloat = 0.234 :: Double
         aString = "hello"
     it "int" $ [fmt|{anInt}|] `shouldBe` "123"
     it "float" $ [fmt|{aFloat}|] `shouldBe` "0.234"
     it "string" $ [fmt|{aString}|] `shouldBe` "hello"
   describe "only expression" $ do
     describe "default" $ do
-      it "int" $(checkExample "{123}" "123")
-      it "float" $(checkExample "{0.234}" "0.234")
+      it "int" $(checkExample "{cast @Integer 123}" "123")
+      it "float" $(checkExample "{cast @Double 0.234}" "0.234")
       it "string" $(checkExample "{\"hello\"}" "hello")
-      it "float precision" $(checkExample "{0.234:.1}" "0.2")
+      it "float precision" $(checkExample "{cast @Double 0.234:.1}" "0.2")
       it "string precision" $(checkExample "{\"hello\":.1}" "h")
-      it "sign +" $(checkExample "{0.234:+}" "+0.234")
-      it "sign space" $(checkExample "{0.234: }" " 0.234")
-      it "sign neg" $(checkExample "{-123:+}" "-123")
+      it "sign +" $(checkExample "{cast @Double 0.234:+}" "+0.234")
+      it "sign space" $(checkExample "{cast @Double 0.234: }" " 0.234")
+      it "sign neg" $(checkExample "{cast @Integer (-123):+}" "-123")
     describe "binary" $ do
-      it "simple" $(checkExample "{123:b}" "1111011")
-      it "alt" $(checkExample "{123:#b}" "0b1111011")
-      it "sign" $(checkExample "{123:+#b}" "+0b1111011")
+      it "simple" $(checkExample "{cast @Integer 123:b}" "1111011")
+      it "alt" $(checkExample "{cast @Integer 123:#b}" "0b1111011")
+      it "sign" $(checkExample "{cast @Integer 123:+#b}" "+0b1111011")
     describe "character" $
-      it "simple" $(checkExample "{123:c}" "{")
+      it "simple" $(checkExample "{cast @Integer 123:c}" "{")
     describe "decimal" $ do
-      it "simple" $(checkExample "{123:d}" "123")
-      it "sign" $(checkExample "{123:+d}" "+123")
+      it "simple" $(checkExample "{cast @Integer 123:d}" "123")
+      it "sign" $(checkExample "{cast @Integer 123:+d}" "+123")
     describe "exponentiel" $ do
-      it "simple > 1" $(checkExample "{234.0:e}" "2.340000e+02")
-      it "precision > 1" $(checkExample "{234.0:.1e}" "2.3e+02")
-      it "simple < 1" $(checkExample "{0.234:e}" "2.340000e-01")
-      it "precision < 1 " $(checkExample "{0.234:.1e}" "2.3e-01")
+      it "simple > 1" $(checkExample "{cast @Double 234.0:e}" "2.340000e+02")
+      it "precision > 1" $(checkExample "{cast @Double 234.0:.1e}" "2.3e+02")
+      it "simple < 1" $(checkExample "{cast @Double 0.234:e}" "2.340000e-01")
+      it "precision < 1 " $(checkExample "{cast @Double 0.234:.1e}" "2.3e-01")
     describe "exponentiel caps" $ do
-      it "simple > 1" $(checkExample "{234.0:E}" "2.340000E+02")
-      it "precision > 1" $(checkExample "{234.0:.1E}" "2.3E+02")
-      it "simple < 1" $(checkExample "{0.234:E}" "2.340000E-01")
-      it "precision < 1 " $(checkExample "{0.234:.1E}" "2.3E-01")
+      it "simple > 1" $(checkExample "{cast @Double 234.0:E}" "2.340000E+02")
+      it "precision > 1" $(checkExample "{cast @Double 234.0:.1E}" "2.3E+02")
+      it "simple < 1" $(checkExample "{cast @Double 0.234:E}" "2.340000E-01")
+      it "precision < 1 " $(checkExample "{cast @Double 0.234:.1E}" "2.3E-01")
     describe "general" $ do
-      it "simple small" $(checkExampleDiff "{123.02:g}" "123.020000")
-      it "precision small" $(checkExampleDiff "{123.02:.1g}" "123.0")
-      it "simple big" $(checkExampleDiff "{1234567890.23:g}" "1.234568e+09")
-      it "precision big" $(checkExampleDiff "{1234567890.23:.1g}" "1.2e+09")
+      it "simple small" $(checkExampleDiff "{cast @Double 123.02:g}" "123.020000")
+      it "precision small" $(checkExampleDiff "{cast @Double 123.02:.1g}" "123.0")
+      it "simple big" $(checkExampleDiff "{cast @Double 1234567890.23:g}" "1.234568e+09")
+      it "precision big" $(checkExampleDiff "{cast @Double 1234567890.23:.1g}" "1.2e+09")
     describe "general caps" $ do
-      it "simple small" $(checkExampleDiff "{123.02:G}" "123.020000")
-      it "precision small" $(checkExampleDiff "{123.02:.1G}" "123.0")
-      it "simple big" $(checkExampleDiff "{1234567890.23:G}" "1.234568E+09")
-      it "precision big" $(checkExampleDiff "{1234567890.23:.1G}" "1.2E+09")
+      it "simple small" $(checkExampleDiff "{cast @Double 123.02:G}" "123.020000")
+      it "precision small" $(checkExampleDiff "{cast @Double 123.02:.1G}" "123.0")
+      it "simple big" $(checkExampleDiff "{cast @Double 1234567890.23:G}" "1.234568E+09")
+      it "precision big" $(checkExampleDiff "{cast @Double 1234567890.23:.1G}" "1.2E+09")
     describe "fixed" $ do
-      it "simple" $(checkExample "{0.234:f}" "0.234000")
-      it "precision" $(checkExample "{0.234:.1f}" "0.2")
+      it "simple" $(checkExample "{cast @Double 0.234:f}" "0.234000")
+      it "precision" $(checkExample "{cast @Double 0.234:.1f}" "0.2")
     describe "fixed caps" $ do
-      it "simple" $(checkExample "{0.234:F}" "0.234000")
-      it "precision" $(checkExample "{0.234:.1F}" "0.2")
+      it "simple" $(checkExample "{cast @Double 0.234:F}" "0.234000")
+      it "precision" $(checkExample "{cast @Double 0.234:.1F}" "0.2")
     describe "octal" $ do
-      it "simple" $(checkExample "{123:o}" "173")
-      it "alt" $(checkExample "{123:#o}" "0o173")
+      it "simple" $(checkExample "{cast @Integer 123:o}" "173")
+      it "alt" $(checkExample "{cast @Integer 123:#o}" "0o173")
     describe "string" $ do
       it "string" $(checkExample "{\"hello\":s}" "hello")
       it "precision" $(checkExample "{\"hello\":.2s}" "he")
     describe "hex" $ do
-      it "simple" $(checkExample "{123:x}" "7b")
-      it "alt" $(checkExample "{123:#x}" "0x7b")
+      it "simple" $(checkExample "{cast @Integer 123:x}" "7b")
+      it "alt" $(checkExample "{cast @Integer 123:#x}" "0x7b")
     describe "hex caps" $ do
-      it "simple" $(checkExample "{123:X}" "7B")
-      it "alt" $(checkExample "{123:#X}" "0X7B")
+      it "simple" $(checkExample "{cast @Integer 123:X}" "7B")
+      it "alt" $(checkExample "{cast @Integer 123:#X}" "0X7B")
     describe "percent" $ do
-      it "simple" $(checkExample "{0.234:%}" "23.400000%")
-      it "precision" $(checkExample "{0.234:.2%}" "23.40%")
+      it "simple" $(checkExample "{cast @Double 0.234:%}" "23.400000%")
+      it "precision" $(checkExample "{cast @Double 0.234:.2%}" "23.40%")
     describe "string truncating" $
       it "works" $(checkExample "{\"hello\":.3}" "hel")
     describe "padding" $ do
@@ -130,20 +138,20 @@ spec = do
         it "right" $(checkExample "{\"hello\":->10}" "-----hello")
         it "center" $(checkExample "{\"hello\":-^10}" "--hello---")
       describe "inside" $ do
-        it "inside" $(checkExample "{123:=+10}" "+      123")
-        it "inside" $(checkExample "{123:=10}" "       123")
-        it "inside" $(checkExample "{- 123:=10}" "-      123")
-        it "inside" $(checkExample "{- 123:|= 10}" "-||||||123")
-        it "inside" $(checkExample "{123:|= 10}" " ||||||123")
+        it "inside" $(checkExample "{cast @Integer 123:=+10}" "+      123")
+        it "inside" $(checkExample "{cast @Integer 123:=10}" "       123")
+        it "inside" $(checkExample "{cast @Integer $ - 123:=10}" "-      123")
+        it "inside" $(checkExample "{cast @Integer $ - 123:|= 10}" "-||||||123")
+        it "inside" $(checkExample "{cast @Integer 123:|= 10}" " ||||||123")
       describe "default padding" $ do
-        it "floating" $(checkExample "{1:10f}" "  1.000000")
-        it "integral" $(checkExample "{1:10d}" "         1")
+        it "floating" $(checkExample "{cast @Double 1:10f}" "  1.000000")
+        it "integral" $(checkExample "{cast @Integer 1:10d}" "         1")
         it "string" $(checkExample "{\"h\":10s}" "h         ")
-        it "default" $(checkExample "{1:10}" "         1")
-        it "default" $(checkExample "{1.0:10}" "       1.0")
+        it "default" $(checkExample "{cast @Integer 1:10}" "         1")
+        it "default" $(checkExample "{cast @Double 1.0:10}" "       1.0")
         it "default" $(checkExample "{\"h\":10}" "h         ")
     describe "NaN" $ do
-      let nan = 0.0 / 0
+      let nan = (0.0 / 0) :: Double
       it "nan" $(checkExample "{nan}" "nan")
       it "nan f" $(checkExample "{nan:f}" "nan")
       it "nan e" $(checkExample "{nan:e}" "nan")
@@ -152,7 +160,7 @@ spec = do
       it "nan G" $(checkExample "{nan:G}" "NAN")
       it "nan E" $(checkExample "{nan:E}" "NAN")
     describe "Infinite" $ do
-      let inf = 1.0 / 0
+      let inf = (1.0 / 0) :: Double
       it "infinite" $(checkExample "{inf}" "inf")
       it "infinite f" $(checkExample "{inf:f}" "inf")
       it "infinite e" $(checkExample "{inf:e}" "inf")
@@ -161,49 +169,49 @@ spec = do
       it "infinite G" $(checkExample "{inf:G}" "INF")
       it "infinite E" $(checkExample "{inf:E}" "INF")
     describe "Grouping" $ do
-      it "groups int" $(checkExample "{123456789:,d}" "123,456,789")
-      it "groups int with _" $(checkExample "{123456789:_d}" "123_456_789")
-      it "groups float" $(checkExample "{123456789.234:,f}" "123,456,789.234000")
-      it "groups bin" $(checkExample "{123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
-      it "groups hex" $(checkExample "{123456789:_x}" "75b_cd15")
-      it "groups oct" $(checkExample "{123456789:_o}" "7_2674_6425")
+      it "groups int" $(checkExample "{cast @Integer 123456789:,d}" "123,456,789")
+      it "groups int with _" $(checkExample "{cast @Integer 123456789:_d}" "123_456_789")
+      it "groups float" $(checkExample "{cast @Double 123456789.234:,f}" "123,456,789.234000")
+      it "groups bin" $(checkExample "{cast @Integer 123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
+      it "groups hex" $(checkExample "{cast @Integer 123456789:_x}" "75b_cd15")
+      it "groups oct" $(checkExample "{cast @Integer 123456789:_o}" "7_2674_6425")
     describe "negative zero" $ do
-      it "f" $(checkExample "{-0.0:f}" "-0.000000")
-      it "e" $(checkExample "{-0.0:e}" "-0.000000e+00")
-      it "g" $(checkExampleDiff "{-0.0:g}" "-0.000000")
-      it "F" $(checkExample "{-0.0:F}" "-0.000000")
-      it "G" $(checkExampleDiff "{-0.0:G}" "-0.000000")
-      it "E" $(checkExample "{-0.0:E}" "-0.000000E+00")
+      it "f" $(checkExample "{cast @Double (-0.0):f}" "-0.000000")
+      it "e" $(checkExample "{cast @Double (-0.0):e}" "-0.000000e+00")
+      it "g" $(checkExampleDiff "{cast @Double (-0.0):g}" "-0.000000")
+      it "F" $(checkExample "{cast @Double (-0.0):F}" "-0.000000")
+      it "G" $(checkExampleDiff "{cast @Double (-0.0):G}" "-0.000000")
+      it "E" $(checkExample "{cast @Double (-0.0):E}" "-0.000000E+00")
     describe "0" $ do
-      it "works" $(checkExample "{123:010}" "0000000123")
-      it "works with sign" $(checkExample "{-123:010}" "-000000123")
-      it "accept mode override" $(checkExample "{-123:<010}" "-123000000")
-      it "accept mode and char override" $(checkExample "{-123:.<010}" "-123......")
+      it "works" $(checkExample "{cast @Integer 123:010}" "0000000123")
+      it "works with sign" $(checkExample "{cast @Integer $ -123:010}" "-000000123")
+      it "accept mode override" $(checkExample "{cast @Integer $ -123:<010}" "-123000000")
+      it "accept mode and char override" $(checkExample "{cast @Integer $ -123:.<010}" "-123......")
     describe "no digit no dot" $ do
-      it "f" $(checkExample "{1.0:.0f}" "1")
-      it "e" $(checkExample "{1.0:.0e}" "1e+00")
-      it "g" $(checkExample "{1.0:.0g}" "1")
-      it "E" $(checkExample "{1.0:.0E}" "1E+00")
-      it "G" $(checkExample "{1.0:.0G}" "1")
-      it "percent" $(checkExample "{1.0:.0%}" "100%")
+      it "f" $(checkExample "{cast @Double 1.0:.0f}" "1")
+      it "e" $(checkExample "{cast @Double 1.0:.0e}" "1e+00")
+      it "g" $(checkExample "{cast @Double 1.0:.0g}" "1")
+      it "E" $(checkExample "{cast @Double 1.0:.0E}" "1E+00")
+      it "G" $(checkExample "{cast @Double 1.0:.0G}" "1")
+      it "percent" $(checkExample "{cast @Double 1.0:.0%}" "100%")
     describe "no digit alt -> dot" $ do
-      it "f" $(checkExample "{1.0:#.0f}" "1.")
-      it "e" $(checkExample "{1.0:#.0e}" "1.e+00")
-      it "g" $(checkExample "{1.0:#.0g}" "1.")
-      it "E" $(checkExample "{1.0:#.0E}" "1.E+00")
-      it "G" $(checkExample "{1.0:#.0G}" "1.")
-      it "percent" $(checkExample "{1.0:#.0%}" "100.%")
+      it "f" $(checkExample "{cast @Double 1.0:#.0f}" "1.")
+      it "e" $(checkExample "{cast @Double 1.0:#.0e}" "1.e+00")
+      it "g" $(checkExample "{cast @Double 1.0:#.0g}" "1.")
+      it "E" $(checkExample "{cast @Double 1.0:#.0E}" "1.E+00")
+      it "G" $(checkExample "{cast @Double 1.0:#.0G}" "1.")
+      it "percent" $(checkExample "{cast @Double 1.0:#.0%}" "100.%")
   describe "complex" $
     it "works with many things at once" $
       let name = "Guillaume"
-          age = 31
-          euroToFrancs = 6.55957
+          age = 31 :: Integer
+          euroToFrancs = 6.55957 :: Double
        in [fmt|hello {name} you are {age} years old and the conversion rate of euro is {euroToFrancs:.2}|] `shouldBe` "hello Guillaume you are 31 years old and the conversion rate of euro is 6.56"
   describe "error reporting" $
     pure () -- TODO: find a way to test error reporting
   describe "sub expressions" $
     it "works" $
-      [fmt|2pi = {2 * pi:.2}|] `shouldBe` "2pi = 6.28"
+      [fmt|2pi = {cast @Double $ 2 * pi:.2}|] `shouldBe` "2pi = 6.28"
   describe "escape strings" $
     it "works" $
       [fmt|hello \n\b|] `shouldBe` "hello \n\b"
@@ -211,16 +219,18 @@ spec = do
     it "works" $
       do
         let n = 3 :: Int
-        [fmt|{pi:.{n}}|] `shouldBe` "3.142"
+        [fmt|{cast @Double pi:.{n}}|] `shouldBe` "3.142"
   it "escape chars" $
     [fmt|}}{{}}{{|] `shouldBe` "}{}{"
   describe "custom delimiters" $ do
     it "works" $
-      [myCustomFormatter|2 * pi = @2*pi:.2f!|] `shouldBe` "2 * pi = 6.28"
+      let pi2 = 2 * pi :: Double
+       in [myCustomFormatter|2 * pi = @pi2:.2f!|] `shouldBe` "2 * pi = 6.28"
     it "escape chars" $
       [myCustomFormatter|@@!!@@!!|] `shouldBe` "@!@!"
     it "works for custom precision" $
-      [myCustomFormatter|@pi:.@2!!|] `shouldBe` "3.14"
+      let pi' = pi :: Double
+       in [myCustomFormatter|@pi':.@2!!|] `shouldBe` "3.14"
   describe "empty line" $
     it "works" $
       [fmt||] `shouldBe` ""
@@ -240,7 +250,7 @@ here!|]
       [fmt|\
 I'm a line with \n and \\ and a correct line
 ending, but that one is escaped\
-And I'm escaping before and after: \\{pi:.3f}\\
+And I'm escaping before and after: \\{cast @Double pi:.3f}\\
 yeah\
 |]
         `shouldBe` "I'm a line with \n and \\ and a correct line\nending, but that one is escapedAnd I'm escaping before and after: \\3.142\\\nyeah"
@@ -254,7 +264,7 @@ yeah\
   describe "empty trailing value" $
     it "String" $
       ( [fmt|\
-{pi:.0}
+{cast @Double pi:.0}
 |] ::
           String
       )
@@ -263,7 +273,7 @@ yeah\
     it "parses @Int" $
       [fmt|hello {show @Int 10}|] `shouldBe` "hello 10"
     it "parses BinaryLiterals" $
-      [fmt|hello {0b1111}|] `shouldBe` "hello 15"
+      [fmt|hello {cast @Int 0b1111}|] `shouldBe` "hello 15"
   describe "custom types" $ do
     it "works with integral" $
       [fmt|{FooIntegral 10:d}|] `shouldBe` "10"
