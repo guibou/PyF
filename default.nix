@@ -78,7 +78,7 @@ rec {
   }
   ''
   cd ${sources}
-  hlint .
+  hlint $(find -name '*.hs' | grep -v ParserEx)
   mkdir $out
   '';
 
@@ -92,17 +92,6 @@ rec {
   ormolu --mode check $(find -name '*.hs' | grep -v ParserEx)
   mkdir $out
   '';
-
-  hlint-fix = mkShell {
-    nativeBuildInputs = [haskellPackages.hlint git haskellPackages.apply-refact];
-    shellHook = ''
-      for file in $(git ls-files | grep '\.hs$')
-      do
-        hlint  --refactor --refactor-options='-i' $file
-      done
-      exit 0
-    '';
-  };
 
   ormolu-fix = mkShell {
     nativeBuildInputs = [haskellPackages.ormolu git];
