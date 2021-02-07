@@ -2,7 +2,6 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE PatternSynonyms #-}
 
 -- |
@@ -27,8 +26,8 @@ import qualified Data.Char
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set -- For fancyFailure
 import Data.Void (Void)
-import qualified "template-haskell" Language.Haskell.TH.LanguageExtensions as ParseExtension
-import "template-haskell" Language.Haskell.TH.Syntax (Exp)
+import qualified Language.Haskell.TH.LanguageExtensions as ParseExtension
+import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp

@@ -4,7 +4,6 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 -- |
@@ -50,7 +49,7 @@ where
 
 import Data.Char (chr, toUpper)
 import Data.List (intercalate)
-import "template-haskell" Language.Haskell.TH.Syntax
+import Language.Haskell.TH.Syntax
 import qualified Numeric
 
 -- ADT for API
