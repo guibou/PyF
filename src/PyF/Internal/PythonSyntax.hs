@@ -29,10 +29,19 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set -- For fancyFailure
 import Data.Void (Void)
 import qualified "template-haskell" Language.Haskell.TH.LanguageExtensions as ParseExtension
-import qualified Language.Haskell.GhclibParserEx.GHC.Parser as ParseExp
-import Language.Haskell.GhclibParserEx.Fixity (applyFixities, preludeFixities, baseFixities)
+import qualified PyF.Internal.ParserEx as ParseExp
+import PyF.Internal.ParserEx (applyFixities, preludeFixities, baseFixities)
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Parser.Lexer (ParseResult (..), PState (..), loc)
+#else
 import Lexer (ParseResult (..), PState (..), loc)
-import qualified SrcLoc 
+#endif
+#if MIN_VERSION_ghc(9,0,0)
+import qualified GHC.Types.SrcLoc as SrcLoc
+#else
+import qualified SrcLoc
+#endif
+
 import "template-haskell" Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import Text.Megaparsec
@@ -40,7 +49,6 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
 import PyF.Internal.Meta
-
 type Parser t = ParsecT Void String (Reader ParsingContext) t
 
 data ParsingContext = ParsingContext
