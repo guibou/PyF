@@ -25,6 +25,7 @@ library
                   PyF.Internal.QQ
                   PyF.Formatters
                   PyF.Internal.ParserEx
+                  PyF.Internal.Parser
 
   build-depends:       base >= 4.9 && < 5.0
                      , bytestring
