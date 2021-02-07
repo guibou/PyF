@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+- Remove GHC 8.6 support. This can be reverted if required.
+
 ## 0.9.0.3 -- 2021-02-06
 
 - Test phase do not depend anymore on python (unless cabal flag `python_test` is
