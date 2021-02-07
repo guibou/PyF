@@ -1,6 +1,6 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -Wno-missing-fields #-}
+{-# OPTIONS_GHC -Wno-missing-fields -Wno-name-shadowing -Wno-unused-imports #-}
 {-# LANGUAGE CPP #-}
 -- Copyright (c) 2020, Shayne Fletcher. All rights reserved.
 -- SPDX-License-Identifier: BSD-3-Clause.
@@ -91,11 +91,8 @@ import GHC.Types.SrcLoc
 import BasicTypes
 import OccName
 #else
-import HsSyn
 import BasicTypes
-import RdrName
 import OccName
-import SrcLoc
 #endif
 
 import Data.Generics.Uniplate.Data

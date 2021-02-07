@@ -80,6 +80,7 @@ toType (HsTyVar _ _ n) =
         else TH.ConT (toName n')
 toType t = todo "toType" (showSDocDebug (baseDynFlags []) . ppr $ t)
 
+toFieldExp :: a
 toFieldExp = undefined
 
 toExp :: DynFlags -> Expr.HsExpr GhcPs -> TH.Exp
@@ -258,7 +259,15 @@ translateTHtoGHCExt TH.EmptyDataDeriving = GhcTH.EmptyDataDeriving
 translateTHtoGHCExt TH.NumericUnderscores = GhcTH.NumericUnderscores
 translateTHtoGHCExt TH.QuantifiedConstraints = GhcTH.QuantifiedConstraints
 translateTHtoGHCExt TH.StarIsType = GhcTH.StarIsType
+
 #if MIN_VERSION_ghc(8,10,0)
 translateTHtoGHCExt TH.CUSKs = GhcTH.CUSKs
+translateTHtoGHCExt TH.ImportQualifiedPost = GhcTH.ImportQualifiedPost
+translateTHtoGHCExt TH.UnliftedNewtypes = GhcTH.UnliftedNewtypes
+translateTHtoGHCExt TH.StandaloneKindSignatures = GhcTH.StandaloneKindSignatures
 #endif
-translateTHtoGHCExt e = error (show e)
+#if MIN_VERSION_ghc(9,0,0)
+translateTHtoGHCExt TH.QualifiedDo = GhcTH.QualifiedDo
+translateTHtoGHCExt TH.LinearTypes = GhcTH.LinearTypes
+translateTHtoGHCExt TH.LexicalNegation = GhcTH.LexicalNegation
+#endif

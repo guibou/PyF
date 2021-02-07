@@ -9,7 +9,9 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-import Data.Text
+-- This warning is disabled because any expression with literal leads to it.
+{-# OPTIONS -Wno-type-defaults #-}
+
 import PyF
 import SpecCustomDelimiters
 import SpecUtils
