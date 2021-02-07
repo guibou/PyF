@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
 module PyF.Internal.Meta (toExp, baseDynFlags, translateTHtoGHCExt) where
@@ -27,7 +26,7 @@ import HsLit
 
 import qualified Data.ByteString as B
 import qualified Language.Haskell.TH.Syntax as GhcTH
-import qualified "template-haskell" Language.Haskell.TH.Syntax as TH
+import qualified Language.Haskell.TH.Syntax as TH
 import PyF.Internal.ParserEx (fakeLlvmConfig, fakeSettings)
 
 #if MIN_VERSION_ghc(9,0,0)
