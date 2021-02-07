@@ -24,6 +24,7 @@ library
                   PyF.Internal.Meta
                   PyF.Internal.QQ
                   PyF.Formatters
+                  PyF.Internal.ParserEx
 
   build-depends:       base >= 4.9 && < 5.0
                      , bytestring
@@ -35,7 +36,8 @@ library
                      , megaparsec >= 7.0 && < 10.0
                      , mtl
                      , ghc
-                     , ghc-lib-parser-ex == 8.10.*
+                     , ghc-boot
+                     , uniplate
   hs-source-dirs: src
   ghc-options: -Wall
   default-language:    Haskell2010

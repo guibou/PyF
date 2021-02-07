@@ -47,20 +47,16 @@ rec {
 
   pyf_86 = pyfBuilder (haskell.packages.ghc865.override {
     overrides = self: super: with haskell.lib; {
-      ghc-lib-parser-ex = haskell.lib.disableCabalFlag (haskell.lib.enableCabalFlag super.ghc-lib-parser-ex "no-ghc-lib") "auto";
     };
   });
 
   pyf_88 = pyfBuilder (haskell.packages.ghc884.override {
     overrides = self: super: with haskell.lib; {
-      ghc-lib-parser-ex = haskell.lib.disableCabalFlag (haskell.lib.enableCabalFlag super.ghc-lib-parser-ex "no-ghc-lib") "auto";
     };
   });
 
   pyf_810 = pyfBuilder (haskell.packages.ghc8103.override {
     overrides = self: super: with haskell.lib; {
-      # In order to use the true GHC lib
-      # ghc-lib-parser-ex = haskell.lib.addBuildDepend (haskell.lib.disableCabalFlag (haskell.lib.disableCabalFlag super.ghc-lib-parser-ex "no-ghc-lib") "auto") super.ghc-lib-parser;
     };
   });
 
@@ -68,7 +64,6 @@ rec {
   # they are correct, but the error messages changed a bit.
   pyf_91 = haskell.lib.dontCheck (pyfBuilder (haskell.packages.ghc901.override {
     overrides = self: super: with haskell.lib; {
-      ghc-lib-parser-ex = haskell.lib.dontCheck (haskell.lib.disableCabalFlag (haskell.lib.enableCabalFlag super.ghc-lib-parser-ex "no-ghc-lib") "auto");
     };
   }));
 

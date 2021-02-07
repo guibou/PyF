@@ -4,23 +4,39 @@
 {-# LANGUAGE CPP #-}
 
 module PyF.Internal.Meta (toExp, baseDynFlags, translateTHtoGHCExt) where
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..))
+#elif MIN_VERSION_ghc(8,10,0)
+import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..))
+#else
+import HsTypes (HsWildCardBndrs (..), HsType (..))
+#endif
+
 #if MIN_VERSION_ghc(8,10,0)
 import GHC.Hs.Expr as Expr
 import GHC.Hs.Extension as Ext
-import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..))
 import GHC.Hs.Pat (HsRecFields (..))
 import GHC.Hs.Lit
 #else
 import HsExpr as Expr
 import HsExtension as Ext
-import HsTypes (HsWildCardBndrs (..), HsType (..))
 import HsPat (HsRecFields (..))
 import HsLit
 #endif
 import qualified "template-haskell" Language.Haskell.TH.Syntax as TH
 import qualified Language.Haskell.TH.Syntax as GhcTH
-import Language.Haskell.GhclibParserEx.GHC.Settings.Config (fakeLlvmConfig, fakeSettings)
+import PyF.Internal.ParserEx (fakeLlvmConfig, fakeSettings)
 import qualified Data.ByteString as B
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Types.SrcLoc
+import GHC.Types.Name
+import GHC.Types.Name.Reader
+import GHC.Data.FastString
+import GHC.Utils.Outputable (ppr, showSDocDebug)
+import GHC.Types.Basic (il_value, fl_value)
+import GHC.Driver.Session (DynFlags, xopt_set, defaultDynFlags)
+#else
 import SrcLoc
 import Name
 import RdrName
@@ -28,6 +44,7 @@ import FastString
 import Outputable (ppr, showSDocDebug)
 import BasicTypes (il_value, fl_value)
 import DynFlags (DynFlags, xopt_set, defaultDynFlags)
+#endif
 
 toName :: Ext.IdP GhcPs -> TH.Name
 toName = TH.mkName . occNameString . rdrNameOcc
@@ -69,7 +86,11 @@ toExp _ (Expr.HsVar _ n) =
   if   isRdrDataCon n'
   then TH.ConE (toName n')
   else TH.VarE (toName n')
+#if MIN_VERSION_ghc(9,0,0)
+toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString $ n)
+#else
 toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString . Expr.unboundVarOcc $ n)
+#endif
 toExp _ Expr.HsIPVar{}                       = noTH "toExp" "HsIPVar"
 toExp _ (Expr.HsLit _ l)                     = TH.LitE (toLit l)
 toExp _ (Expr.HsOverLit _ OverLit{ol_val})   = TH.LitE (toLit' ol_val)
