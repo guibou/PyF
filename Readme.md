@@ -305,6 +305,17 @@ cabal new-build
 cabal new-test
 ```
 
+There are a few available shells for you.
+
+- `nix-shell` is the default, current GHC version with language server available.
+- `nix-shell ./. -A pyf_xx.shell` is another GHC version (change `xx`) without language server.
+- `nix-shell ./. -A pyf_xx.shell_hls` is another GHC version (change `xx`) with language server.
+
+We also provide a few utility functions:
+
+- `nix-build ./ -A hlint` will check hlint.
+- `nix-shell ./ -A ormolu-fix` will format the codebase.
+
 # Library note
 
 `PyF.Formatters` exposes two functions to format numbers. They are type-safe (as much as possible) and comes with a combination of formatting options not seen in other formatting libraries:

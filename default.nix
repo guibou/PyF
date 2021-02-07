@@ -20,12 +20,33 @@ rec {
     "LICENSE"
   ];
 
-  pyfBuilder = hPkgs: (haskell.lib.buildFromSdist (hPkgs.callCabal2nix "PyF" sources {})).overrideAttrs(
-    oldAttrs: {
-      buildInputs = oldAttrs.buildInputs;
+  pyfBuilder = hPkgs: let
+    shell = pkg.env.overrideAttrs (old: {
+      # The haskell environment does not come with cabal-install
+      #nativeBuildInputs = old.nativeBuildInputs ++ [root.pkgs.cabal-install root.pkgs.python3 hPkgs.haskell-language-server ];
+      nativeBuildInputs = old.nativeBuildInputs ++ [cabal-install python3 ];
     });
 
+    # Shell with haskell language server
+    shell_hls = shell.overrideAttrs (old: {
+      nativeBuildInputs = old.nativeBuildInputs ++ [hPkgs.haskell-language-server];
+    });
+
+    pkg = (haskell.lib.buildFromSdist (hPkgs.callCabal2nix "PyF" sources {})).overrideAttrs(
+    oldAttrs: {
+      buildInputs = oldAttrs.buildInputs;
+      passthru = oldAttrs.passthru // {
+        inherit shell shell_hls;
+      };
+    });
+    # Add the GHC version in the package name
+  in pkg.overrideAttrs(old : {
+    name = let x = builtins.parseDrvName old.name;
+           in "${x.name}-ghc${hPkgs.ghc.version}-${x.version}";
+  });
+
   pyf_86 = pyfBuilder haskell.packages.ghc865;
+
   pyf_88 = pyfBuilder (haskell.packages.ghc884.override {
     overrides = self: super: with hasell.lib; {
     };
@@ -91,7 +112,7 @@ rec {
   }
   ''
   cd ${sources}
-  ormolu --mode check $(find -name '*.hs')
+  ormolu --mode check $(find -name '*.hs' | grep -v ParserEx)
   mkdir $out
   '';
 
@@ -109,7 +130,7 @@ rec {
   ormolu-fix = mkShell {
     nativeBuildInputs = [haskellPackages.ormolu git];
     shellHook = ''
-      ormolu --mode inplace $(git ls-files | grep '\.hs$')
+      ormolu --mode inplace $(git ls-files | grep '\.hs$' | grep -v ParserEx)
       exit 0
     '';
   };
