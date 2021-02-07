@@ -4,8 +4,8 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- |
 --

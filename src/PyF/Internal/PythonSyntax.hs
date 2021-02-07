@@ -2,8 +2,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -28,16 +28,15 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set -- For fancyFailure
 import Data.Void (Void)
 import qualified "template-haskell" Language.Haskell.TH.LanguageExtensions as ParseExtension
-import PyF.Internal.ParserEx (applyFixities, preludeFixities, baseFixities)
-
 import "template-haskell" Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
+import PyF.Internal.Meta
+import qualified PyF.Internal.Parser as ParseExp
+import PyF.Internal.ParserEx (applyFixities, baseFixities, preludeFixities)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
-import qualified PyF.Internal.Parser as ParseExp
-import PyF.Internal.Meta
 type Parser t = ParsecT Void String (Reader ParsingContext) t
 
 data ParsingContext = ParsingContext

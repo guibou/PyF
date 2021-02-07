@@ -2,7 +2,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 -- | This module is here to parse Haskell expression using the GHC Api
-
 module PyF.Internal.Parser (parseExpression) where
 
 #if MIN_VERSION_ghc(9,0,0)
@@ -40,7 +39,8 @@ parseExpression s dynFlags =
   case ParseExp.parseExpression s dynFlags of
     POk _ locatedExpr ->
       let expr = SrcLoc.unLoc locatedExpr
-      in Right expr
+       in Right
+            expr
 #if MIN_VERSION_ghc(9,0,0)
     PFailed PState{loc=SrcLoc.psRealLoc -> srcLoc} ->
 #elif MIN_VERSION_ghc(8,10,0)
@@ -49,7 +49,6 @@ parseExpression s dynFlags =
     -- TODO: check for pattern failure
     PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) _ ->
 #endif
-      let
-          line = SrcLoc.srcLocLine srcLoc
-          col = SrcLoc.srcLocCol srcLoc
-       in Left (line, col)
+            let line = SrcLoc.srcLocLine srcLoc
+                col = SrcLoc.srcLocCol srcLoc
+             in Left (line, col)
