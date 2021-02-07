@@ -45,11 +45,6 @@ rec {
            in "${x.name}-ghc${hPkgs.ghc.version}-${x.version}";
   });
 
-  pyf_86 = pyfBuilder (haskell.packages.ghc865.override {
-    overrides = self: super: with haskell.lib; {
-    };
-  });
-
   pyf_88 = pyfBuilder (haskell.packages.ghc884.override {
     overrides = self: super: with haskell.lib; {
     };
@@ -117,5 +112,5 @@ rec {
     '';
   };
 
-  pyf_all = [pyf_88 pyf_86 pyf_810 pyf_91];
+  pyf_all = [pyf_88 pyf_810 pyf_91];
 }

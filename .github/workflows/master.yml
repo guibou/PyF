@@ -41,5 +41,3 @@ jobs:
       run: stack --resolver lts-17.1 test
     - name: Stack 8.8
       run: stack --resolver lts-16.31 test
-    - name: Stack 8.6
-      run: stack --resolver lts-14.27 test
