@@ -4,7 +4,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PackageImports #-}
-{-# LANGUAGE CPP #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -29,18 +28,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Set as Set -- For fancyFailure
 import Data.Void (Void)
 import qualified "template-haskell" Language.Haskell.TH.LanguageExtensions as ParseExtension
-import qualified PyF.Internal.ParserEx as ParseExp
 import PyF.Internal.ParserEx (applyFixities, preludeFixities, baseFixities)
-#if MIN_VERSION_ghc(9,0,0)
-import GHC.Parser.Lexer (ParseResult (..), PState (..), loc)
-#else
-import Lexer (ParseResult (..), PState (..), loc)
-#endif
-#if MIN_VERSION_ghc(9,0,0)
-import qualified GHC.Types.SrcLoc as SrcLoc
-#else
-import qualified SrcLoc
-#endif
 
 import "template-haskell" Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
@@ -48,6 +36,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 
+import qualified PyF.Internal.Parser as ParseExp
 import PyF.Internal.Meta
 type Parser t = ParsecT Void String (Reader ParsingContext) t
 
@@ -242,41 +231,14 @@ evalExpr exts exprParser = do
   let exts' = fmap translateTHtoGHCExt exts
   let dynFlags = baseDynFlags exts'
   case ParseExp.parseExpression s dynFlags of
-    POk _ locatedExpr ->
-      let expr = SrcLoc.unLoc locatedExpr
-      in  pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
-#if MIN_VERSION_ghc(9,0,0)
-    PFailed PState{loc=psLoc} -> do
+    Right expr ->
+      pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
+    Left (line, col) -> do
       let err = "Parse error"
-          srcLoc = SrcLoc.psRealLoc psLoc
-          line = SrcLoc.srcLocLine srcLoc
-          col = SrcLoc.srcLocCol srcLoc
           linesBefore = take (line - 1) (lines s)
           currentOffset = length (unlines linesBefore) + col - 2
       setOffset (offset + currentOffset)
       fancyFailure (Set.singleton (ErrorFail err))
-#elif MIN_VERSION_ghc(8,10,0)
-    PFailed PState{loc=srcLoc} -> do
-      let err = "Parse error"
-          line = SrcLoc.srcLocLine srcLoc
-          col = SrcLoc.srcLocCol srcLoc
-          linesBefore = take (line - 1) (lines s)
-          currentOffset = length (unlines linesBefore) + col - 2
-      setOffset (offset + currentOffset)
-      fancyFailure (Set.singleton (ErrorFail err))
-#else
-    PFailed _ srcSpan _ -> do
-      let err = "Parse error"
-          -- TODO: check for pattern failure
-          SrcLoc.RealSrcLoc srcLoc = SrcLoc.srcSpanEnd srcSpan
-          line = SrcLoc.srcLocLine srcLoc
-          col = SrcLoc.srcLocCol srcLoc
-          linesBefore = take (line - 1) (lines s)
-          currentOffset = length (unlines linesBefore) + col - 2
-      setOffset (offset + currentOffset)
-      fancyFailure (Set.singleton (ErrorFail err))
-#endif
-
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
 overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)
