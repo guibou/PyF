@@ -185,8 +185,11 @@ spec =
       failCompile "hello { world"
     describe "fail is not enabled extension" $
       failCompile "{0b0001}"
-    describe "lexical errors" $
-      failCompile "foo\\Pbar"
+    describe "lexical errors" $ do
+      describe "single line" $
+        failCompile "foo\\Pbar"
+      describe "multiple line" $
+        failCompile "foo\nbli\\Pbar"
     describe "fileFailures" $
       mapM_
         fileFailCompile
