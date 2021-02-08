@@ -31,7 +31,9 @@ import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
 import PyF.Internal.PythonSyntax
-import Text.Megaparsec
+import Text.Parsec
+import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMessages)
+import Text.ParserCombinators.Parsec.Error (Message (..))
 
 -- Be Careful: empty format string
 
@@ -45,39 +47,75 @@ toExp expressionDelimiters s = do
           then [|fromString $(e)|]
           else e
   let context = ParsingContext expressionDelimiters exts
-  case runReader (runParserT parseGenericFormatString filename s) context of
+  case runReader (runParserT parseGenericFormatString () filename s) context of
     Left err -> do
       err' <- overrideErrorForFile filename err
-      fail (errorBundlePretty err')
+      fail =<< prettyError filename s err'
     Right items -> wrapFromString (goFormat items)
 
--- Megaparsec displays error relative to what they parsed
+-- | Display a pretty version of an error, with caret and file context.
+prettyError ::
+  -- | Filename of the file which contains the error
+  FilePath ->
+  -- | Content of the file
+  String ->
+  -- | Parse error from parsec
+  ParseError ->
+  Q String
+prettyError filename s err = do
+  let sourceLoc = errorPos err
+      line = sourceLine sourceLoc
+      column = sourceColumn sourceLoc
+      name = sourceName sourceLoc
+      carretOffset = column - 1
+      carret = replicate carretOffset ' ' <> "^"
+      colIndicator = show line <> " | "
+      colPrefix = replicate (length (show line)) ' ' <> " |"
+
+  code <- case filename of
+    -- If that's an interectavi file, we don't know much, so just dump the string.
+    "<interactive>" -> pure s
+    _ -> do
+      content <- runIO (readFile filename)
+      pure $ lines content !! (line - 1)
+
+  pure $
+    unlines $
+      [ name <> ":" <> show line <> ":" <> show column <> ":",
+        colPrefix,
+        colIndicator <> code,
+        colPrefix <> " " <> carret
+      ]
+        ++ formatErrorMessages err
+
+-- | Format a bunch of error
+formatErrorMessages :: ParseError -> [String]
+formatErrorMessages err
+  -- If there is an explicit error message from parsec, use only that
+  | not $ null messages = map messageString messages
+  -- Otherwise, uses parsec formatting
+  | otherwise = [showErrorMessages "or" "unknown parse error" "expecting" "unexpected" "end of input" (errorMessages err)]
+  where
+    (_sysUnExpect, msgs1) = span (SysUnExpect "" ==) (errorMessages err)
+    (_unExpect, msgs2) = span (UnExpect "" ==) msgs1
+    (_expect, messages) = span (Expect "" ==) msgs2
+
+-- Parsec displays error relative to what they parsed
 -- However the formatting string is part of a more complex file and we
 -- want error reporting relative to that file
-overrideErrorForFile :: FilePath -> ParseErrorBundle String e -> Q (ParseErrorBundle String e)
+overrideErrorForFile :: FilePath -> ParseError -> Q ParseError
 -- We have no may to recover interactive content
--- So we won't do better than displaying the megaparsec
+-- So we won't do better than displaying the Parsec
 -- error relative to the quasi quote content
 overrideErrorForFile "<interactive>" err = pure err
 -- We know the content of the file here
-overrideErrorForFile filename err = do
+overrideErrorForFile _ err = do
   (line, col) <- loc_start <$> location
-  fileContent <- runIO (readFile filename)
-  let -- drop the first lines of the file up to the line containing the quasiquote
-      -- then, split in what is before the QQ and what is after.
-      -- e.g.  blablabla [fmt|hello|] will split to
-      -- "blablabla [fmt|" and "hello|]"
-      (prefix, postfix) = splitAt (col - 1) $ unlines $ drop (line - 1) (lines fileContent)
-  pure $
-    err
-      { bundlePosState =
-          (bundlePosState err)
-            { pstateInput = postfix,
-              pstateSourcePos = SourcePos filename (mkPos line) (mkPos col),
-              pstateOffset = 0,
-              pstateLinePrefix = prefix
-            }
-      }
+  let sourcePos = errorPos err
+      sourcePos'
+        | sourceLine sourcePos == 1 = incSourceColumn (incSourceLine sourcePos (line - 1)) (col - 1)
+        | otherwise = setSourceColumn (incSourceLine sourcePos (line - 1)) (sourceColumn sourcePos)
+  pure $ setErrorPos sourcePos' err
 
 toExpPython :: String -> Q Exp
 toExpPython = toExp ('{', '}')

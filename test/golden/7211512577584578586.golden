@@ -4,7 +4,8 @@ INITIALPATH:7:22: error:
   |
 7 | main = putStrLn [fmt|{}|]
   |                       ^
-unexpected '}'
+
+unexpected "}"
 expecting an haskell expression
 
     • In the quasi-quotation: [fmt|{}|]

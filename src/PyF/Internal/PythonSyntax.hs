@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -21,21 +22,19 @@ module PyF.Internal.PythonSyntax
   )
 where
 
+import Control.Applicative (some)
 import Control.Monad.Reader
 import qualified Data.Char
 import Data.Maybe (fromMaybe)
-import Data.Void (Void)
 import qualified Language.Haskell.TH.LanguageExtensions as ParseExtension
 import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp
 import PyF.Internal.ParserEx (applyFixities, baseFixities, preludeFixities)
-import Text.Megaparsec
-import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
+import Text.Parsec
 
-type Parser t = ParsecT Void String (Reader ParsingContext) t
+type Parser t = ParsecT String () (Reader ParsingContext) t
 
 data ParsingContext = ParsingContext
   { delimiters :: (Char, Char),
@@ -99,7 +98,7 @@ rawString = do
   case escapeChars chars of
     Left remaining -> do
       -- Consume up to the error location
-      void $ count (length chars - length remaining) anySingle
+      void $ count (length chars - length remaining) anyChar
       fail "Lexical error in literal section"
     Right escaped -> do
       -- Consumne everything
@@ -111,7 +110,7 @@ escapedParenthesis = do
   (openingChar, closingChar) <- asks delimiters
   Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
   where
-    parseRaw c = [c] <$ string (replicate 2 c)
+    parseRaw c = [c] <$ try (string (replicate 2 c))
 
 -- | Replace escape chars with their value. Results in a Left with the
 -- remainder of the string on encountering a lexical error (such as a bad escape
@@ -134,7 +133,7 @@ replacementField = do
   (charOpening, charClosing) <- asks delimiters
   _ <- char charOpening
   expr <- evalExpr exts (some (noneOf (charClosing : ":" :: String)) <?> "an haskell expression")
-  fmt <- optional $ do
+  fmt <- optionMaybe $ do
     _ <- char ':'
     formatSpec
   _ <- char charClosing
@@ -234,9 +233,9 @@ evalExpr exts exprParser = do
       pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
     Left (lineError, colError, err) -> do
       -- Skip lines
-      replicateM_ (lineError - 1) (manyTill anySingle newline)
+      replicateM_ (lineError - 1) (manyTill anyChar newline)
       -- Skip columns
-      void $ count (colError - 2) anySingle
+      void $ count (colError - 2) anyChar
 
       fail $ err <> " in haskell expression"
 
@@ -247,16 +246,16 @@ overrideAlignmentIfZero _ v = v
 
 formatSpec :: Parser FormatMode
 formatSpec = do
-  al' <- optional alignment
-  s <- optional sign
+  al' <- optionMaybe alignment
+  s <- optionMaybe sign
   alternateForm <- option NormalForm (AlternateForm <$ char '#')
   hasZero <- option False (True <$ char '0')
   let al = overrideAlignmentIfZero hasZero al'
-  w <- optional width
-  grouping <- optional groupingOption
+  w <- optionMaybe width
+  grouping <- optionMaybe groupingOption
   prec <- option PrecisionDefault parsePrecision
 
-  t <- optional $ lookAhead type_
+  t <- optionMaybe $ lookAhead type_
   let padding = case w of
         Just p -> Padding p al
         Nothing -> PaddingDefault
@@ -279,6 +278,11 @@ parsePrecision = do
     [ Precision . Value <$> precision,
       char charOpening *> (Precision . HaskellExpr <$> evalExpr exts (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
     ]
+
+-- | Similar to 'manyTill' but always parse one element.
+-- Be careful, @someTill p e@ may parse @e@ as first element if @e@ is a subset of @p@.
+someTill :: Stream s m t => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
+someTill p e = (:) <$> p <*> manyTill p e
 
 evalFlag :: TypeFlag -> Padding -> Maybe Char -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
 evalFlag Flagb _pad _grouping prec alt s = failIfPrec prec (BinaryF alt (defSign s))
@@ -346,7 +350,7 @@ alignment =
     ]
 
 fill :: Parser Char
-fill = anySingle
+fill = anyChar
 
 align :: Parser AnyAlign
 align =
@@ -369,7 +373,7 @@ width :: Parser Integer
 width = integer
 
 integer :: Parser Integer
-integer = L.decimal -- incomplete: see: https://docs.python.org/3/reference/lexical_analysis.html#grammar-token-integer
+integer = read <$> some (oneOf ['0' .. '9']) -- incomplete: see: https://docs.python.org/3/reference/lexical_analysis.html#grammar-token-integer
 
 groupingOption :: Parser Char
 groupingOption = oneOf ("_," :: String)
