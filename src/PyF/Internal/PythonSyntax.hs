@@ -100,7 +100,7 @@ rawString = do
     Left remaining -> do
       -- Consume up to the error location
       void $ count (length chars - length remaining) anySingle
-      fail "lexical error in literal section"
+      fail "Lexical error in literal section"
     Right escaped -> do
       -- Consumne everything
       void p

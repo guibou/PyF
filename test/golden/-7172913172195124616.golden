@@ -1,0 +1,13 @@
+
+INITIALPATH:7:22: error:
+    • INITIALPATH:8:4:
+  |
+8 | bli\Pbar|]
+  |    ^
+Lexical error in literal section
+
+    • In the quasi-quotation: [fmt|foo
+bli\Pbar|]
+  |
+7 | main = putStrLn [fmt|foo
+  |                      ^^^...
