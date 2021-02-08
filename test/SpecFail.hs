@@ -178,6 +178,13 @@ spec =
     describe "on haskell expression parsing" $ do
       describe "single line" $
         failCompile "{1 + - / lalalal}"
+      describe "empty expression" $
+        failCompile "{}"
+      describe "sub expression" $ do
+        describe "simple failure" $
+          failCompile "{pi:.{/}}"
+        describe "empty failure" $
+          failCompile "{pi:.{}}"
       describe "multiples lines" $
         failCompile "hello\n    {\nlet a = 5\n    b = 10\nin 1 + - / lalalal}"
     describe "non-doubled delimiters" $ do

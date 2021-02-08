@@ -133,7 +133,7 @@ replacementField = do
   exts <- asks enabledExtensions
   (charOpening, charClosing) <- asks delimiters
   _ <- char charOpening
-  expr <- evalExpr exts (many (noneOf (charClosing : ":" :: String)))
+  expr <- evalExpr exts (some (noneOf (charClosing : ":" :: String)) <?> "an haskell expression")
   fmt <- optional $ do
     _ <- char ':'
     formatSpec
@@ -277,7 +277,7 @@ parsePrecision = do
   _ <- char '.'
   choice
     [ Precision . Value <$> precision,
-      char charOpening *> (Precision . HaskellExpr <$> evalExpr exts (manyTill anySingle (char charClosing)))
+      char charOpening *> (Precision . HaskellExpr <$> evalExpr exts (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
     ]
 
 evalFlag :: TypeFlag -> Padding -> Maybe Char -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat
