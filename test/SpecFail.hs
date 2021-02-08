@@ -51,7 +51,7 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
         "-hide-all-packages",
         "-package base",
         "-package bytestring",
-        "-package megaparsec",
+        "-package parsec",
         "-package text",
         "-package template-haskell",
         "-package ghc-boot",
