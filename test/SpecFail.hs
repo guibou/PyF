@@ -72,10 +72,13 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
 -- sanitize a compilation result by removing variables strings such as
 -- temporary files name
 sanitize :: FilePath -> String -> String
-sanitize path s =
-  -- strip the filename
-  let t = Text.pack s
-   in Text.unpack (Text.replace (Text.pack path) (Text.pack "INITIALPATH") t)
+sanitize path =
+  Text.unpack
+    -- Strip the filename
+    . Text.replace (Text.pack path) (Text.pack "INITIALPATH")
+    -- GHC 9.0 replaces [Char] by String everywhere
+    . Text.replace (Text.pack "[Char]") (Text.pack "String")
+    . Text.pack
 
 golden :: HasCallStack => String -> String -> IO ()
 golden name output = do

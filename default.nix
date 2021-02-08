@@ -55,12 +55,10 @@ rec {
     };
   });
 
-  # disable tests, the golden ones are broken with GHC 9.0.
-  # they are correct, but the error messages changed a bit.
-  pyf_91 = haskell.lib.dontCheck (pyfBuilder (haskell.packages.ghc901.override {
+  pyf_91 = pyfBuilder (haskell.packages.ghc901.override {
     overrides = self: super: with haskell.lib; {
     };
-  }));
+  });
 
   # That the current version for developement
   # We use the current version of nixpkgs in order to reduce build time.
