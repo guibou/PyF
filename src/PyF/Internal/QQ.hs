@@ -21,11 +21,12 @@ module PyF.Internal.QQ
 where
 
 import Control.Monad.Reader
+import Data.Kind
 import Data.Maybe (fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
 import GHC.TypeLits
-import Language.Haskell.TH
+import Language.Haskell.TH hiding (Type)
 import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
@@ -186,7 +187,7 @@ class FormatAny i k where
 instance (FormatAny2 (PyFClassify t) t k) => FormatAny t k where
   formatAny = formatAny2 (Proxy :: Proxy (PyFClassify t))
 
-class FormatAny2 (c :: PyFCategory) (i :: *) (k :: Formatters.AlignForString) where
+class FormatAny2 (c :: PyFCategory) (i :: Type) (k :: Formatters.AlignForString) where
   formatAny2 :: Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
 
 instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
@@ -207,7 +208,3 @@ instance (PyFToString t) => FormatAny2 'PyFString t 'Formatters.AlignAll where
 
 instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'PyFString t 'Formatters.AlignNumber where
   formatAny2 = error "Unreachable"
-
-type family ToFmt t where
-  ToFmt 'PyFIntegral = 'Formatters.Integral
-  ToFmt 'PyFFractional = 'Formatters.Fractional
