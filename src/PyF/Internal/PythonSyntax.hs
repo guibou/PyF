@@ -24,7 +24,6 @@ where
 import Control.Monad.Reader
 import qualified Data.Char
 import Data.Maybe (fromMaybe)
-import qualified Data.Set as Set -- For fancyFailure
 import Data.Void (Void)
 import qualified Language.Haskell.TH.LanguageExtensions as ParseExtension
 import Language.Haskell.TH.Syntax (Exp)
@@ -92,13 +91,20 @@ parseGenericFormatString =
 rawString :: Parser Item
 rawString = do
   (openingChar, closingChar) <- asks delimiters
-  chars <- some (noneOf [openingChar, closingChar])
+
+  -- lookahead
+  let p = some (noneOf [openingChar, closingChar])
+  chars <- lookAhead p
+
   case escapeChars chars of
     Left remaining -> do
-      offset <- getOffset
-      setOffset (offset - length remaining)
-      fancyFailure (Set.singleton (ErrorFail "lexical error in literal section"))
-    Right escaped -> return (Raw escaped)
+      -- Consume up to the error location
+      void $ count (length chars - length remaining) anySingle
+      fail "lexical error in literal section"
+    Right escaped -> do
+      -- Consumne everything
+      void p
+      return (Raw escaped)
 
 escapedParenthesis :: Parser Item
 escapedParenthesis = do
@@ -215,28 +221,24 @@ data TypeFormat
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
 
-lastCharFailed :: String -> Parser t
-lastCharFailed err = do
-  offset <- getOffset
-  setOffset (offset - 1)
-  fancyFailure (Set.singleton (ErrorFail err))
-
 evalExpr :: [ParseExtension.Extension] -> Parser String -> Parser Exp
 evalExpr exts exprParser = do
-  offset <- getOffset
-  s <- exprParser
+  s <- lookAhead exprParser
   -- Setup the dyn flags using the provided list of extensions
   let exts' = fmap translateTHtoGHCExt exts
   let dynFlags = baseDynFlags exts'
   case ParseExp.parseExpression s dynFlags of
-    Right expr ->
+    Right expr -> do
+      -- Consumne the expression
+      void exprParser
       pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
-    Left (line, col) -> do
-      let err = "Parse error"
-          linesBefore = take (line - 1) (lines s)
-          currentOffset = length (unlines linesBefore) + col - 2
-      setOffset (offset + currentOffset)
-      fancyFailure (Set.singleton (ErrorFail err))
+    Left (lineError, colError) -> do
+      -- Skip lines
+      replicateM_ (lineError - 1) (manyTill anySingle newline)
+      -- Skip columns
+      void $ count (colError - 2) anySingle
+
+      fail "Parse error"
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
 overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)
@@ -253,16 +255,20 @@ formatSpec = do
   w <- optional width
   grouping <- optional groupingOption
   prec <- option PrecisionDefault parsePrecision
-  t <- optional type_
+
+  t <- optional $ lookAhead type_
   let padding = case w of
         Just p -> Padding p al
         Nothing -> PaddingDefault
   case t of
     Nothing -> pure (FormatMode padding (DefaultF prec (fromMaybe Minus s)) grouping)
     Just flag -> case evalFlag flag padding grouping prec alternateForm s of
-      Right fmt -> pure (FormatMode padding fmt grouping)
+      Right fmt -> do
+        -- Consumne the parser
+        void type_
+        pure (FormatMode padding fmt grouping)
       Left typeError ->
-        lastCharFailed typeError
+        fail typeError
 
 parsePrecision :: Parser Precision
 parsePrecision = do
