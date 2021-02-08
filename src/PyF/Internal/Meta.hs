@@ -64,7 +64,10 @@ toLit (HsInteger _ i _) = TH.IntegerL i
 toLit (HsRat _ f _) = TH.FloatPrimL (fl_value f)
 toLit (HsFloatPrim _ f) = TH.FloatPrimL (fl_value f)
 toLit (HsDoublePrim _ f) = TH.DoublePrimL (fl_value f)
+
+#if !MIN_VERSION_ghc(9,0,0)
 toLit (XLit _) = noTH "toLit" "XLit"
+#endif
 
 toLit' :: OverLitVal -> TH.Lit
 toLit' (HsIntegral i) = TH.IntegerL (il_value i)
