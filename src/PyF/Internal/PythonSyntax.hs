@@ -232,13 +232,13 @@ evalExpr exts exprParser = do
       -- Consumne the expression
       void exprParser
       pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
-    Left (lineError, colError) -> do
+    Left (lineError, colError, err) -> do
       -- Skip lines
       replicateM_ (lineError - 1) (manyTill anySingle newline)
       -- Skip columns
       void $ count (colError - 2) anySingle
 
-      fail "Parse error"
+      fail $ err <> " in haskell expression"
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
 overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)

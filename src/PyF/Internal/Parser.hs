@@ -30,25 +30,38 @@ import GHC.Hs.Extension as Ext
 #else
 import HsExpr as Expr
 import HsExtension as Ext
+import Outputable (showSDoc)
 #endif
 
 import qualified PyF.Internal.ParserEx as ParseExp
 
-parseExpression :: String -> DynFlags -> Either (Int, Int) (HsExpr GhcPs)
+parseExpression :: String -> DynFlags -> Either (Int, Int, String) (HsExpr GhcPs)
 parseExpression s dynFlags =
   case ParseExp.parseExpression s dynFlags of
     POk _ locatedExpr ->
       let expr = SrcLoc.unLoc locatedExpr
        in Right
             expr
+
 #if MIN_VERSION_ghc(9,0,0)
-    PFailed PState{loc=SrcLoc.psRealLoc -> srcLoc} ->
+    PFailed PState{loc=SrcLoc.psRealLoc -> srcLoc, messages=msgs} ->
 #elif MIN_VERSION_ghc(8,10,0)
-    PFailed PState{loc=srcLoc} ->
+    PFailed PState{loc=srcLoc, messages=msgs} ->
 #else
     -- TODO: check for pattern failure
-    PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) _ ->
+    PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) doc ->
 #endif
-            let line = SrcLoc.srcLocLine srcLoc
+#if MIN_VERSION_ghc(8,10,0)
+            let -- TODO: do not ignore "warnMessages"
+                -- I have no idea what they can be
+                (_warnMessages, errorMessages) = msgs dynFlags
+                err = concatMap show errorMessages
+                line = SrcLoc.srcLocLine srcLoc
                 col = SrcLoc.srcLocCol srcLoc
-             in Left (line, col)
+            in Left (line, col, err)
+#else
+            let err = showSDoc dynFlags doc
+                line = SrcLoc.srcLocLine srcLoc
+                col = SrcLoc.srcLocCol srcLoc
+            in Left (line, col, err)
+#endif
