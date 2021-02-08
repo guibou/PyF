@@ -31,7 +31,6 @@ library
                      , bytestring
                      , template-haskell
                      , text
-                     , containers
 
                      -- Parsec and some transitive deps
                      , megaparsec >= 7.0 && < 10.0
@@ -40,7 +39,7 @@ library
                      , ghc-boot
                      , uniplate
   hs-source-dirs: src
-  ghc-options: -Wall
+  ghc-options: -Wall -Wunused-packages
   default-language:    Haskell2010
 
 test-suite pyf-test
@@ -48,8 +47,8 @@ test-suite pyf-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules: SpecUtils SpecCustomDelimiters
-  build-depends:       base, PyF, hspec, text, template-haskell
-  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base, PyF, hspec, template-haskell
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N -Wunused-packages
   default-language:    Haskell2010
   if flag(python_test)
     cpp-options: -DPYTHON_TEST
@@ -60,15 +59,15 @@ test-suite pyf-overloaded
   hs-source-dirs:      test
   main-is:             SpecOverloaded.hs
   build-depends:       base, PyF, hspec, text, bytestring
-  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N -Wunused-packages
   default-language:    Haskell2010
 
 test-suite pyf-failure
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             SpecFail.hs
-  build-depends:       base, hspec, text, template-haskell, process, hspec, temporary, hashable, filepath, deepseq, directory, HUnit
-  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base, hspec, text, process, hspec, temporary, hashable, filepath, deepseq, HUnit
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N -Wunused-packages
   default-language:    Haskell2010
 
 source-repository head
