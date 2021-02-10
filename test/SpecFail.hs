@@ -55,7 +55,7 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
         "-package text",
         "-package template-haskell",
         "-package ghc-boot",
-        "-package uniplate",
+        "-package syb",
         "-package mtl",
         "-package ghc",
         "-package containers"
