@@ -7,6 +7,9 @@
 
 -- Note: This code was mostly copied from:
 -- https://github.com/shayne-fletcher/ghc-lib-parser-ex
+-- Changes done:
+--   - integration of the ghc version .h file in top of the file
+--   - switch from uniplate to syb in order to reduce dependencies footprint.
 
 module PyF.Internal.ParserEx (fakeSettings, fakeLlvmConfig, parseExpression, applyFixities, preludeFixities,baseFixities)
 where
@@ -95,8 +98,8 @@ import BasicTypes
 import OccName
 #endif
 
-import Data.Generics.Uniplate.Data
 import Data.Maybe
+import Data.Generics (everywhere, mkT)
 
 fakeSettings :: Settings
 fakeSettings = Settings
@@ -207,8 +210,8 @@ parseExpression = parse Parser.parseExpression
 -- | Rearrange a parse tree to account for fixities.
 applyFixities :: Data a => [(String, Fixity)] -> a -> a
 applyFixities fixities m =
-  let m'  = transformBi (expFix fixities) m
-      m'' = transformBi (patFix fixities) m'
+  let m'  = everywhere (mkT $ expFix fixities) m
+      m'' = everywhere (mkT $ patFix fixities) m'
   in m''
 
 preludeFixities :: [(String, Fixity)]
