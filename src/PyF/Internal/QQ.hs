@@ -85,15 +85,17 @@ toExpPython = toExp ('{', '}')
 {-
 Note: Empty String Lifting
 
-Empty string are lifter as [] instead of "", so I'm using LitE (String L) instead
+Empty string are lifted as [] instead of "", so I'm using LitE (String L) instead
 -}
 
 goFormat :: [Item] -> Q Exp
+-- We special case on empty list in order to generate an empty string
 goFormat [] = pure $ LitE (StringL "") -- see [Empty String Lifting]
-goFormat items = foldl1 fofo <$> mapM toFormat items
+goFormat items = foldl1 sappendQ <$> mapM toFormat items
 
-fofo :: Exp -> Exp -> Exp
-fofo s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
+-- | call `<>` between two 'Exp'
+sappendQ :: Exp -> Exp -> Exp
+sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 -- Real formatting is here
 
