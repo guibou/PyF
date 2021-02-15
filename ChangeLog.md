@@ -9,6 +9,8 @@
 - Support for `Char` formatting, as string (showing the `Char` value) or as integral, showing the `ord`.
 - `Data.Ratio`.
 
+- Introducing `PyF.Trimmed` module. It offers the same API as `PyF` (i.e. `fmt`), but trims common indentation. Se `PyF.trimIndent` for documentation.
+
 ## 0.9.0.3 -- 2021-02-06
 
 - Test phase do not depend anymore on python (unless cabal flag `python_test` is

@@ -24,6 +24,7 @@ import qualified Data.Text
 import qualified Data.Text.Lazy
 import qualified Data.Time
 import PyF
+import qualified PyF.Trimmed
 import SpecCustomDelimiters
 import SpecUtils
 import Test.Hspec
@@ -390,3 +391,26 @@ yeah\
 -- Disabled because it does not build with GHC < 8.10
 -- xit "tuples section" $ do
 -- [fmt|{fst ((,2) 1)}|] `shouldBe` "1"
+
+  describe "multiline trimming" $ do
+    it "works" $ do
+      [PyF.Trimmed.fmt|   hello
+                  - a
+                   - b
+
+                  - c
+      |]
+        `shouldBe` "hello\n- a\n - b\n\n- c"
+    it "works with replacement" $ do
+      [PyF.Trimmed.fmt|  hello
+                  - a
+                   - {pi:.2}|]
+        `shouldBe` "hello\n- a\n - 3.14"
+
+    it "works with multiline" $ do
+      [PyF.Trimmed.fmt|hello
+                  - a
+                   - {
+                2 + 2
+                   :d}|]
+        `shouldBe` "hello\n- a\n - 4"
