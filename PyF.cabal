@@ -19,6 +19,7 @@ Flag python_test
 library
   exposed-modules:
                   PyF
+                  PyF.Trimmed
                   PyF.Class
                   PyF.Internal.PythonSyntax
                   PyF.Internal.Meta
@@ -39,7 +40,7 @@ library
                      , ghc-boot
                      , syb
   hs-source-dirs: src
-  ghc-options: -Wall -Wunused-packages
+  ghc-options: -Wall -Wunused-packages -Wincomplete-uni-patterns
   default-language:    Haskell2010
   default-extensions: QuasiQuotes
 
