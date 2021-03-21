@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module PyF.Internal.Meta (toExp, baseDynFlags, translateTHtoGHCExt) where
 
@@ -15,12 +17,12 @@ import HsTypes (HsWildCardBndrs (..), HsType (..))
 #if MIN_VERSION_ghc(8,10,0)
 import GHC.Hs.Expr as Expr
 import GHC.Hs.Extension as Ext
-import GHC.Hs.Pat (HsRecFields (..))
+import GHC.Hs.Pat as Pat
 import GHC.Hs.Lit
 #else
 import HsExpr as Expr
 import HsExtension as Ext
-import HsPat (HsRecFields (..))
+import HsPat as Pat
 import HsLit
 #endif
 
@@ -35,20 +37,19 @@ import GHC.Types.Name
 import GHC.Types.Name.Reader
 import GHC.Data.FastString
 import GHC.Utils.Outputable (ppr, showSDocDebug)
-import GHC.Types.Basic (il_value, fl_value)
+import GHC.Types.Basic (il_value, fl_value, Boxity(..))
 import GHC.Driver.Session (DynFlags, xopt_set, defaultDynFlags)
+import qualified GHC.Unit.Module as Module
 #else
 import SrcLoc
 import Name
 import RdrName
 import FastString
 import Outputable (ppr, showSDocDebug)
-import BasicTypes (il_value, fl_value)
+import BasicTypes (il_value, fl_value, Boxity(..))
 import DynFlags (DynFlags, xopt_set, defaultDynFlags)
+import qualified Module
 #endif
-
-toName :: Ext.IdP GhcPs -> TH.Name
-toName = TH.mkName . occNameString . rdrNameOcc
 
 toLit :: HsLit GhcPs -> TH.Lit
 toLit (HsChar _ c) = TH.CharL c
@@ -75,6 +76,7 @@ toLit' (HsFractional f) = TH.RationalL (fl_value f)
 toLit' (HsIsString _ fs) = TH.StringL (unpackFS fs)
 
 toType :: HsType GhcPs -> TH.Type
+toType (HsWildCardTy _) = TH.WildCardT
 toType (HsTyVar _ _ n) =
   let n' = unLoc n
    in if isRdrTyVar n'
@@ -82,8 +84,19 @@ toType (HsTyVar _ _ n) =
         else TH.ConT (toName n')
 toType t = todo "toType" (showSDocDebug (baseDynFlags []) . ppr $ t)
 
+toName :: RdrName -> TH.Name
+toName n = case n of
+  (Unqual o) -> TH.mkName (occNameString o)
+  (Qual m o) -> TH.mkName (Module.moduleNameString m <> "." <> occNameString o)
+  (Orig m o) -> error "orig"
+  (Exact n1) -> error "exact"
+
 toFieldExp :: a
 toFieldExp = undefined
+
+toPat :: DynFlags -> Pat.Pat GhcPs -> TH.Pat
+toPat _dynFlags (Pat.VarPat _ (unLoc -> name)) = TH.VarP (toName name)
+toPat dynFlags p = todo "toPat" (showSDocDebug dynFlags . ppr $ p)
 
 toExp :: DynFlags -> Expr.HsExpr GhcPs -> TH.Exp
 toExp _ (Expr.HsVar _ n) =
@@ -103,32 +116,50 @@ toExp d (Expr.HsApp _ e1 e2) = TH.AppE (toExp d . unLoc $ e1) (toExp d . unLoc $
 toExp d (Expr.HsAppType _ e HsWC {hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
 toExp d (Expr.OpApp _ e1 o e2) = TH.UInfixE (toExp d . unLoc $ e1) (toExp d . unLoc $ o) (toExp d . unLoc $ e2)
 toExp d (Expr.NegApp _ e _) = TH.AppE (TH.VarE 'negate) (toExp d . unLoc $ e)
--- toExp (Expr.Lambda _ ps e)                    = TH.LamE (fmap toPat ps) (toExp e)
+-- NOTE: for lambda, there is only one match
+toExp d (Expr.HsLam _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])) _)) = TH.LamE (fmap (toPat d) ps) (toExp d e)
 -- toExp (Expr.Let _ bs e)                       = TH.LetE (toDecs bs) (toExp e)
 -- toExp (Expr.If _ a b c)                       = TH.CondE (toExp a) (toExp b) (toExp c)
 -- toExp (Expr.MultiIf _ ifs)                    = TH.MultiIfE (map toGuard ifs)
 -- toExp (Expr.Case _ e alts)                    = TH.CaseE (toExp e) (map toMatch alts)
 -- toExp (Expr.Do _ ss)                          = TH.DoE (map toStmt ss)
 -- toExp e@Expr.MDo{}                            = noTH "toExp" e
--- toExp (Expr.Tuple _ Exts.Boxed xs)            = TH.TupE (fmap toTupEl xs)
--- toExp (Expr.Tuple _ Exts.Unboxed xs)          = TH.UnboxedTupE (fmap toTupEl xs)
--- toExp e@Expr.TupleSection{}                   = noTH "toExp" e
+toExp d (Expr.ExplicitTuple _ (map unLoc -> args) boxity) = ctor tupArgs
+  where
+    toTupArg (Expr.Present _ (unLoc -> e)) = Just e
+    toTupArg (Expr.Missing _) = Nothing
+    toTupArg _ = error "impossible case"
+
+    ctor = case boxity of
+      Boxed -> TH.TupE
+      Unboxed -> TH.UnboxedTupE
+
+#if MIN_VERSION_ghc(8,10,0)
+    tupArgs = fmap ((fmap (toExp d)) . toTupArg) args
+#else
+    tupArgs = case traverse toTupArg args of
+      Nothing -> error "Tuple section are not supported by template haskell < 8.10"
+      Just args -> fmap (toExp d) args
+#endif
+
 -- toExp (Expr.List _ xs)                        = TH.ListE (fmap toExp xs)
 toExp d (Expr.HsPar _ e) = TH.ParensE (toExp d . unLoc $ e)
--- toExp (Expr.LeftSection _ e o)                = TH.InfixE (Just . toExp $ e) (toExp o) Nothing
--- toExp (Expr.RightSection _ o f)               = TH.InfixE Nothing (toExp o) (Just . toExp $ f)
+toExp d (Expr.SectionL _ (unLoc -> a) (unLoc -> b)) = TH.InfixE (Just . toExp d $ a) (toExp d b) Nothing
+toExp d (Expr.SectionR _ (unLoc -> a) (unLoc -> b)) = TH.InfixE Nothing (toExp d a) (Just . toExp d $ b)
 toExp _ (Expr.RecordCon _ name HsRecFields {rec_flds}) =
   TH.RecConE (toName . unLoc $ name) (fmap toFieldExp rec_flds)
 -- toExp (Expr.RecUpdate _ e xs)                 = TH.RecUpdE (toExp e) (fmap toFieldExp xs)
--- toExp (Expr.EnumFrom _ e)                     = TH.ArithSeqE $ TH.FromR (toExp e)
--- toExp (Expr.EnumFromTo _ e f)                 = TH.ArithSeqE $ TH.FromToR (toExp e) (toExp f)
--- toExp (Expr.EnumFromThen _ e f)               = TH.ArithSeqE $ TH.FromThenR (toExp e) (toExp f)
--- toExp (Expr.EnumFromThenTo _ e f g)           = TH.ArithSeqE $ TH.FromThenToR (toExp e) (toExp f) (toExp g)
 -- toExp (Expr.ListComp _ e ss)                  = TH.CompE $ map convert ss ++ [TH.NoBindS (toExp e)]
 --  where
 --   convert (Expr.QualStmt _ st)                = toStmt st
 --   convert s                                   = noTH "toExp ListComp" s
 -- toExp (Expr.ExpTypeSig _ e t)                 = TH.SigE (toExp e) (toType t)
+toExp d (Expr.ExplicitList _ _ (map unLoc -> args)) = TH.ListE (map (toExp d) args)
+toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
+  (From a) -> TH.FromR (toExp d $ unLoc a)
+  (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
+  (FromTo a b) -> TH.FromToR (toExp d $ unLoc a) (toExp d $ unLoc b)
+  (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
 toExp dynFlags e = todo "toExp" (showSDocDebug dynFlags . ppr $ e)
 
 todo :: (Show e) => String -> e -> a

@@ -4,14 +4,17 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- This warning is disabled because any expression with literal leads to it.
 {-# OPTIONS -Wno-type-defaults #-}
 
+import qualified Data.List as List
 import PyF
 import SpecCustomDelimiters
 import SpecUtils
@@ -264,6 +267,8 @@ yeah\
   describe "language extensions" $ do
     it "parses @Int" $
       [fmt|hello {show @Int 10}|] `shouldBe` "hello 10"
+    it "parses @_" $
+      [fmt|hello {show @_ 10}|] `shouldBe` "hello 10"
     it "parses BinaryLiterals" $
       [fmt|hello {0b1111}|] `shouldBe` "hello 15"
   describe "custom types" $ do
@@ -279,3 +284,28 @@ yeah\
       [fmt|{FooIntegral 100}|] `shouldBe` "100"
       [fmt|{FooFloating 100.123}|] `shouldBe` "100.123"
       [fmt|{FooDefault}|] `shouldBe` "FooDefault"
+
+  describe "syntax" $ do
+    describe "name" $ do
+      it "qualified" $ do
+        [fmt|{List.sort [1,2,3]:s}|] `shouldBe` "[1,2,3]"
+    describe "literals" $ do
+      it "list" $ do
+        [fmt|{[1,2,3]:s}|] `shouldBe` "[1,2,3]"
+      describe "arith seq" $ do
+        it "from" $ [fmt|{take 3 [1..]:s}|] `shouldBe` "[1,2,3]"
+        it "fromthen" $ [fmt|{take 3 [1, 3..]:s}|] `shouldBe` "[1,3,5]"
+        it "fromto" $ [fmt|{[1..3]:s}|] `shouldBe` "[1,2,3]"
+        it "fromthento" $ [fmt|{[1,3..5]:s}|] `shouldBe` "[1,3,5]"
+
+    it "lambda" $ do
+      [fmt|{(\x -> 2 * x) 10}|] `shouldBe` "20"
+    it "section" $ do
+      [fmt|{(100/) 10:.0f}|] `shouldBe` "10"
+      [fmt|{(/2) 10:.0f}|] `shouldBe` "5"
+    it "tuples" $ do
+      [fmt|{fst (1, 2)}|] `shouldBe` "1"
+
+-- Disabled because it does not build with GHC < 8.10
+-- xit "tuples section" $ do
+-- [fmt|{fst ((,2) 1)}|] `shouldBe` "1"
