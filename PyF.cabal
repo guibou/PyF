@@ -31,6 +31,7 @@ library
                      , bytestring
                      , template-haskell
                      , text
+                     , time
 
                      , parsec
                      , mtl
@@ -40,13 +41,14 @@ library
   hs-source-dirs: src
   ghc-options: -Wall -Wunused-packages
   default-language:    Haskell2010
+  default-extensions: QuasiQuotes
 
 test-suite pyf-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules: SpecUtils SpecCustomDelimiters
-  build-depends:       base, PyF, hspec, template-haskell
+  build-depends:       base, PyF, hspec, template-haskell, text, bytestring, time
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N -Wunused-packages
   default-language:    Haskell2010
   if flag(python_test)

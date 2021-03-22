@@ -14,7 +14,15 @@
 -- This warning is disabled because any expression with literal leads to it.
 {-# OPTIONS -Wno-type-defaults #-}
 
+import qualified Data.ByteString
+import qualified Data.ByteString.Char8
+import qualified Data.ByteString.Lazy
+import qualified Data.ByteString.Lazy.Char8
 import qualified Data.List as List
+import qualified Data.Ratio
+import qualified Data.Text
+import qualified Data.Text.Lazy
+import qualified Data.Time
 import PyF
 import SpecCustomDelimiters
 import SpecUtils
@@ -30,8 +38,8 @@ import Test.Hspec
 main :: IO ()
 main = hspec spec
 
-newtype FooFloating = FooFloating Float
-  deriving newtype (Show, RealFloat, RealFrac, Floating, Fractional, Real, Enum, Num, Ord, Eq)
+newtype FooFloating t = FooFloating t
+  deriving newtype (Show, RealFloat, RealFrac, Floating, Fractional, Real, Enum, Num, Ord, Eq, PyfFormatFractional)
 
 newtype FooIntegral = FooIntegral Integer
   deriving newtype (Show, Integral, Real, Enum, Num, Ord, Eq)
@@ -41,14 +49,12 @@ data Foo = Foo
 data FooDefault = FooDefault
   deriving (Show)
 
-instance PyFToString FooDefault
-
 instance PyFToString Foo where
   pyfToString Foo = "I'm a Foo"
 
 type instance PyFClassify Foo = 'PyFString
 
-type instance PyFClassify FooFloating = 'PyFFractional
+type instance PyFClassify (FooFloating t) = 'PyFFractional
 
 type instance PyFClassify FooIntegral = 'PyFIntegral
 
@@ -148,23 +154,43 @@ spec = do
         it "default" $(checkExample "{1.0:10}" "       1.0")
         it "default" $(checkExample "{\"h\":10}" "h         ")
     describe "NaN" $ do
-      let nan = 0.0 / 0
-      it "nan" $(checkExample "{nan}" "nan")
-      it "nan f" $(checkExample "{nan:f}" "nan")
-      it "nan e" $(checkExample "{nan:e}" "nan")
-      it "nan g" $(checkExample "{nan:g}" "nan")
-      it "nan F" $(checkExample "{nan:F}" "NAN")
-      it "nan G" $(checkExample "{nan:G}" "NAN")
-      it "nan E" $(checkExample "{nan:E}" "NAN")
+      describe "float" $ do
+        let nan = 0.0 / 0 :: Float
+        it "nan" $(checkExample "{nan}" "nan")
+        it "nan f" $(checkExample "{nan:f}" "nan")
+        it "nan e" $(checkExample "{nan:e}" "nan")
+        it "nan g" $(checkExample "{nan:g}" "nan")
+        it "nan F" $(checkExample "{nan:F}" "NAN")
+        it "nan G" $(checkExample "{nan:G}" "NAN")
+        it "nan E" $(checkExample "{nan:E}" "NAN")
+      describe "double" $ do
+        let nan = 0.0 / 0 :: Double
+        it "nan" $(checkExample "{nan}" "nan")
+        it "nan f" $(checkExample "{nan:f}" "nan")
+        it "nan e" $(checkExample "{nan:e}" "nan")
+        it "nan g" $(checkExample "{nan:g}" "nan")
+        it "nan F" $(checkExample "{nan:F}" "NAN")
+        it "nan G" $(checkExample "{nan:G}" "NAN")
+        it "nan E" $(checkExample "{nan:E}" "NAN")
     describe "Infinite" $ do
-      let inf = 1.0 / 0
-      it "infinite" $(checkExample "{inf}" "inf")
-      it "infinite f" $(checkExample "{inf:f}" "inf")
-      it "infinite e" $(checkExample "{inf:e}" "inf")
-      it "infinite g" $(checkExample "{inf:g}" "inf")
-      it "infinite F" $(checkExample "{inf:F}" "INF")
-      it "infinite G" $(checkExample "{inf:G}" "INF")
-      it "infinite E" $(checkExample "{inf:E}" "INF")
+      describe "float" $ do
+        let inf = 1.0 / 0 :: Float
+        it "infinite" $(checkExample "{inf}" "inf")
+        it "infinite f" $(checkExample "{inf:f}" "inf")
+        it "infinite e" $(checkExample "{inf:e}" "inf")
+        it "infinite g" $(checkExample "{inf:g}" "inf")
+        it "infinite F" $(checkExample "{inf:F}" "INF")
+        it "infinite G" $(checkExample "{inf:G}" "INF")
+        it "infinite E" $(checkExample "{inf:E}" "INF")
+      describe "double" $ do
+        let inf = 1.0 / 0 :: Double
+        it "infinite" $(checkExample "{inf}" "inf")
+        it "infinite f" $(checkExample "{inf:f}" "inf")
+        it "infinite e" $(checkExample "{inf:e}" "inf")
+        it "infinite g" $(checkExample "{inf:g}" "inf")
+        it "infinite F" $(checkExample "{inf:F}" "INF")
+        it "infinite G" $(checkExample "{inf:G}" "INF")
+        it "infinite E" $(checkExample "{inf:E}" "INF")
     describe "Grouping" $ do
       it "groups int" $(checkExample "{123456789:,d}" "123,456,789")
       it "groups int with _" $(checkExample "{123456789:_d}" "123_456_789")
@@ -282,8 +308,63 @@ yeah\
     it "works with classify" $ do
       [fmt|{Foo}|] `shouldBe` "I'm a Foo"
       [fmt|{FooIntegral 100}|] `shouldBe` "100"
-      [fmt|{FooFloating 100.123}|] `shouldBe` "100.123"
+      let fooDouble = FooFloating (100.123 :: Double) in [fmt|{fooDouble}|] `shouldBe` "100.123"
+      let fooFloat = FooFloating (100.123 :: Float) in [fmt|{fooFloat}|] `shouldBe` "100.123"
       [fmt|{FooDefault}|] `shouldBe` "FooDefault"
+
+  describe "instances" $ do
+    describe "default" $ do
+      it "bytestring" $ do
+        let x = "hello" :: Data.ByteString.ByteString in [fmt|{x}|] `shouldBe` "hello"
+      it "bytestring lazy" $ do
+        let x = "hello" :: Data.ByteString.Lazy.ByteString in [fmt|{x}|] `shouldBe` "hello"
+      it "bytestring char 8 lazy" $ do
+        let x = "hello" :: Data.ByteString.Lazy.Char8.ByteString in [fmt|{x}|] `shouldBe` "hello"
+      it "bytestring char 8" $ do
+        let x = "hello" :: Data.ByteString.Char8.ByteString in [fmt|{x}|] `shouldBe` "hello"
+      it "text" $ do
+        let x = "hello" :: Data.Text.Text in [fmt|{x}|] `shouldBe` "hello"
+      it "lazy text" $ do
+        let x = "hello" :: Data.Text.Lazy.Text in [fmt|{x}|] `shouldBe` "hello"
+      it "DiffTime" $ do
+        let x = 3 :: Data.Time.DiffTime in [fmt|{x}|] `shouldBe` "3.0"
+      it "NominalDiffTime" $ do
+        let x = 3 :: Data.Time.NominalDiffTime in [fmt|{x}|] `shouldBe` "3.0"
+      it "Ratio" $ do
+        let x = 3 :: Data.Ratio.Ratio Int in [fmt|{x}|] `shouldBe` "3.0"
+      it "Int" $ do
+        let x = 3 :: Int in [fmt|{x}|] `shouldBe` "3"
+      it "Char" $ do
+        let x = 'a' in [fmt|{x}|] `shouldBe` "a"
+    describe "forced" $ do
+      it "bytestring" $ do
+        let x = "hello" :: Data.ByteString.ByteString in [fmt|{x:s}|] `shouldBe` "hello"
+      it "bytestring lazy" $ do
+        let x = "hello" :: Data.ByteString.Lazy.ByteString in [fmt|{x:s}|] `shouldBe` "hello"
+      it "bytestring char 8 lazy" $ do
+        let x = "hello" :: Data.ByteString.Lazy.Char8.ByteString in [fmt|{x:s}|] `shouldBe` "hello"
+      it "bytestring char 8" $ do
+        let x = "hello" :: Data.ByteString.Char8.ByteString in [fmt|{x:s}|] `shouldBe` "hello"
+      it "text" $ do
+        let x = "hello" :: Data.Text.Text in [fmt|{x:s}|] `shouldBe` "hello"
+      it "lazy text" $ do
+        let x = "hello" :: Data.Text.Text in [fmt|{x:s}|] `shouldBe` "hello"
+      it "DiffTime" $ do
+        let x = 3 :: Data.Time.DiffTime in [fmt|{x:.2f}|] `shouldBe` "3.00"
+      it "NominalDiffTime" $ do
+        let x = 3 :: Data.Time.NominalDiffTime in [fmt|{x:.2f}|] `shouldBe` "3.00"
+      it "Ratio" $ do
+        let x = 3 :: Data.Ratio.Ratio Int in [fmt|{x:.2f}|] `shouldBe` "3.00"
+      describe "int" $ do
+        it "decimal" $ do
+          let x = 3 :: Int in [fmt|{x:d}|] `shouldBe` "3"
+        it "fractional" $ do
+          let x = 3 :: Int in [fmt|{x:.2f}|] `shouldBe` "3.00"
+      describe "Char" $ do
+        it "string" $ do
+          let x = 'a' in [fmt|{x:s}|] `shouldBe` "a"
+        it "int" $ do
+          let x = 'a' in [fmt|{x:d}|] `shouldBe` "97"
 
   describe "syntax" $ do
     describe "name" $ do

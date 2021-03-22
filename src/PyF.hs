@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, BangPatterns #-}
 
 -- | A lot of quasiquoters to format and interpolate string expression
 module PyF
