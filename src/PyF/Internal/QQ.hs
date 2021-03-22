@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
@@ -213,13 +214,13 @@ paddingKToPadding p = case p of
   PaddingK i Nothing -> Padding i Nothing
   PaddingK i (Just (c, a)) -> Padding i (Just (c, AnyAlign a))
 
-formatAnyIntegral :: (Show i, Integral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
-formatAnyIntegral f s Nothing grouping i = Formatters.formatIntegral f s Nothing grouping i
-formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = Formatters.formatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
+formatAnyIntegral :: PyfFormatIntegral i => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
+formatAnyIntegral f s Nothing grouping i = pyfFormatIntegral f s Nothing grouping i
+formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = pyfFormatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
 
-formatAnyFractional :: (RealFloat i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
-formatAnyFractional f s Nothing grouping p i = Formatters.formatFractional f s Nothing grouping p i
-formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = Formatters.formatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
+formatAnyFractional :: (PyfFormatFractional i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
+formatAnyFractional f s Nothing grouping p i = pyfFormatFractional f s Nothing grouping p i
+formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = pyfFormatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
 
 class FormatAny i k where
   formatAny :: Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
@@ -233,7 +234,7 @@ class FormatAny2 (c :: PyFCategory) (i :: Type) (k :: Formatters.AlignForString)
 instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
   formatAny2 _ s a p _precision = formatAnyIntegral Formatters.Decimal s (newPaddingUnQ (paddingKToPadding a)) p
 
-instance (RealFloat t) => FormatAny2 'PyFFractional t k where
+instance (PyfFormatFractional t) => FormatAny2 'PyFFractional t k where
   formatAny2 _ s a = formatAnyFractional Formatters.Generic s (newPaddingUnQ (paddingKToPadding a))
 
 newPaddingKForString :: PaddingK 'Formatters.AlignAll -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)

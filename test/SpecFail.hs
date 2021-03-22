@@ -57,6 +57,7 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
         "-package syb",
         "-package mtl",
         "-package ghc",
+        "-package time",
         "-package containers"
       ]
       ""
@@ -146,13 +147,6 @@ spec =
         failCompile "{hello:+s}"
         failCompile "{hello: s}"
         failCompile "{hello:-s}"
-    describe "number" $ do
-      failCompile "{truncate' number:f}"
-      failCompile "{truncate' number:g}"
-      failCompile "{truncate' number:G}"
-      failCompile "{truncate' number:e}"
-      failCompile "{truncate' number:E}"
-      failCompile "{truncate' number:%}"
     describe "number with precision" $ do
       failCompile "{truncate number:.3d}"
       failCompile "{truncate number:.3o}"
