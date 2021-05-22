@@ -13,26 +13,13 @@
 
 module PyF.Internal.ParserEx (fakeSettings, fakeLlvmConfig, parseExpression, applyFixities, preludeFixities,baseFixities)
 where
-
-#      if __GLASGOW_HASKELL__   == 811
-#        define GHCLIB_API_HEAD
-#      elif __GLASGOW_HASKELL__ == 900
-#        define GHCLIB_API_900
-#      elif __GLASGOW_HASKELL__ == 810
-#        define GHCLIB_API_810
-#      elif __GLASGOW_HASKELL__ == 808
-#        define GHCLIB_API_808
-#      else
-#        error Unsupported GHC API version
-#      endif
-
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9,0,0)
 import GHC.Settings.Config
 import GHC.Driver.Session
 import GHC.Utils.Fingerprint
 import GHC.Platform
 import GHC.Settings
-#elif defined (GHCLIB_API_810)
+#elif MIN_VERSION_ghc(8, 10, 0)
 import Config
 import DynFlags
 import Fingerprint
@@ -45,15 +32,17 @@ import Fingerprint
 import Platform
 #endif
 
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900) || defined (GHCLIB_API_810)
+#if MIN_VERSION_ghc(8,10,0)
 import GHC.Hs
 #else
 import HsSyn
 #endif
-#if defined (GHCLIB_API_HEAD)
+
+#if MIN_VERSION_ghc(9, 2, 0)
 import GHC.Driver.Config
 #endif
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+
+#if MIN_VERSION_ghc(9,0,0)
 import GHC.Parser.PostProcess
 import GHC.Driver.Session
 import GHC.Data.StringBuffer
@@ -73,24 +62,28 @@ import FastString
 import SrcLoc
 import RdrName
 #endif
-#if defined (GHCLIB_API_810)
+
+#if MIN_VERSION_ghc(9, 0, 0)
+#else
 import RdrHsSyn
 #endif
 
 import Data.Data hiding (Fixity)
 
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9,0,0)
 import GHC.Hs
-#if defined (GHCLIB_API_HEAD)
+
+#if MIN_VERSION_ghc(9, 2, 0)
 import GHC.Types.Fixity
 import GHC.Types.SourceText
 #else
 import GHC.Types.Basic
 #endif
+
 import GHC.Types.Name.Reader
 import GHC.Types.Name
 import GHC.Types.SrcLoc
-#elif defined (GHCLIB_API_810)
+#elif MIN_VERSION_ghc(8, 10, 0)
 import BasicTypes
 import OccName
 #else
@@ -103,7 +96,7 @@ import Data.Generics (everywhere, mkT)
 
 fakeSettings :: Settings
 fakeSettings = Settings
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)|| defined (GHCLIB_API_810)
+#if MIN_VERSION_ghc(8, 10, 0)
   { sGhcNameVersion=ghcNameVersion
   , sFileSettings=fileSettings
   , sTargetPlatform=platform
@@ -120,7 +113,7 @@ fakeSettings = Settings
   }
 #endif
   where
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)|| defined (GHCLIB_API_810)
+#if MIN_VERSION_ghc(8, 10, 0)
     toolSettings = ToolSettings {
       toolSettings_opt_P_fingerprint=fingerprint0
       }
@@ -133,7 +126,7 @@ fakeSettings = Settings
 #endif
     platform =
       Platform{
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9, 0, 0)
     -- It doesn't matter what values we write here as these fields are
     -- not referenced for our purposes. However the fields are strict
     -- so we must say something.
@@ -144,15 +137,16 @@ fakeSettings = Settings
       , platformIsCrossCompiling=False
       , platformLeadingUnderscore=False
       , platformTablesNextToCode=False
-#  if !defined (GHCLIB_API_900)
+#  if MIN_VERSION_ghc(9, 2, 0)
       , platformConstants=platformConstants
 #  endif
       ,
 #endif
-#if defined (GHCLIB_API_HEAD)
+
+#if MIN_VERSION_ghc(9, 2, 0)
         platformWordSize=PW8
       , platformArchOS=ArchOS {archOS_arch=ArchUnknown, archOS_OS=OSUnknown}
-#elif defined (GHCLIB_API_810) || defined (GHCLIB_API_900)
+#elif MIN_VERSION_ghc(8, 10, 0)
         platformWordSize=PW8
       , platformMini=PlatformMini {platformMini_arch=ArchUnknown, platformMini_os=OSUnknown}
 #else
@@ -164,7 +158,7 @@ fakeSettings = Settings
     platformConstants =
       PlatformConstants{pc_DYNAMIC_BY_DEFAULT=False,pc_WORD_SIZE=8}
 
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)|| defined (GHCLIB_API_810)
+#if MIN_VERSION_ghc(8, 10, 0)
 fakeLlvmConfig :: LlvmConfig
 fakeLlvmConfig = LlvmConfig [] []
 #else
@@ -182,7 +176,7 @@ parse p str flags =
     location = mkRealSrcLoc (mkFastString "<string>") 1 1
     buffer = stringToStringBuffer str
     parseState =
-#if defined (GHCLIB_API_HEAD)
+#if MIN_VERSION_ghc(9, 2, 0)
       initParserState (initParserOpts flags) buffer location
 #else
       mkPState flags buffer location
@@ -190,12 +184,12 @@ parse p str flags =
 
 
 parseExpression :: String -> DynFlags -> ParseResult (LHsExpr GhcPs)
-#if defined (GHCLIB_API_HEAD)
+#if MIN_VERSION_ghc(9, 2, 0)
 parseExpression s flags =
   case parse Parser.parseExpression s flags of
     POk s e -> unP (runPV . unECP $ e) s
     PFailed ps -> PFailed ps
-#elif defined (GHCLIB_API_810) || defined (GHCLIB_API_900)
+#elif MIN_VERSION_ghc(8, 10, 0)
 parseExpression s flags =
   case parse Parser.parseExpression s flags of
     POk s e -> unP (runECP_P e) s
@@ -272,10 +266,10 @@ expFix _ e = e
 -- LPat and Pat have gone through a lot of churn. See
 -- https://gitlab.haskell.org/ghc/ghc/merge_requests/1925 for details.
 patFix :: [(String, Fixity)] -> LPat GhcPs -> LPat GhcPs
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9, 0, 0)
 patFix fixities (L loc (ConPat _ op (InfixCon pat1 pat2))) =
   L loc (mkConOpPat (getFixities fixities) op (findFixity' (getFixities fixities) op) pat1 pat2)
-#elif defined (GHCLIB_API_810)
+#elif MIN_VERSION_ghc(8, 10, 0)
 patFix fixities (L loc (ConPatIn op (InfixCon pat1 pat2))) =
   L loc (mkConOpPat (getFixities fixities) op (findFixity' (getFixities fixities) op) pat1 pat2)
 #else
@@ -289,26 +283,26 @@ mkConOpPat ::
   -> Located RdrName -> Fixity
   -> LPat GhcPs -> LPat GhcPs
   -> Pat GhcPs
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9, 0, 0)
 mkConOpPat fs op2 fix2 p1@(L loc (ConPat _ op1 (InfixCon p11 p12))) p2
-#elif defined (GHCLIB_API_810)
+#elif MIN_VERSION_ghc(8, 10, 0)
 mkConOpPat fs op2 fix2 p1@(L loc (ConPatIn op1 (InfixCon p11 p12))) p2
 #else
 mkConOpPat fs op2 fix2 p1@(dL->L loc (ConPatIn op1 (InfixCon p11 p12))) p2
 #endif
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9, 0, 0)
   | nofix_error = ConPat noExtField op2 (InfixCon p1 p2)
 #else
   | nofix_error = ConPatIn op2 (InfixCon p1 p2)
 #endif
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9, 0, 0)
   | associate_right = ConPat noExtField op1 (InfixCon p11 (L loc (mkConOpPat fs op2 fix2 p12 p2)))
-#elif defined (GHCLIB_API_810)
+#elif MIN_VERSION_ghc(8, 10, 0)
   | associate_right = ConPatIn op1 (InfixCon p11 (L loc (mkConOpPat fs op2 fix2 p12 p2)))
 #else
   | associate_right = ConPatIn op1 (InfixCon p11 (cL loc (mkConOpPat fs op2 fix2 p12 p2)))
 #endif
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9, 0, 0)
   | otherwise = ConPat noExtField op2 (InfixCon p1 p2)
 #else
   | otherwise = ConPatIn op2 (InfixCon p1 p2)
@@ -316,7 +310,7 @@ mkConOpPat fs op2 fix2 p1@(dL->L loc (ConPatIn op1 (InfixCon p11 p12))) p2
   where
     fix1 = findFixity' fs op1
     (nofix_error, associate_right) = compareFixity fix1 fix2
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900)
+#if MIN_VERSION_ghc(9, 0, 0)
 mkConOpPat _ op _ p1 p2 = ConPat noExtField op (InfixCon p1 p2)
 #else
 mkConOpPat _ op _ p1 p2 = ConPatIn op (InfixCon p1 p2)
@@ -352,7 +346,7 @@ mkOpApp _ loc e1 op1 fix1 e2@(L _ NegApp {}) -- NegApp can occur on the right.
  --     Default case, no rearrangment.
 mkOpApp _ loc e1 op _fix e2 = L loc (OpApp noExt e1 op e2)
 
-#if defined (GHCLIB_API_HEAD) || defined (GHCLIB_API_900) || defined (GHCLIB_API_810)
+#if MIN_VERSION_ghc(8, 10, 0)
 noExt :: NoExtField
 noExt = noExtField
 #endif
