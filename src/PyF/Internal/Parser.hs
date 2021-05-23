@@ -12,6 +12,12 @@ import Lexer (ParseResult (..), PState (..))
 import Lexer (ParseResult (..))
 #endif
 
+#if MIN_VERSION_ghc(9,2,0)
+import qualified GHC.Parser.Errors as ParserError
+import qualified GHC.Types.Error as TypeError
+import qualified GHC.Parser.Errors.Ppr as ParserErrorPpr
+#endif
+
 #if MIN_VERSION_ghc(9,0,0)
 import qualified GHC.Types.SrcLoc as SrcLoc
 #else
@@ -43,7 +49,10 @@ parseExpression s dynFlags =
        in Right
             expr
 
-#if MIN_VERSION_ghc(9,0,0)
+#if MIN_VERSION_ghc(9,2,0)
+    -- TODO messages?
+    PFailed PState{loc=SrcLoc.psRealLoc -> srcLoc, errors=errorMessages} ->
+#elif MIN_VERSION_ghc(9,0,0)
     PFailed PState{loc=SrcLoc.psRealLoc -> srcLoc, messages=msgs} ->
 #elif MIN_VERSION_ghc(8,10,0)
     PFailed PState{loc=srcLoc, messages=msgs} ->
@@ -51,7 +60,15 @@ parseExpression s dynFlags =
     -- TODO: check for pattern failure
     PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) doc ->
 #endif
-#if MIN_VERSION_ghc(8,10,0)
+#if MIN_VERSION_ghc(9,2,0)
+            let
+                psErrToString e = show $ ParserErrorPpr.pprError e
+                err = concatMap psErrToString errorMessages
+                -- err = concatMap show errorMessages
+                line = SrcLoc.srcLocLine srcLoc
+                col = SrcLoc.srcLocCol srcLoc
+            in Left (line, col, err)
+#elif MIN_VERSION_ghc(8,10,0)
             let -- TODO: do not ignore "warnMessages"
                 -- I have no idea what they can be
                 (_warnMessages, errorMessages) = msgs dynFlags

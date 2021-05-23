@@ -36,8 +36,15 @@ import GHC.Types.SrcLoc
 import GHC.Types.Name
 import GHC.Types.Name.Reader
 import GHC.Data.FastString
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Utils.Outputable (ppr)
+import GHC.Types.Basic (Boxity(..))
+import GHC.Types.SourceText (il_value, rationalFromFractionalLit)
+import GHC.Driver.Ppr (showSDocDebug)
+#else
 import GHC.Utils.Outputable (ppr, showSDocDebug)
 import GHC.Types.Basic (il_value, fl_value, Boxity(..))
+#endif
 import GHC.Driver.Session (DynFlags, xopt_set, defaultDynFlags)
 import qualified GHC.Unit.Module as Module
 #else
@@ -49,6 +56,11 @@ import Outputable (ppr, showSDocDebug)
 import BasicTypes (il_value, fl_value, Boxity(..))
 import DynFlags (DynFlags, xopt_set, defaultDynFlags)
 import qualified Module
+#endif
+
+
+#if MIN_VERSION_ghc(9,2,0)
+fl_value = rationalFromFractionalLit
 #endif
 
 toLit :: HsLit GhcPs -> TH.Lit
@@ -128,9 +140,13 @@ toExp d (Expr.HsLam _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map un
 -- toExp (Expr.Case _ e alts)                    = TH.CaseE (toExp e) (map toMatch alts)
 -- toExp (Expr.Do _ ss)                          = TH.DoE (map toStmt ss)
 -- toExp e@Expr.MDo{}                            = noTH "toExp" e
+#if MIN_VERSION_ghc(9, 2, 0)
+toExp d (Expr.ExplicitTuple _ args boxity) = ctor tupArgs
+#else
 toExp d (Expr.ExplicitTuple _ (map unLoc -> args) boxity) = ctor tupArgs
+#endif
   where
-    toTupArg (Expr.Present _ (unLoc -> e)) = Just e
+    toTupArg (Expr.Present _ e) = Just $ unLoc e
     toTupArg (Expr.Missing _) = Nothing
     toTupArg _ = error "impossible case"
 
@@ -158,7 +174,11 @@ toExp _ (Expr.RecordCon _ name HsRecFields {rec_flds}) =
 --   convert (Expr.QualStmt _ st)                = toStmt st
 --   convert s                                   = noTH "toExp ListComp" s
 -- toExp (Expr.ExpTypeSig _ e t)                 = TH.SigE (toExp e) (toType t)
+#if MIN_VERSION_ghc(9, 2, 0)
+toExp d (Expr.ExplicitList _ (map unLoc -> args)) = TH.ListE (map (toExp d) args)
+#else
 toExp d (Expr.ExplicitList _ _ (map unLoc -> args)) = TH.ListE (map (toExp d) args)
+#endif
 toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (From a) -> TH.FromR (toExp d $ unLoc a)
   (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
@@ -187,7 +207,9 @@ translateTHtoGHCExt TH.UndecidableInstances = GhcTH.UndecidableInstances
 translateTHtoGHCExt TH.IncoherentInstances = GhcTH.IncoherentInstances
 translateTHtoGHCExt TH.UndecidableSuperClasses = GhcTH.UndecidableSuperClasses
 translateTHtoGHCExt TH.MonomorphismRestriction = GhcTH.MonomorphismRestriction
+#if ! MIN_VERSION_ghc(9,2,0)
 translateTHtoGHCExt TH.MonoPatBinds = GhcTH.MonoPatBinds
+#endif
 translateTHtoGHCExt TH.MonoLocalBinds = GhcTH.MonoLocalBinds
 translateTHtoGHCExt TH.RelaxedPolyRec = GhcTH.RelaxedPolyRec
 translateTHtoGHCExt TH.ExtendedDefaultRules = GhcTH.ExtendedDefaultRules
@@ -291,7 +313,9 @@ translateTHtoGHCExt TH.StaticPointers = GhcTH.StaticPointers
 translateTHtoGHCExt TH.TypeApplications = GhcTH.TypeApplications
 translateTHtoGHCExt TH.Strict = GhcTH.Strict
 translateTHtoGHCExt TH.StrictData = GhcTH.StrictData
+#if ! MIN_VERSION_ghc(9,2,0)
 translateTHtoGHCExt TH.MonadFailDesugaring = GhcTH.MonadFailDesugaring
+#endif
 translateTHtoGHCExt TH.EmptyDataDeriving = GhcTH.EmptyDataDeriving
 translateTHtoGHCExt TH.NumericUnderscores = GhcTH.NumericUnderscores
 translateTHtoGHCExt TH.QuantifiedConstraints = GhcTH.QuantifiedConstraints
@@ -307,4 +331,10 @@ translateTHtoGHCExt TH.StandaloneKindSignatures = GhcTH.StandaloneKindSignatures
 translateTHtoGHCExt TH.QualifiedDo = GhcTH.QualifiedDo
 translateTHtoGHCExt TH.LinearTypes = GhcTH.LinearTypes
 translateTHtoGHCExt TH.LexicalNegation = GhcTH.LexicalNegation
+#endif
+#if MIN_VERSION_ghc(9,2,0)
+translateTHtoGHCExt TH.UnliftedDatatypes = GhcTH.UnliftedDatatypes
+translateTHtoGHCExt TH.FieldSelectors = GhcTH.FieldSelectors
+translateTHtoGHCExt TH.OverloadedRecordDot = GhcTH.OverloadedRecordDot
+translateTHtoGHCExt TH.OverloadedRecordUpdate = GhcTH.OverloadedRecordUpdate
 #endif
