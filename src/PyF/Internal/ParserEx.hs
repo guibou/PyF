@@ -1,3 +1,4 @@
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wno-missing-fields -Wno-name-shadowing -Wno-unused-imports #-}
@@ -10,6 +11,7 @@
 -- Changes done:
 --   - integration of the ghc version .h file in top of the file
 --   - switch from uniplate to syb in order to reduce dependencies footprint.
+--   - Compatibility with GHC >= 9.2
 
 module PyF.Internal.ParserEx (fakeSettings, fakeLlvmConfig, parseExpression, applyFixities, preludeFixities,baseFixities)
 where
@@ -137,9 +139,9 @@ fakeSettings = Settings
       , platformIsCrossCompiling=False
       , platformLeadingUnderscore=False
       , platformTablesNextToCode=False
-#  if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
       , platformConstants=platformConstants
-#  endif
+#endif
       ,
 #endif
 
@@ -155,8 +157,12 @@ fakeSettings = Settings
 #endif
       , platformUnregisterised=True
       }
+#if MIN_VERSION_ghc(9, 4, 0)
+    platformConstants = Nothing
+#else
     platformConstants =
       PlatformConstants{pc_DYNAMIC_BY_DEFAULT=False,pc_WORD_SIZE=8}
+#endif
 
 #if MIN_VERSION_ghc(8, 10, 0)
 fakeLlvmConfig :: LlvmConfig
@@ -183,13 +189,14 @@ parse p str flags =
 #endif
 
 
-parseExpression :: String -> DynFlags -> ParseResult (LHsExpr GhcPs)
 #if MIN_VERSION_ghc(9, 2, 0)
+parseExpression :: String -> DynFlags -> ParseResult (LocatedA (HsExpr GhcPs))
 parseExpression s flags =
   case parse Parser.parseExpression s flags of
-    POk s e -> unP (runPV . unECP $ e) s
+    POk s e -> unP (runPV (unECP e)) s
     PFailed ps -> PFailed ps
 #elif MIN_VERSION_ghc(8, 10, 0)
+parseExpression :: String -> DynFlags -> ParseResult (Located (HsExpr GhcPs))
 parseExpression s flags =
   case parse Parser.parseExpression s flags of
     POk s e -> unP (runECP_P e) s
@@ -258,8 +265,16 @@ infix_  = fixity InfixN
 fixity :: FixityDirection -> Int -> [String] -> [(String, Fixity)]
 fixity a p = map (,Fixity (SourceText "") p a)
 
+#if MIN_VERSION_ghc(9, 2, 0)
+pattern L' :: SrcSpan -> e -> GenLocated (SrcSpanAnn' (EpAnn ann)) e
+pattern L' loc o = L (SrcSpanAnn EpAnnNotUsed loc) o
+#else
+pattern L' :: l -> e -> GenLocated l e
+pattern L' loc o = L loc o
+#endif
+
 expFix :: [(String, Fixity)] -> LHsExpr GhcPs -> LHsExpr GhcPs
-expFix fixities (L loc (OpApp _ l op r)) =
+expFix fixities (L' loc (OpApp _ l op r)) =
   mkOpApp (getFixities fixities) loc l op (findFixity (getFixities fixities) op) r
 expFix _ e = e
 
@@ -270,7 +285,7 @@ patFix :: [(String, Fixity)] -> LPat GhcPs -> LPat GhcPs
 patFix fixities (L loc (ConPat _ op (InfixCon pat1 pat2))) =
   L loc (mkConOpPat (getFixities fixities) op (findFixity' (getFixities fixities) op) pat1 pat2)
 #elif MIN_VERSION_ghc(8, 10, 0)
-patFix fixities (L loc (ConPatIn op (InfixCon pat1 pat2))) =
+patFix fixities (L' loc (ConPatIn op (InfixCon pat1 pat2))) =
   L loc (mkConOpPat (getFixities fixities) op (findFixity' (getFixities fixities) op) pat1 pat2)
 #elif MIN_VERSION_ghc(8, 8, 0)
 patFix fixities (dL -> L _ (ConPatIn op (InfixCon pat1 pat2))) =
@@ -283,10 +298,16 @@ patFix _ p = p
 
 mkConOpPat ::
   [(String, Fixity)]
+#if MIN_VERSION_ghc(9, 2, 0)
+  -> GenLocated (SrcSpanAnn' (EpAnn NameAnn)) RdrName -> Fixity
+#else
   -> Located RdrName -> Fixity
+#endif
   -> LPat GhcPs -> LPat GhcPs
   -> Pat GhcPs
-#if MIN_VERSION_ghc(9, 0, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
+mkConOpPat fs op2 fix2 p1@(L loc (ConPat _ op1 (InfixCon p11 p12))) p2
+#elif MIN_VERSION_ghc(9, 0, 0)
 mkConOpPat fs op2 fix2 p1@(L loc (ConPat _ op1 (InfixCon p11 p12))) p2
 #elif MIN_VERSION_ghc(8, 10, 0)
 mkConOpPat fs op2 fix2 p1@(L loc (ConPatIn op1 (InfixCon p11 p12))) p2
@@ -297,12 +318,12 @@ mkConOpPat fs op2 fix2 p1@(L loc (ConPatIn op1 (InfixCon p11 p12))) p2
 #endif
 
 #if MIN_VERSION_ghc(9, 0, 0)
-  | nofix_error = ConPat noExtField op2 (InfixCon p1 p2)
+  | nofix_error = ConPat noExt op2 (InfixCon p1 p2)
 #else
   | nofix_error = ConPatIn op2 (InfixCon p1 p2)
 #endif
 #if MIN_VERSION_ghc(9, 0, 0)
-  | associate_right = ConPat noExtField op1 (InfixCon p11 (L loc (mkConOpPat fs op2 fix2 p12 p2)))
+  | associate_right = ConPat noExt op1 (InfixCon p11 (L loc (mkConOpPat fs op2 fix2 p12 p2)))
 #elif MIN_VERSION_ghc(8, 10, 0)
   | associate_right = ConPatIn op1 (InfixCon p11 (L loc (mkConOpPat fs op2 fix2 p12 p2)))
 #elif MIN_VERSION_ghc(8, 8, 0)
@@ -311,15 +332,17 @@ mkConOpPat fs op2 fix2 p1@(L loc (ConPatIn op1 (InfixCon p11 p12))) p2
   | associate_right = ConPatIn op1 (InfixCon p11 (L loc $ mkConOpPat fs op2 fix2 p12 p2))
 #endif
 #if MIN_VERSION_ghc(9, 0, 0)
-  | otherwise = ConPat noExtField op2 (InfixCon p1 p2)
+  | otherwise = ConPat noExt op2 (InfixCon p1 p2)
 #else
   | otherwise = ConPatIn op2 (InfixCon p1 p2)
 #endif
   where
     fix1 = findFixity' fs op1
     (nofix_error, associate_right) = compareFixity fix1 fix2
-#if MIN_VERSION_ghc(9, 0, 0)
-mkConOpPat _ op _ p1 p2 = ConPat noExtField op (InfixCon p1 p2)
+#if MIN_VERSION_ghc(9, 2, 0)
+mkConOpPat _ op _ p1 p2 = ConPat noExt op (InfixCon p1 p2)
+#elif MIN_VERSION_ghc(9, 0, 0)
+mkConOpPat _ op _ p1 p2 = ConPat noExt op (InfixCon p1 p2)
 #else
 mkConOpPat _ op _ p1 p2 = ConPatIn op (InfixCon p1 p2)
 #endif
@@ -333,33 +356,47 @@ mkOpApp ::
   -> LHsExpr GhcPs
 --      (e11 `op1` e12) `op2` e2
 mkOpApp fs loc e1@(L _ (OpApp x1 e11 op1 e12)) op2 fix2 e2
-  | nofix_error = L loc (OpApp noExt e1 op2 e2)
-  | associate_right = L loc (OpApp x1 e11 op1 (mkOpApp fs loc' e12 op2 fix2 e2 ))
+  | nofix_error = L' loc (OpApp noExt e1 op2 e2)
+  | associate_right = L' loc (OpApp x1 e11 op1 (mkOpApp fs loc' e12 op2 fix2 e2 ))
   where
-    loc'= combineLocs e12 e2
+    loc'= combineLocs' e12 e2
     fix1 = findFixity fs op1
     (nofix_error, associate_right) = compareFixity fix1 fix2
 --      (- neg_arg) `op` e2
 mkOpApp fs loc e1@(L _ (NegApp _ neg_arg neg_name)) op2 fix2 e2
-  | nofix_error = L loc (OpApp noExt e1 op2 e2)
-  | associate_right = L loc (NegApp noExt (mkOpApp fs loc' neg_arg op2 fix2 e2) neg_name)
+  | nofix_error = L' loc (OpApp noExt e1 op2 e2)
+  | associate_right = L' loc (NegApp noExt (mkOpApp fs loc' neg_arg op2 fix2 e2) neg_name)
   where
-    loc' = combineLocs neg_arg e2
+    loc' = combineLocs' neg_arg e2
     (nofix_error, associate_right) = compareFixity negateFixity fix2
 --      e1 `op` - neg_arg
 mkOpApp _ loc e1 op1 fix1 e2@(L _ NegApp {}) -- NegApp can occur on the right.
-  | not associate_right  = L loc (OpApp noExt e1 op1 e2)-- We *want* right association.
+  | not associate_right  = L' loc (OpApp noExt e1 op1 e2)-- We *want* right association.
   where
     (_, associate_right) = compareFixity fix1 negateFixity
  --     Default case, no rearrangment.
-mkOpApp _ loc e1 op _fix e2 = L loc (OpApp noExt e1 op e2)
+mkOpApp _ loc e1 op _fix e2 = L' loc (OpApp noExt e1 op e2)
 
-#if MIN_VERSION_ghc(8, 10, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
+toL = L (UnhelpfulSpan UnhelpfulNoLocationInfo)
+combineLocs' x y = combineLocs (toL x) (toL y)
+#else
+combineLocs' :: LHsExpr GhcPs -> LHsExpr GhcPs -> SrcSpan
+combineLocs' = combineLocs
+#endif
+
+#if MIN_VERSION_ghc(9, 2, 0)
+noExt = EpAnnNotUsed
+#elif MIN_VERSION_ghc(8, 10, 0)
 noExt :: NoExtField
 noExt = noExtField
 #endif
 
+#if MIN_VERSION_ghc(9, 2, 0)
+findFixity' :: [(String, Fixity)] -> LocatedN RdrName -> Fixity
+#else
 findFixity' :: [(String, Fixity)] -> Located RdrName -> Fixity
+#endif
 findFixity' fs r = askFix fs (occNameString . rdrNameOcc . unLoc $ r) -- Patterns.
 
 askFix :: [(String, Fixity)] -> String -> Fixity

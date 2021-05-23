@@ -101,13 +101,6 @@ golden name output = do
       assertFailure diffOutput
     else writeFile goldenFile output
 
--- if the compilation fails, runs a golden test on compilation output
--- else, fails the test
-fileFailCompile :: HasCallStack => FilePath -> Spec
-fileFailCompile path = do
-  fileContent <- runIO $ readFile path
-  failCompileContent path path fileContent
-
 failCompile :: HasCallStack => String -> Spec
 failCompile s = failCompileContent s s (makeTemplate s)
 
@@ -197,18 +190,11 @@ spec =
     describe "non-doubled delimiters" $ do
       failCompile "hello } world"
       failCompile "hello { world"
-    describe "fail is not enabled extension" $
-      failCompile "{0b0001}"
     describe "lexical errors" $ do
       describe "single line" $
         failCompile "foo\\Pbar"
       describe "multiple line" $
         failCompile "foo\nbli\\Pbar"
-    describe "fileFailures" $
-      mapM_
-        fileFailCompile
-        [ "test/failureCases/bug18.hs"
-        ]
     describe "Wrong type" $ do
       failCompile "{True}"
       failCompile "{True:f}"

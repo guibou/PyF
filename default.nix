@@ -1,4 +1,4 @@
-{ pkgs ? import ./nixpkgs.nix {} }:
+{ pkgs ? import ./nixpkgs.nix {}}:
 with pkgs;
 rec {
   inherit pkgs;
@@ -15,15 +15,12 @@ rec {
     "src/PyF"
     "src/PyF/Internal"
     "test"
-    "test/failureCases"
     "test/golden"
     "LICENSE"
   ];
 
   pyfBuilder = hPkgs: let
     shell = pkg.env.overrideAttrs (old: {
-      # The haskell environment does not come with cabal-install
-      #nativeBuildInputs = old.nativeBuildInputs ++ [root.pkgs.cabal-install root.pkgs.python3 hPkgs.haskell-language-server ];
       nativeBuildInputs = old.nativeBuildInputs ++ [cabal-install python3 ];
     });
 
@@ -45,9 +42,14 @@ rec {
            in "${x.name}-ghc${hPkgs.ghc.version}-${x.version}";
   });
 
-  pyf_86 = pyfBuilder (haskell.packages.ghc865.override {
+  pyf_86 = (pyfBuilder (haskell.packages.ghc865Binary.override {
     overrides = self: super: with haskell.lib; {
     };
+  })).overrideAttrs(old: {
+    passthru.shell = old.passthru.shell.overrideAttrs(old: {
+      # for some reasons, ncurses is not part of the dependencies of ghc...
+      buildInputs = old.buildInputs ++ [pkgs.ncurses];
+    });
   });
 
   pyf_88 = pyfBuilder (haskell.packages.ghc884.override {
@@ -55,12 +57,53 @@ rec {
     };
   });
 
-  pyf_810 = pyfBuilder (haskell.packages.ghc8103.override {
+  pyf_810 = pyfBuilder (haskell.packages.ghc8104.override {
     overrides = self: super: with haskell.lib; {
     };
   });
 
-  pyf_91 = pyfBuilder (haskell.packages.ghc901.override {
+  pyf_90 = pyfBuilder (haskell.packages.ghc901.override {
+    overrides = self: super: with haskell.lib; {
+    };
+  });
+
+  # GHC 9.2 is not released yet. Hence a lot of fix for dependencies
+  # Note that most fix impact the "test" phase, PyF do not need these libraries
+  # for build.
+  pyf_92 = haskell.lib.dontHaddock (pyfBuilder (haskell.packages.ghc921.override {
+    overrides = self: super: with haskell.lib; rec {
+      tagged = super.tagged.overrideAttrs(old: {
+        configurePhase = ''
+          sed -i 's/2.18/3/' tagged.cabal
+        '' + old.configurePhase;
+      });
+      hashable = doJailbreak ((super.callHackage "hashable" "1.3.1.0" {}).overrideAttrs(old: {
+        configurePhase = ''
+          sed -i 's/.*Option.*//' src/Data/Hashable/Class.hs
+        '' + old.configurePhase;
+      }));
+      splitmix = doJailbreak super.splitmix;
+      regex-base = doJailbreak super.regex-base;
+
+      # it pulls crappy dependencies when testing
+      temporary = dontCheck super.temporary;
+
+      # build fails because of GHC 9.2
+      # Test uses it indirectly...
+      primitive2 = doJailbreak (dontCheck (super.callCabal2nix "primitive" (pkgs.fetchzip {
+        url = "https://github.com/haskell/primitive/archive/0cbb62aeb6e5d9f3660a7c7b1b731bce48214c5a.tar.gz";
+        sha256 = "11bjwixd2672hlbimxy5w5gwy7j7qdd5dvycm6vi4ajxjqhl9ggj";
+      }) {}));
+
+      tf-random = super.tf-random.override { primitive = primitive2; };
+
+      # random 1.2 depends on primitive
+      random = super.callHackage "random" "1.1" {};
+    };
+  }));
+
+  # GHC 9.4
+  pyf_HEAD = pyfBuilder (haskell.packages.ghcHEAD.override {
     overrides = self: super: with haskell.lib; {
     };
   });
@@ -104,5 +147,5 @@ rec {
     '';
   };
 
-  pyf_all = [pyf_86 pyf_88 pyf_810 pyf_91];
+  pyf_all = [pyf_86 pyf_88 pyf_810 pyf_90 pyf_92];
 }
