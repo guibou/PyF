@@ -272,9 +272,12 @@ patFix fixities (L loc (ConPat _ op (InfixCon pat1 pat2))) =
 #elif MIN_VERSION_ghc(8, 10, 0)
 patFix fixities (L loc (ConPatIn op (InfixCon pat1 pat2))) =
   L loc (mkConOpPat (getFixities fixities) op (findFixity' (getFixities fixities) op) pat1 pat2)
-#else
+#elif MIN_VERSION_ghc(8, 8, 0)
 patFix fixities (dL -> L _ (ConPatIn op (InfixCon pat1 pat2))) =
   mkConOpPat (getFixities fixities) op (findFixity' (getFixities fixities) op) pat1 pat2
+#else
+patFix fixities (L src (ConPatIn op (InfixCon pat1 pat2))) =
+  L src $ mkConOpPat (getFixities fixities) op (findFixity' (getFixities fixities) op) pat1 pat2
 #endif
 patFix _ p = p
 
@@ -287,9 +290,12 @@ mkConOpPat ::
 mkConOpPat fs op2 fix2 p1@(L loc (ConPat _ op1 (InfixCon p11 p12))) p2
 #elif MIN_VERSION_ghc(8, 10, 0)
 mkConOpPat fs op2 fix2 p1@(L loc (ConPatIn op1 (InfixCon p11 p12))) p2
-#else
+#elif MIN_VERSION_ghc(8, 8, 0)
 mkConOpPat fs op2 fix2 p1@(dL->L loc (ConPatIn op1 (InfixCon p11 p12))) p2
+#else
+mkConOpPat fs op2 fix2 p1@(L loc (ConPatIn op1 (InfixCon p11 p12))) p2
 #endif
+
 #if MIN_VERSION_ghc(9, 0, 0)
   | nofix_error = ConPat noExtField op2 (InfixCon p1 p2)
 #else
@@ -299,8 +305,10 @@ mkConOpPat fs op2 fix2 p1@(dL->L loc (ConPatIn op1 (InfixCon p11 p12))) p2
   | associate_right = ConPat noExtField op1 (InfixCon p11 (L loc (mkConOpPat fs op2 fix2 p12 p2)))
 #elif MIN_VERSION_ghc(8, 10, 0)
   | associate_right = ConPatIn op1 (InfixCon p11 (L loc (mkConOpPat fs op2 fix2 p12 p2)))
-#else
+#elif MIN_VERSION_ghc(8, 8, 0)
   | associate_right = ConPatIn op1 (InfixCon p11 (cL loc (mkConOpPat fs op2 fix2 p12 p2)))
+#else
+  | associate_right = ConPatIn op1 (InfixCon p11 (L loc $ mkConOpPat fs op2 fix2 p12 p2))
 #endif
 #if MIN_VERSION_ghc(9, 0, 0)
   | otherwise = ConPat noExtField op2 (InfixCon p1 p2)

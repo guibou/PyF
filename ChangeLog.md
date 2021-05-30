@@ -2,7 +2,6 @@
 
 - Remove the dependency to `megaparsec` and replaces it by `parsec`. This should have minor impact on the error messages, however it reduces the dependencies size, because `parsec` is part of the standard `ghc` distribution.
 - *Huge Change*. The parsing of embeded expression does not depend anymore on `haskell-src-ext` and `haskell-src-meta` and instead depends on the built-in `ghc` lib. The direct result is that `PyF` have fewer dependencies. A `stack` build from scratch now takes 35s versus 4 minutes and 20s before.
-- Remove GHC 8.6 support. This can be reverted if required.
 
 ## 0.9.0.3 -- 2021-02-06
 
