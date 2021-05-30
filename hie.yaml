@@ -4,3 +4,5 @@ cradle:
       component: "PyF:lib:PyF"
     - path: "./test"
       component: "PyF:test:pyf-test"
+    - path: "./test/SpecFail.hs"
+      component: "PyF:test:pyf-failure"
