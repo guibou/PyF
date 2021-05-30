@@ -4,7 +4,6 @@
 
 import Control.DeepSeq
 import Control.Exception
-import Data.Hashable
 import qualified Data.Text as Text
 import System.Exit
 import System.FilePath
@@ -107,18 +106,23 @@ golden name output = do
 fileFailCompile :: HasCallStack => FilePath -> Spec
 fileFailCompile path = do
   fileContent <- runIO $ readFile path
-  -- I'm using the hash of the path, considering that the file content can evolve
-  failCompileContent (hash path) path fileContent
+  failCompileContent path path fileContent
 
 failCompile :: HasCallStack => String -> Spec
-failCompile s = failCompileContent (hash s) s (makeTemplate s)
+failCompile s = failCompileContent s s (makeTemplate s)
 
-failCompileContent :: HasCallStack => Int -> String -> String -> Spec
+failCompileContent :: HasCallStack => String -> String -> String -> Spec
 failCompileContent h caption fileContent =
-  before (checkCompile fileContent) $
+  before (checkCompile fileContent) $ do
+    let goldenPath = concatMap cleanSpecialChars h
     it (show caption) $ \res -> case res of
-      CompileError output -> golden (show h) output
-      _ -> assertFailure (show $ ".golden/" <> show h <> "\n" <> show res)
+      CompileError output -> golden goldenPath output
+      _ -> assertFailure (show $ ".golden/" <> goldenPath <> "\n" <> show res)
+
+-- Remove chars which are not accepted in a path name
+cleanSpecialChars :: Char -> [Char]
+cleanSpecialChars '/' = "SLASH"
+cleanSpecialChars e = pure e
 
 main :: IO ()
 main = hspec spec

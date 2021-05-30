@@ -1,9 +1,0 @@
-
-INITIALPATH:7:22: error:
-    • No instance for (PyFToString Float) arising from a use of ‘pyfToString’
-    • In the second argument of ‘(.)’, namely ‘pyfToString’
-      In the expression: (PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . pyfToString
-      In the first argument of ‘putStrLn’, namely ‘(((PyF.Formatters.formatString (PyF.Internal.QQ.newPaddingKForString PyF.Internal.QQ.PaddingDefaultK)) Nothing . pyfToString) number)’
-  |
-7 | main = putStrLn [fmt|{number:s}|]
-  |                      ^^^^^^^^^^^^
