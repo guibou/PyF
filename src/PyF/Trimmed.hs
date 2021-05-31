@@ -19,7 +19,7 @@ import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import qualified PyF
 import qualified PyF.Class ()
 
-trimQQ qq = qq {quoteExp = \s -> [|trimIndent $(quoteExp qq s)|]}
+trimQQ qq = qq {quoteExp = \s -> [|PyF.trimIndent $(quoteExp qq s)|]}
 
 fmt :: QuasiQuoter
 fmt = trimQQ PyF.fmt
