@@ -29,7 +29,7 @@ The formatting mini language can represent:
 
 You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session. `ExtendedDefaultRules` and `OverloadedStrings` may be more convenient.
 
-Expression to be formatted are referenced by `{expression:formatingOptions}` where `formatingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the python documentation, but the [Test file](https://github.com/guibou/PyF/blob/master/test/Spec.hs) as well as this readme contain many examples.
+Expression to be formatted are referenced by `{expression:formatingOptions}` where `formatingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the python documentation, but the [Test file](https://github.com/guibou/PyF/blob/main/test/Spec.hs) as well as this readme contain many examples.
 
 # More Examples
 
