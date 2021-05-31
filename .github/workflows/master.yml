@@ -18,12 +18,6 @@ jobs:
         name: guibou
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-    # Linters
-    - name: Check hlint
-      run: nix-build -A hlint
-    - name: Check ormolu
-      run: nix-build -A ormolu
-
     # Builds cabal (nix)
     - name: Build with all supported GHC
       run: nix-build -A pyf_all

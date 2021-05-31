@@ -331,3 +331,31 @@ This library is tested in CI with ghc 8.6 to 9.2.
 
 Don't hesitate to make any suggestion, I'll be more than happy to work on it.
 
+# Hacking
+
+Everything works with nix. But you can also try with manual cabal / stack if you wish.
+
+- `nix-shell` will open a shell with everything you need to work on PyF, including haskell-language-server. It may be a bit too much, so you can instead:
+- `nix-shell ./ -A pyf_current.shell` which opens a shell without the haskell-language-server.
+- `nix-shell ./ -A pyf_current.shell_hls` which opens a shell with the haskell-language-server, same as the default.
+- `nix-shell ./ -A pyf_xx.shell[_hls]` opens a shell (with or without language server) for a difference GHC version. Uses `pyf_86`, `pyf_88`, `pyf_810`, `pyf_90` and `pyf_92`. Note that the language server may not be available for these version and it make take a bit to compile everything.
+
+Once in the shell, use `cabal build`, `cabal test`, `cabal repl`.
+
+There is a cachix available, used by CI:
+
+- `cachix use guibou`
+
+You can locally build and test everything using:
+
+- `nix-build -A pyf_all`.
+
+Don't hesitate to submit a PR not tested on all GHC versions.
+
+## Formatting
+
+The codebase is formatted with `ormolu` and this is checked in the CI. Please run:
+
+- `nix-shell ./ -A ormolu-fix`
+
+Before submitting.
