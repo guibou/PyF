@@ -17,7 +17,7 @@ module PyF
 where
 
 import Data.Char (isSpace)
-import Data.List (dropWhileEnd, intercalate)
+import Data.List (intercalate)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
 import PyF.Internal.QQ (toExp)
@@ -45,29 +45,36 @@ pythonDelimiters :: (Char, Char)
 pythonDelimiters = ('{', '}')
 
 -- | Removes the trailing whitespace of a string.
--- It follows https://www.python.org/dev/peps/pep-0257/#id18 meaning that:
 --
--- - First line indentation is ignored
--- - All other line common indentation is removed
--- - White lines at beginning or end are discarded
+-- - First line is ignored if it only contains whitespaces
+-- - All other line common indentation is removed, ignoring line with only whitespaces.
 --
--- >>> trimIndent "   hello\n   - a\n   - b\n    "
--- "hello\n- a\n- b"
+-- >>> trimIndent "\n   hello\n   - a\n   - b\n   "
+-- "hello\n- a\n- b\n"
 --
 -- See 'PyF.Trimmed.fmt' in the @PyF.Trimmed@ module for a quasiquoter with this behavior
 trimIndent :: String -> String
 trimIndent s =
   case lines s of
     [] -> ""
-    -- Strip whitespace on the first line
-    ((dropWhile isSpace -> firstLine) : others) ->
-      -- Find the minimum indent common to all lines
-      let biggestLines = map (length . takeWhile isSpace) (filter (not . all isSpace) others)
-          stripLen = minimum (filter (/= 0) biggestLines)
+    (firstLine : others) ->
+      let
+          -- Discard the first line if needed
+          usedLines
+            | all isSpace firstLine = others ++ trail
+            | otherwise = firstLine : others ++ trail
+
+          -- If the string ends with a newline, `lines` will discard it. We restore it.
+          trail
+            | last s == '\n' = [""]
+            | otherwise = []
+          -- Find the minimum indent common to all lines
+          biggestLines = map (length . takeWhile isSpace) (filter (not . all isSpace) usedLines)
+
+          stripLen = case biggestLines of
+            [] -> 0
+            _ -> minimum biggestLines
 
           -- drop them
-          trimmedLines = map (drop stripLen) others
-
-          -- trim empty lines at beginning or end
-          trimIndentLines = dropWhile (all isSpace) . dropWhileEnd (all isSpace) $ (firstLine : trimmedLines)
-       in intercalate "\n" trimIndentLines
+          trimmedLines = map (drop stripLen) usedLines
+       in intercalate "\n" trimmedLines
