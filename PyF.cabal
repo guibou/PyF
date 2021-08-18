@@ -33,12 +33,10 @@ library
                      , template-haskell
                      , text
                      , time
-
                      , parsec
                      , mtl
                      , ghc
                      , ghc-boot
-                     , syb
   hs-source-dirs: src
   ghc-options: -Wall -Wunused-packages -Wincomplete-uni-patterns
   default-language:    Haskell2010

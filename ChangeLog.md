@@ -1,7 +1,8 @@
 # Revision history for PyF
 
-- Remove the dependency to `megaparsec` and replaces it by `parsec`. This should have minor impact on the error messages, however it reduces the dependencies size, because `parsec` is part of the standard `ghc` distribution.
-- *Huge Change*. The parsing of embeded expression does not depend anymore on `haskell-src-ext` and `haskell-src-meta` and instead depends on the built-in `ghc` lib. The direct result is that `PyF` have fewer dependencies. A `stack` build from scratch now takes 35s versus 4 minutes and 20s before.
+- Due to the dependencies refactor, `PyF` no have no dependencies other than the one packaged with GHC. The direct result is that `PyF` build time is reduced to 6s versus 4 minutes and 20s before.
+- Remove the dependency to `megaparsec` and replaces it by `parsec`. This should have minor impact on the error messages.
+- *Huge Change*. The parsing of embeded expression does not depend anymore on `haskell-src-ext` and `haskell-src-meta` and instead depends on the built-in `ghc` lib.
 - Added instances for `(Lazy)ByteString` to `PyFClassify` and `PyFToString`. `ByteString` can now be integrated into format string, and will be decoded as ascii.
 - Relax the constraint for floating point formatting from `RealFrac` to `Real`. As a result, a few new type can be formatted as floating point number. One drawback is that some `Integral` are `Real` too and hence it is not an error anymore to format an integral as floating point, but you still need to explicitly select a floating point formatter.
 - Added instance for `(Nominal)DiffTime` to `PyFClassify`, so you can now format them without conversion.
