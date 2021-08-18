@@ -31,7 +31,6 @@ import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp
-import PyF.Internal.ParserEx (applyFixities, baseFixities, preludeFixities)
 import Text.Parsec
 
 type Parser t = ParsecT String () (Reader ParsingContext) t
@@ -230,7 +229,7 @@ evalExpr exts exprParser = do
     Right expr -> do
       -- Consumne the expression
       void exprParser
-      pure (toExp dynFlags (applyFixities (preludeFixities ++ baseFixities) expr))
+      pure (toExp dynFlags expr)
     Left (lineError, colError, err) -> do
       -- Skip lines
       replicateM_ (lineError - 1) (manyTill anyChar newline)
