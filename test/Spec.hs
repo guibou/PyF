@@ -459,3 +459,5 @@ yeah\
                   - b
                   |]
         `shouldBe` "- a\n- b\n"
+    it "Do not touch single lines" $ do
+      [PyF.Trimmed.fmt|  hello|] `shouldBe` "  hello"
