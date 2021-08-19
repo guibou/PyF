@@ -15,11 +15,21 @@ module PyF.Trimmed
   )
 where
 
+import Data.String
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import qualified PyF
 import qualified PyF.Class ()
+import Language.Haskell.TH
 
-trimQQ qq = qq {quoteExp = \s -> [|PyF.trimIndent $(quoteExp qq s)|]}
+trimQQ :: QuasiQuoter -> QuasiQuoter
+trimQQ qq =
+  qq
+    { quoteExp = \s -> do
+        exts <- extsEnabled
+        if OverloadedStrings `elem` exts
+          then [|Data.String.fromString $ PyF.trimIndent $(quoteExp qq s)|]
+          else [|PyF.trimIndent $(quoteExp qq s)|]
+    }
 
 fmt :: QuasiQuoter
 fmt = trimQQ PyF.fmt
