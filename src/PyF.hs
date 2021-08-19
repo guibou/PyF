@@ -13,6 +13,7 @@ module PyF
 
     -- * Whitespace utilities
     trimIndent,
+    raw,
   )
 where
 
@@ -43,6 +44,10 @@ fmtWithDelimiters delimiters = templateF delimiters "fmtWithDelimiters"
 
 pythonDelimiters :: (Char, Char)
 pythonDelimiters = ('{', '}')
+
+raw :: QuasiQuoter
+raw = (templateF pythonDelimiters "raw") { quoteExp = \s -> [| s |] }
+
 
 -- | Removes the trailing whitespace of a string.
 --
