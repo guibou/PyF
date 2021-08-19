@@ -194,7 +194,7 @@ class PyfFormatIntegral i where
     String
 
 -- | Default instance for any 'Integral'.
-instance {-# OVERLAPPABLE #-} (Show t, Integral t) => PyfFormatIntegral t where
+instance {-# OVERLAPPABLE #-} Integral t => PyfFormatIntegral t where
   pyfFormatIntegral f s p g v = formatIntegral f s p g v
 
 -- | Returns the numerical value of a 'Char'

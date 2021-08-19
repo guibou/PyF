@@ -26,6 +26,7 @@
 -- For integrals:
 --
 --    * Binary / Hexa / Octal / Character representation
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module PyF.Formatters
   ( -- * Generic formating function
     formatString,
@@ -125,18 +126,28 @@ data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   -- Upper should come AFTER Alt, so this disallow any future alt
   Upper :: Format alt 'CanUpper f -> Format 'NoAlt 'NoUpper f
 
+
+newtype ShowIntegral i = ShowIntegral i
+  deriving (Real, Enum, Ord, Eq, Num, Integral)
+
+-- | Stupid instance in order to use 'Numeric.showIntAtBase' which needs a
+-- 'Show' constraint for error reporting when number are negative.
+-- However, in 'reprIntegral', there is no negative number, so the case is
+-- impossible, but it allows the removal of the 'Show' constraint.
+instance Show (ShowIntegral i) where
+  show _ = error "show should not be called on ShowIntegral"
+
 -- Internal Integral
--- Todo: remove the Show constraint ?
 -- Needed for debug in Numeric function, this is painful
-reprIntegral :: (Show i, Integral i) => Format t t' 'Integral -> i -> Repr
+reprIntegral :: (Integral i) => Format t t' 'Integral -> i -> Repr
 reprIntegral fmt i = IntegralRepr sign $ format fmt
   where
     format :: Format t t' 'Integral -> String
     format = \case
       Decimal -> Numeric.showInt iAbs ""
-      Octal -> Numeric.showOct iAbs ""
-      Binary -> Numeric.showIntAtBase 2 (\digit -> if digit == 0 then '0' else '1') iAbs ""
-      Hexa -> Numeric.showHex iAbs ""
+      Octal -> Numeric.showOct (ShowIntegral iAbs) ""
+      Binary -> Numeric.showIntAtBase 2 (\digit -> if digit == 0 then '0' else '1') (ShowIntegral iAbs) ""
+      Hexa -> Numeric.showHex (ShowIntegral iAbs) ""
       Upper fmt' -> map toUpper $ format fmt'
       Character -> [chr (fromIntegral i)]
       Alternate fmt' -> format fmt'
@@ -264,7 +275,7 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- | Format an integral number
 formatIntegral ::
-  (Show i, Integral i) =>
+  Integral i =>
   Format t t' 'Integral ->
   SignMode ->
   -- | Padding
