@@ -61,6 +61,7 @@ trimIndent :: String -> String
 trimIndent s =
   case lines s of
     [] -> ""
+    [_] -> s
     (firstLine : others) ->
       let
           -- Discard the first line if needed
