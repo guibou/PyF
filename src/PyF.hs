@@ -22,11 +22,11 @@ import Data.List (intercalate)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
 import PyF.Internal.QQ (toExp)
+import Language.Haskell.TH
 
-templateF :: (Char, Char) -> String -> QuasiQuoter
-templateF delimiters fName =
-  QuasiQuoter
-    { quoteExp = toExp delimiters,
+expQQ :: String -> (String -> Q Exp) -> QuasiQuoter
+expQQ fName qExp = QuasiQuoter
+    { quoteExp = qExp,
       quotePat = err "pattern",
       quoteType = err "type",
       quoteDec = err "declaration"
@@ -37,17 +37,16 @@ templateF delimiters fName =
 -- | Generic formatter, can format an expression to any @t@ as long as
 --   @t@ is an instance of 'IsString'.
 fmt :: QuasiQuoter
-fmt = templateF pythonDelimiters "fmt"
+fmt = expQQ "fmt" (toExp pythonDelimiters)
 
 fmtWithDelimiters :: (Char, Char) -> QuasiQuoter
-fmtWithDelimiters delimiters = templateF delimiters "fmtWithDelimiters"
+fmtWithDelimiters delimiters = expQQ "fmtWithDelimiters" (toExp delimiters)
 
 pythonDelimiters :: (Char, Char)
 pythonDelimiters = ('{', '}')
 
 raw :: QuasiQuoter
-raw = (templateF pythonDelimiters "raw") { quoteExp = \s -> [| s |] }
-
+raw = expQQ "raw" (\s -> [| s |])
 
 -- | Removes the trailing whitespace of a string.
 --
