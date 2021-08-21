@@ -17,9 +17,11 @@ module PyF
 
     -- * Configuration
     mkFormatter,
-    disableFormatting,
+    defaultConfig,
     fmtConfig,
-    trimConfig,
+    strConfig,
+    addTrim,
+    addFormatting,
   )
 where
 
@@ -36,15 +38,15 @@ fmt = mkFormatter "fmt" fmtConfig
 
 -- | Format with whitespace trimming.
 fmtTrim :: QuasiQuoter
-fmtTrim = mkFormatter "fmtTrim" trimConfig
+fmtTrim = mkFormatter "fmtTrim" (addTrim fmtConfig)
 
 -- | multiline string, no interpolation.
 str :: QuasiQuoter
-str = mkFormatter "str" (fmtConfig {delimiters = Nothing})
+str = mkFormatter "str" strConfig
 
 -- | multiline string, no interpolation, but does indentation trimming.
 strTrim :: QuasiQuoter
-strTrim = mkFormatter "strTrim" (trimConfig {delimiters = Nothing})
+strTrim = mkFormatter "strTrim" (addTrim strConfig)
 
 -- | Raw string, no interpolation neither escaping is performed.
 raw :: QuasiQuoter
@@ -85,26 +87,38 @@ trimIndent s =
           trimmedLines = map (drop stripLen) usedLines
        in intercalate "\n" trimmedLines
 
--- | This is the config for 'fmt'
-fmtConfig :: Config
-fmtConfig =
+-- | This is an empty configuration. No formatting, no post processing
+defaultConfig :: Config
+defaultConfig =
   Config
-    { delimiters = Just ('{', '}'),
+    { delimiters = Nothing,
+      postProcess = id
+    }
+
+-- | Configuration for 'str' it just wrap the multiline string with 'fromString'.
+strConfig :: Config
+strConfig =
+  Config
+    { delimiters = Nothing,
       postProcess = wrapFromString
     }
 
--- | Configuration similar to 'fmtConfig', but with indentation trimming.
-trimConfig :: Config
-trimConfig =
-  fmtConfig
-    { postProcess = \q -> wrapFromString [|PyF.trimIndent $(q)|]
+-- | The config for 'fmt'.
+fmtConfig :: Config
+fmtConfig = addFormatting ('{', '}') strConfig
+
+-- | Add indentation trimming to a configuration.
+addTrim :: Config -> Config
+addTrim config =
+  config
+    { postProcess = \q -> postProcess config [|PyF.trimIndent $(q)|]
     }
 
--- | Disable the formatting. This is how we generate 'str' from 'fmt'.
-disableFormatting :: Config -> Config
-disableFormatting c = c { delimiters = Nothing }
+-- | Enable formatting
+addFormatting :: (Char, Char) -> Config -> Config
+addFormatting delims c = c {delimiters = Just delims}
 
 -- | Build a formatter. See the 'Config' type for details, as well as
--- 'fmtConfig' and 'trimConfig' for examples.
+-- 'fmtConfig' and 'strConfig' for examples.
 mkFormatter :: String -> Config -> QuasiQuoter
 mkFormatter name config = expQQ name (toExp config)
