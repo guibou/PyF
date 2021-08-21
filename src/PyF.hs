@@ -6,6 +6,7 @@
 -- | A lot of quasiquoters to format and interpolate string expression
 module PyF
   ( fmt,
+    fmtTrim,
 
     module PyF.Class,
 
@@ -29,6 +30,10 @@ import PyF.Internal.QQ (toExp, Config(..), wrapFromString, expQQ)
 fmt :: QuasiQuoter
 fmt = mkFormatter "fmt" defaultConfig
 
+-- | Format with whitespace trimming.
+fmtTrim :: QuasiQuoter
+fmtTrim = mkFormatter "fmtTrim" trimConfig
+
 -- | Raw string, no interpolation neither escaping is performed.
 raw :: QuasiQuoter
 raw = expQQ "raw" (\s -> [|s|])
@@ -41,7 +46,7 @@ raw = expQQ "raw" (\s -> [|s|])
 -- >>> trimIndent "\n   hello\n   - a\n   - b\n   "
 -- "hello\n- a\n- b\n"
 --
--- See 'PyF.Trimmed.fmt' in the @PyF.Trimmed@ module for a quasiquoter with this behavior
+-- See 'fmtTrim' for a quasiquoter with this behavior
 trimIndent :: String -> String
 trimIndent s =
   case lines s of
@@ -75,6 +80,11 @@ defaultConfig =
     { delimiters = ('{', '}'),
       postProcess = wrapFromString
     }
+
+trimConfig :: Config
+trimConfig = defaultConfig {
+  postProcess = \q -> wrapFromString [| PyF.trimIndent $(q) |]
+                           }
 
 -- | Build a formatter. See the 'Config' type for details.
 mkFormatter :: String -> Config -> QuasiQuoter
