@@ -7,13 +7,14 @@
 module PyF
   ( fmt,
 
-    -- * With custom delimiters
-    fmtWithDelimiters,
     module PyF.Class,
 
     -- * Whitespace utilities
     trimIndent,
     raw,
+
+    defaultConfig,
+    mkFormatter,
   )
 where
 
@@ -21,32 +22,16 @@ import Data.Char (isSpace)
 import Data.List (intercalate)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
-import PyF.Internal.QQ (toExp)
-import Language.Haskell.TH
-
-expQQ :: String -> (String -> Q Exp) -> QuasiQuoter
-expQQ fName qExp = QuasiQuoter
-    { quoteExp = qExp,
-      quotePat = err "pattern",
-      quoteType = err "type",
-      quoteDec = err "declaration"
-    }
-  where
-    err name = error (fName ++ ": This QuasiQuoter can not be used as a " ++ name ++ "!")
+import PyF.Internal.QQ (toExp, Config(..), wrapFromString, expQQ)
 
 -- | Generic formatter, can format an expression to any @t@ as long as
 --   @t@ is an instance of 'IsString'.
 fmt :: QuasiQuoter
-fmt = expQQ "fmt" (toExp pythonDelimiters)
+fmt = mkFormatter "fmt" defaultConfig
 
-fmtWithDelimiters :: (Char, Char) -> QuasiQuoter
-fmtWithDelimiters delimiters = expQQ "fmtWithDelimiters" (toExp delimiters)
-
-pythonDelimiters :: (Char, Char)
-pythonDelimiters = ('{', '}')
-
+-- | Raw string, no interpolation neither escaping is performed.
 raw :: QuasiQuoter
-raw = expQQ "raw" (\s -> [| s |])
+raw = expQQ "raw" (\s -> [|s|])
 
 -- | Removes the trailing whitespace of a string.
 --
@@ -63,8 +48,7 @@ trimIndent s =
     [] -> ""
     [_] -> s
     (firstLine : others) ->
-      let
-          -- Discard the first line if needed
+      let -- Discard the first line if needed
           usedLines
             | all isSpace firstLine = others ++ trail
             | otherwise = firstLine : others ++ trail
@@ -83,3 +67,15 @@ trimIndent s =
           -- drop them
           trimmedLines = map (drop stripLen) usedLines
        in intercalate "\n" trimmedLines
+
+-- | This is the config for 'fmt'
+defaultConfig :: Config
+defaultConfig =
+  Config
+    { delimiters = ('{', '}'),
+      postProcess = wrapFromString
+    }
+
+-- | Build a formatter. See the 'Config' type for details.
+mkFormatter :: String -> Config -> QuasiQuoter
+mkFormatter name config = expQQ name (toExp config)

@@ -11,13 +11,17 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
 -- representing a formatted string.
+{-# LANGUAGE NamedFieldPuns #-}
 module PyF.Internal.QQ
-  ( toExp,
-    toExpPython,
+  ( toExp
+  , Config(..)
+  , wrapFromString
+  , expQQ
   )
 where
 
@@ -35,24 +39,52 @@ import PyF.Internal.PythonSyntax
 import Text.Parsec
 import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMessages)
 import Text.ParserCombinators.Parsec.Error (Message (..))
+import Language.Haskell.TH.Quote
 
--- Be Careful: empty format string
+-- | Configuration for the quasiquoter
+data Config = Config
+  {
+    -- | What are the delimiters for interpolation
+    delimiters :: (Char, Char),
+    -- | Post processing. The input 'Exp' represents a 'String'. Common use
+    -- case includes using 'wrapFromString' to add 'fromString' in the context
+    -- of 'OverloadedStrings'.
+    postProcess :: Q Exp -> Q Exp
+  }
+
+-- | Build a quasiquoter for expression
+expQQ :: String -> (String -> Q Exp) -> QuasiQuoter
+expQQ fName qExp =
+  QuasiQuoter
+    { quoteExp = qExp,
+      quotePat = err "pattern",
+      quoteType = err "type",
+      quoteDec = err "declaration"
+    }
+  where
+    err :: String -> t
+    err name = error (fName ++ ": This QuasiQuoter can not be used as a " ++ name ++ "!")
+
+-- | If 'OverloadedStrings' is enabled, from the input expression with
+-- 'fromString'.
+wrapFromString :: ExpQ -> Q Exp
+wrapFromString e = do
+  exts <- extsEnabled
+  if OverloadedStrings `elem` exts
+    then [|fromString $(e)|]
+    else e
 
 -- | Parse a string and return a formatter for it
-toExp :: (Char, Char) -> String -> Q Exp
-toExp expressionDelimiters s = do
+toExp :: Config -> String -> Q Exp
+toExp Config{delimiters=expressionDelimiters, postProcess} s = do
   filename <- loc_filename <$> location
   exts <- extsEnabled
-  let wrapFromString e =
-        if OverloadedStrings `elem` exts
-          then [|fromString $(e)|]
-          else e
   let context = ParsingContext expressionDelimiters exts
   case runReader (runParserT parseGenericFormatString () filename s) context of
     Left err -> do
       err' <- overrideErrorForFile filename err
       fail =<< prettyError filename s err'
-    Right items -> wrapFromString (goFormat items)
+    Right items -> postProcess (goFormat items)
 
 -- | Display a pretty version of an error, with caret and file context.
 prettyError ::
@@ -117,9 +149,6 @@ overrideErrorForFile _ err = do
         | sourceLine sourcePos == 1 = incSourceColumn (incSourceLine sourcePos (line - 1)) (col - 1)
         | otherwise = setSourceColumn (incSourceLine sourcePos (line - 1)) (sourceColumn sourcePos)
   pure $ setErrorPos sourcePos' err
-
-toExpPython :: String -> Q Exp
-toExpPython = toExp ('{', '}')
 
 {-
 Note: Empty String Lifting

@@ -1,13 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | This modules behaves as 'PyF', but the formatters 'fmt' and
--- 'fmtWithDelimiters' do whitespace trimming as defined in the 'PyF.trimIndent'
+-- do whitespace trimming as defined in the 'PyF.trimIndent'
 -- function.
 module PyF.Trimmed
   ( fmt,
 
-    -- * With custom delimiters
-    fmtWithDelimiters,
     module PyF.Class,
 
     -- * Whitespace utilities
@@ -15,24 +13,16 @@ module PyF.Trimmed
   )
 where
 
-import Data.String
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import qualified PyF
 import qualified PyF.Class ()
-import Language.Haskell.TH
-
-trimQQ :: QuasiQuoter -> QuasiQuoter
-trimQQ qq =
-  qq
-    { quoteExp = \s -> do
-        exts <- extsEnabled
-        if OverloadedStrings `elem` exts
-          then [|Data.String.fromString $ PyF.trimIndent $(quoteExp qq s)|]
-          else [|PyF.trimIndent $(quoteExp qq s)|]
-    }
+import PyF.Internal.QQ
+import PyF (defaultConfig, mkFormatter)
 
 fmt :: QuasiQuoter
-fmt = trimQQ PyF.fmt
+fmt = mkFormatter "fmt" trimConfig
 
-fmtWithDelimiters :: (Char, Char) -> QuasiQuoter
-fmtWithDelimiters delimiters = trimQQ (PyF.fmtWithDelimiters delimiters)
+trimConfig :: Config
+trimConfig = defaultConfig {
+  postProcess = \q -> wrapFromString [| PyF.trimIndent $(q) |]
+                           }
