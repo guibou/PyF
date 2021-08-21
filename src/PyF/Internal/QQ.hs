@@ -44,8 +44,9 @@ import Language.Haskell.TH.Quote
 -- | Configuration for the quasiquoter
 data Config = Config
   {
-    -- | What are the delimiters for interpolation
-    delimiters :: (Char, Char),
+    -- | What are the delimiters for interpolation. 'Nothing' means no
+    -- interpolation / formatting.
+    delimiters :: Maybe (Char, Char),
     -- | Post processing. The input 'Exp' represents a 'String'. Common use
     -- case includes using 'wrapFromString' to add 'fromString' in the context
     -- of 'OverloadedStrings'.

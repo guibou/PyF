@@ -7,15 +7,19 @@
 module PyF
   ( fmt,
     fmtTrim,
-
+    str,
+    strTrim,
+    raw,
     module PyF.Class,
 
     -- * Whitespace utilities
     trimIndent,
-    raw,
 
-    defaultConfig,
+    -- * Configuration
     mkFormatter,
+    disableFormatting,
+    fmtConfig,
+    trimConfig,
   )
 where
 
@@ -23,16 +27,24 @@ import Data.Char (isSpace)
 import Data.List (intercalate)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
-import PyF.Internal.QQ (toExp, Config(..), wrapFromString, expQQ)
+import PyF.Internal.QQ (Config (..), expQQ, toExp, wrapFromString)
 
 -- | Generic formatter, can format an expression to any @t@ as long as
 --   @t@ is an instance of 'IsString'.
 fmt :: QuasiQuoter
-fmt = mkFormatter "fmt" defaultConfig
+fmt = mkFormatter "fmt" fmtConfig
 
 -- | Format with whitespace trimming.
 fmtTrim :: QuasiQuoter
 fmtTrim = mkFormatter "fmtTrim" trimConfig
+
+-- | multiline string, no interpolation.
+str :: QuasiQuoter
+str = mkFormatter "str" (fmtConfig {delimiters = Nothing})
+
+-- | multiline string, no interpolation, but does indentation trimming.
+strTrim :: QuasiQuoter
+strTrim = mkFormatter "strTrim" (trimConfig {delimiters = Nothing})
 
 -- | Raw string, no interpolation neither escaping is performed.
 raw :: QuasiQuoter
@@ -74,18 +86,25 @@ trimIndent s =
        in intercalate "\n" trimmedLines
 
 -- | This is the config for 'fmt'
-defaultConfig :: Config
-defaultConfig =
+fmtConfig :: Config
+fmtConfig =
   Config
-    { delimiters = ('{', '}'),
+    { delimiters = Just ('{', '}'),
       postProcess = wrapFromString
     }
 
+-- | Configuration similar to 'fmtConfig', but with indentation trimming.
 trimConfig :: Config
-trimConfig = defaultConfig {
-  postProcess = \q -> wrapFromString [| PyF.trimIndent $(q) |]
-                           }
+trimConfig =
+  fmtConfig
+    { postProcess = \q -> wrapFromString [|PyF.trimIndent $(q)|]
+    }
 
--- | Build a formatter. See the 'Config' type for details.
+-- | Disable the formatting. This is how we generate 'str' from 'fmt'.
+disableFormatting :: Config -> Config
+disableFormatting c = c { delimiters = Nothing }
+
+-- | Build a formatter. See the 'Config' type for details, as well as
+-- 'fmtConfig' and 'trimConfig' for examples.
 mkFormatter :: String -> Config -> QuasiQuoter
 mkFormatter name config = expQQ name (toExp config)
