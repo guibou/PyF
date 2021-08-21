@@ -36,7 +36,7 @@ import Text.Parsec
 type Parser t = ParsecT String () (Reader ParsingContext) t
 
 data ParsingContext = ParsingContext
-  { delimiters :: (Char, Char),
+  { delimiters :: Maybe (Char, Char),
     enabledExtensions :: [ParseExtension.Extension]
   }
   deriving (Show)
@@ -83,15 +83,21 @@ data Item
 --                       (FixedF (Precision 2) NormalForm Minus)
 --                        Nothing))]
 parseGenericFormatString :: Parser [Item]
-parseGenericFormatString =
-  many (rawString <|> escapedParenthesis <|> replacementField) <* eof
+parseGenericFormatString = do
+  delimitersM <- asks delimiters
 
-rawString :: Parser Item
-rawString = do
-  (openingChar, closingChar) <- asks delimiters
+  case delimitersM of
+    Nothing -> many (rawString Nothing)
+    Just _ -> many (rawString delimitersM <|> escapedParenthesis <|> replacementField) <* eof
+
+rawString :: Maybe (Char, Char) -> Parser Item
+rawString delimsM = do
+  let delims = case delimsM of
+                 Nothing -> []
+                 Just (openingChar, closingChar) -> [openingChar, closingChar]
 
   -- lookahead
-  let p = some (noneOf [openingChar, closingChar])
+  let p = some (noneOf delims)
   chars <- lookAhead p
 
   case escapeChars chars of
@@ -106,7 +112,7 @@ rawString = do
 
 escapedParenthesis :: Parser Item
 escapedParenthesis = do
-  (openingChar, closingChar) <- asks delimiters
+  Just (openingChar, closingChar) <- asks delimiters
   Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
   where
     parseRaw c = [c] <$ try (string (replicate 2 c))
@@ -129,7 +135,7 @@ escapeChars s = case Data.Char.readLitChar s of
 replacementField :: Parser Item
 replacementField = do
   exts <- asks enabledExtensions
-  (charOpening, charClosing) <- asks delimiters
+  Just (charOpening, charClosing) <- asks delimiters
   _ <- char charOpening
   expr <- evalExpr exts (some (noneOf (charClosing : ":" :: String)) <?> "an haskell expression")
   fmt <- optionMaybe $ do
@@ -271,7 +277,7 @@ formatSpec = do
 parsePrecision :: Parser Precision
 parsePrecision = do
   exts <- asks enabledExtensions
-  (charOpening, charClosing) <- asks delimiters
+  Just (charOpening, charClosing) <- asks delimiters
   _ <- char '.'
   choice
     [ Precision . Value <$> precision,

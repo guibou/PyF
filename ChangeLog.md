@@ -10,7 +10,10 @@
 - Support for `Char` formatting, as string (showing the `Char` value) or as integral, showing the `ord`.
 - `Data.Ratio`.
 
-- Introducing `PyF.fmtTrim` module. It offers the same behavior as `fmt`, but trims common indentation. Se `PyF.trimIndent` for documentation.
+- Introducing `fmtTrim` module. It offers the same behavior as `fmt`, but trims common indentation. Se `PyF.trimIndent` for documentation.
+- Introducing `raw` for convenience. It is a multiline string without any escaping, formatting neither leading whitespace handling.
+- Introducing `str` and `strTrim`. They are similar to `fmt` and `fmtTrim` but without formatting. You can see them as multiline haskell string, with special character escaping, but without formatting. For convenience, the `strTrim` version also removes indentation.
+
 
 - `fmtWithDelimiters` is gone and replaced by `mkFormatter` in `PyF` which is "more" generic. 
 

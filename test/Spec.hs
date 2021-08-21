@@ -460,3 +460,18 @@ yeah\
         `shouldBe` "- a\n- b\n"
     it "Do not touch single lines" $ do
       [fmtTrim|  hello|] `shouldBe` "  hello"
+  describe "raw" $ do
+    it "does not escape anything" $ [raw|hello
+  - a \n {\
+  - b }
+  |] `shouldBe` "hello\n  - a \\n {\\\n  - b }\n  "
+  describe "str" $ do
+    it "basic escaping but no indentation neither formatting" $ [str|hello
+  - a \n {\
+  - b {pi}
+  |] `shouldBe` "hello\n  - a \n {  - b {pi}\n  "
+  describe "strTrim" $ do
+    it "basic escaping neither formatting" $ [strTrim|
+  - a \b {
+  - b {pi}
+  |] `shouldBe` "- a \b {\n- b {pi}\n"

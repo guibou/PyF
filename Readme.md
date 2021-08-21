@@ -261,7 +261,7 @@ import Language.Haskell.TH.Quote
 import PyF
 
 myCustomFormatter :: QuasiQuoter
-myCustomFormatter = mkFormatter "fmtWithDelimiters" (defaultConfig {
+myCustomFormatter = mkFormatter "fmtWithDelimiters" (fmtConfig {
   delimiters = ('@','!')
   })
 ```

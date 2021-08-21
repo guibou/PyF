@@ -8,7 +8,7 @@ myCustomFormatter :: QuasiQuoter
 myCustomFormatter =
   mkFormatter
     "fmt"
-    ( defaultConfig
-        { delimiters = ('@', '!')
+    ( fmtConfig
+        { delimiters = Just ('@', '!')
         }
     )
