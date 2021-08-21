@@ -261,7 +261,9 @@ import Language.Haskell.TH.Quote
 import PyF
 
 myCustomFormatter :: QuasiQuoter
-myCustomFormatter = fmtWithDelimiters ('@','!')
+myCustomFormatter = mkFormatter "fmtWithDelimiters" (defaultConfig {
+  delimiters = ('@','!')
+  })
 ```
 
 Later, in another module:
@@ -275,6 +277,8 @@ import MyCustomQQ
 ```
 
 Escaping still works by doubling the delimiters, `@@!!@@!!` will be formatted as `@!@!`.
+
+Have a look at `PyF.mkFormatter` for all the details about customization.
 
 ## Difference with the Python Syntax
 

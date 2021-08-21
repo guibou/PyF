@@ -12,6 +12,8 @@
 
 - Introducing `PyF.Trimmed` module. It offers the same API as `PyF` (i.e. `fmt`), but trims common indentation. Se `PyF.trimIndent` for documentation.
 
+- `fmtWithDelimiters` is gone and replaced by `mkFormatter` in `PyF` which is "more" generic. 
+
 ## 0.9.0.3 -- 2021-02-06
 
 - Test phase do not depend anymore on python (unless cabal flag `python_test` is

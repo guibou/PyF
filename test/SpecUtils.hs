@@ -15,6 +15,7 @@ import System.Exit
 import System.Process
 #endif
 import Test.Hspec
+import PyF (defaultConfig)
 
 -- * Utils
 
@@ -47,7 +48,7 @@ pyCheck s exampleStr = do
   case pythonRes of
     Nothing -> [|expectationFailure $ "Expression: `" ++ s ++ "` fails in python"|]
     Just res -> do
-      let qexp = [|$(toExpPython s) `shouldBe` res|]
+      let qexp = [|$(toExp defaultConfig s) `shouldBe` res|]
       case exampleStr of
         Nothing -> qexp
         Just e ->
@@ -72,4 +73,4 @@ checkExample = checkExampleDiff
 --     `formatString` is equal to result. It does not check the result
 --     against the python implementation
 checkExampleDiff :: String -> String -> Q Exp
-checkExampleDiff s res = [|$(toExpPython s) `shouldBe` res|]
+checkExampleDiff s res = [|$(toExp defaultConfig s) `shouldBe` res|]
