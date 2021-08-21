@@ -24,7 +24,6 @@ import qualified Data.Text
 import qualified Data.Text.Lazy
 import qualified Data.Time
 import PyF
-import qualified PyF.Trimmed
 import SpecCustomDelimiters
 import SpecUtils
 import Test.Hspec
@@ -394,37 +393,37 @@ yeah\
 
   describe "multiline trimming" $ do
     it "works with overloading" $ do
-      [PyF.Trimmed.fmt|hello|] `shouldBe` ("hello" :: Data.Text.Text)
+      [fmtTrim|hello|] `shouldBe` ("hello" :: Data.Text.Text)
     it "overloading in overloading" $ do
-      let foo = [PyF.Trimmed.fmt|hello {10}|]
+      let foo = [fmtTrim|hello {10}|]
       -- foo `shouldBe` "hello 10"
-      [PyF.Trimmed.fmt|biz {foo} goodbye|] `shouldBe` ("biz hello 10 goodbye" :: Data.Text.Text)
+      [fmtTrim|biz {foo} goodbye|] `shouldBe` ("biz hello 10 goodbye" :: Data.Text.Text)
     it "do not fail on trailing ignore line return" $ do
-      [PyF.Trimmed.fmt|
+      [fmtTrim|
       hello\
 
       |] `shouldBe` "hello\n"
     it "do not take too much indent in account" $ do
-      [PyF.Trimmed.fmt|
+      [fmtTrim|
       hello
       - a
         - b
       - c
       |] `shouldBe` "hello\n- a\n  - b\n- c\n"
     it "works with empty lines" $ do
-      [PyF.Trimmed.fmt|
+      [fmtTrim|
       hello
 
 
       |] `shouldBe` "hello\n\n\n"
     it "works with empty last lines" $ do
-      [PyF.Trimmed.fmt|
+      [fmtTrim|
       hello
 
 
 |] `shouldBe` "hello\n\n\n"
     it "works" $ do
-      [PyF.Trimmed.fmt|
+      [fmtTrim|
                   hello
                   - a
                    - b
@@ -433,19 +432,19 @@ yeah\
       |]
         `shouldBe` "hello\n- a\n - b\n\n- c\n"
     it "works with replacement" $ do
-      [PyF.Trimmed.fmt|
+      [fmtTrim|
                   hello
                   - a
                    - {pi:.2}|]
         `shouldBe` "hello\n- a\n - 3.14"
     it "Do not ignore not indented lines" $ do
-      [PyF.Trimmed.fmt|  hello
+      [fmtTrim|  hello
 - a
  - {pi:.2}|]
         `shouldBe` "  hello\n- a\n - 3.14"
 
     it "works with multiline" $ do
-      [PyF.Trimmed.fmt|
+      [fmtTrim|
                   hello
                   - a
                    - {
@@ -454,10 +453,10 @@ yeah\
         `shouldBe` "hello\n- a\n - 4"
 
     it "behaves well with escaped first line" $ do
-      [PyF.Trimmed.fmt|\
+      [fmtTrim|\
                   - a
                   - b
                   |]
         `shouldBe` "- a\n- b\n"
     it "Do not touch single lines" $ do
-      [PyF.Trimmed.fmt|  hello|] `shouldBe` "  hello"
+      [fmtTrim|  hello|] `shouldBe` "  hello"

@@ -10,7 +10,7 @@
 - Support for `Char` formatting, as string (showing the `Char` value) or as integral, showing the `ord`.
 - `Data.Ratio`.
 
-- Introducing `PyF.Trimmed` module. It offers the same API as `PyF` (i.e. `fmt`), but trims common indentation. Se `PyF.trimIndent` for documentation.
+- Introducing `PyF.fmtTrim` module. It offers the same behavior as `fmt`, but trims common indentation. Se `PyF.trimIndent` for documentation.
 
 - `fmtWithDelimiters` is gone and replaced by `mkFormatter` in `PyF` which is "more" generic. 
 

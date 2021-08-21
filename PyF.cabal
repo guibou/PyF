@@ -19,7 +19,6 @@ Flag python_test
 library
   exposed-modules:
                   PyF
-                  PyF.Trimmed
                   PyF.Class
                   PyF.Internal.PythonSyntax
                   PyF.Internal.Meta
