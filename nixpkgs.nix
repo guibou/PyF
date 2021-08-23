@@ -1,9 +1,9 @@
 let
   # https://github.com/NixOS/nixpkgs/pull/124999
-  sha256 = "1n1mwh2g15g9fsz5qb7nrwapmc3dlqpd0khc2wfgaaczfq57qcz2";
-  # rev = "6ec544db489d5c203204e363e343175fbaa04dac";
+  rev = "eeab902e1ae4ea9df2c432f9864775e866e585cd";
+  sha256 = "05wg68kwfb3k78jq1i357j2lzj2vzg1zmrwbvx7l90gbs8wv4zmw";
 in
 import (fetchTarball {
   inherit sha256;
-  url = "https://github.com/guibou/nixpkgs/archive/71df431b1fa9afc9f79cdf8726c1882a42b7257c.tar.gz";
+  url = "https://github.com/nixos/nixpkgs/archive/${rev}.tar.gz";
 })

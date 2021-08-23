@@ -13,8 +13,6 @@ import Lexer (ParseResult (..))
 #endif
 
 #if MIN_VERSION_ghc(9,2,0)
-import qualified GHC.Parser.Errors as ParserError
-import qualified GHC.Types.Error as TypeError
 import qualified GHC.Parser.Errors.Ppr as ParserErrorPpr
 #endif
 

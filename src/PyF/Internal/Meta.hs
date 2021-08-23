@@ -60,6 +60,7 @@ import qualified Module
 
 
 #if MIN_VERSION_ghc(9,2,0)
+-- TODO: why this disapears in GHC >= 9.2?
 fl_value = rationalFromFractionalLit
 #endif
 
