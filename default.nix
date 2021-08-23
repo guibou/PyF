@@ -57,7 +57,7 @@ rec {
     };
   });
 
-  pyf_810 = pyfBuilder (haskell.packages.ghc8104.override {
+  pyf_810 = pyfBuilder (haskell.packages.ghc8106.override {
     overrides = self: super: with haskell.lib; {
     };
   });

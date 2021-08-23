@@ -87,7 +87,14 @@ import Data.Maybe
 
 fakeSettings :: Settings
 fakeSettings = Settings
-#if MIN_VERSION_ghc(8, 10, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
+  { sGhcNameVersion=ghcNameVersion
+  , sFileSettings=fileSettings
+  , sTargetPlatform=platform
+  , sPlatformMisc=platformMisc
+  , sToolSettings=toolSettings
+  }
+#elif MIN_VERSION_ghc(8, 10, 0)
   { sGhcNameVersion=ghcNameVersion
   , sFileSettings=fileSettings
   , sTargetPlatform=platform
@@ -129,7 +136,7 @@ fakeSettings = Settings
       , platformLeadingUnderscore=False
       , platformTablesNextToCode=False
 #if MIN_VERSION_ghc(9, 2, 0)
-      , platformConstants=platformConstants
+      , platform_constants=platformConstants
 #endif
       ,
 #endif
@@ -146,7 +153,7 @@ fakeSettings = Settings
 #endif
       , platformUnregisterised=True
       }
-#if MIN_VERSION_ghc(9, 4, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
     platformConstants = Nothing
 #else
     platformConstants =
