@@ -56,7 +56,7 @@ rec {
     };
   });
 
-  pyf_810 = pyfBuilder (haskell.packages.ghc8106.override {
+  pyf_810 = pyfBuilder (haskell.packages.ghc8107.override {
     overrides = self: super: with haskell.lib; {
     };
   });
@@ -96,7 +96,7 @@ rec {
 
       tf-random = super.tf-random.override { primitive = primitive2; };
 
-      # random 1.2 depends on primitive
+      ## random 1.2 depends on primitive
       random = super.callHackage "random" "1.1" {};
     };
   }));

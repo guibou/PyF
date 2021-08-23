@@ -1,7 +1,7 @@
 let
-  # https://github.com/NixOS/nixpkgs/pull/124999
-  rev = "eeab902e1ae4ea9df2c432f9864775e866e585cd";
-  sha256 = "05wg68kwfb3k78jq1i357j2lzj2vzg1zmrwbvx7l90gbs8wv4zmw";
+  # nixpkgs unstable 23-09-2021
+  rev = "e0ce3c683ae6";
+  sha256 = "08ans3w6r4fbs1wx6lzlp4xwhy6p04x3spvvrjz5950w8mzxqm61";
 in
 import (fetchTarball {
   inherit sha256;
