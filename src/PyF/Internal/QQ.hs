@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -11,17 +13,15 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
 -- representing a formatted string.
-{-# LANGUAGE NamedFieldPuns #-}
 module PyF.Internal.QQ
-  ( toExp
-  , Config(..)
-  , wrapFromString
-  , expQQ
+  ( toExp,
+    Config (..),
+    wrapFromString,
+    expQQ,
   )
 where
 
@@ -32,6 +32,7 @@ import Data.Proxy
 import Data.String (fromString)
 import GHC.TypeLits
 import Language.Haskell.TH hiding (Type)
+import Language.Haskell.TH.Quote
 import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
@@ -39,12 +40,10 @@ import PyF.Internal.PythonSyntax
 import Text.Parsec
 import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMessages)
 import Text.ParserCombinators.Parsec.Error (Message (..))
-import Language.Haskell.TH.Quote
 
 -- | Configuration for the quasiquoter
 data Config = Config
-  {
-    -- | What are the delimiters for interpolation. 'Nothing' means no
+  { -- | What are the delimiters for interpolation. 'Nothing' means no
     -- interpolation / formatting.
     delimiters :: Maybe (Char, Char),
     -- | Post processing. The input 'Exp' represents a 'String'. Common use
@@ -77,7 +76,7 @@ wrapFromString e = do
 
 -- | Parse a string and return a formatter for it
 toExp :: Config -> String -> Q Exp
-toExp Config{delimiters=expressionDelimiters, postProcess} s = do
+toExp Config {delimiters = expressionDelimiters, postProcess} s = do
   filename <- loc_filename <$> location
   exts <- extsEnabled
   let context = ParsingContext expressionDelimiters exts
