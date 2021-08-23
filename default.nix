@@ -38,8 +38,7 @@ rec {
     });
     # Add the GHC version in the package name
   in pkg.overrideAttrs(old : {
-    name = let x = builtins.parseDrvName old.name;
-           in "${x.name}-ghc${hPkgs.ghc.version}-${x.version}";
+      name = "PyF-ghc${hPkgs.ghc.version}";
   });
 
   pyf_86 = (pyfBuilder (haskell.packages.ghc865Binary.override {
