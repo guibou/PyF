@@ -1,5 +1,0 @@
-
-INITIALPATH:7:22: error: Variable not in scope: b0001
-  |
-7 | main = putStrLn [fmt|{0b0001}|]
-  |                      ^^^^^^^^^^
