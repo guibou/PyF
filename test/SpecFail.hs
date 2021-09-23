@@ -115,6 +115,9 @@ failCompileContent h caption fileContent =
 -- Remove chars which are not accepted in a path name
 cleanSpecialChars :: Char -> [Char]
 cleanSpecialChars '/' = "SLASH"
+cleanSpecialChars '\\' = "BACKSLASH"
+cleanSpecialChars ':' = "COLON"
+cleanSpecialChars '\n' = "NEWLINE"
 cleanSpecialChars e = pure e
 
 main :: IO ()
