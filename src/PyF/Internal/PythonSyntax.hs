@@ -144,7 +144,7 @@ replacementField = do
   _ <- char charClosing
   pure (Replacement expr fmt)
 
--- | Default formating mode, no padding, default precision, no grouping, no sign handling
+-- | Default formatting mode, no padding, default precision, no grouping, no sign handling
 pattern DefaultFormatMode :: FormatMode
 pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Minus) Nothing
 
@@ -187,7 +187,7 @@ type            ::=  "b" | "c" | "d" | "e" | "E" | "f" | "F" | "g" | "G" | "n" |
 data TypeFlag = Flagb | Flagc | Flagd | Flage | FlagE | Flagf | FlagF | Flagg | FlagG | Flagn | Flago | Flags | Flagx | FlagX | FlagPercent
   deriving (Show)
 
--- | All formating type
+-- | All formatting type
 data TypeFormat
   = -- | Default, depends on the infered type of the expression
     DefaultF Precision SignMode

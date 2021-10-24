@@ -28,7 +28,7 @@
 --    * Binary / Hexa / Octal / Character representation
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module PyF.Formatters
-  ( -- * Generic formating function
+  ( -- * Generic formatting function
     formatString,
     formatIntegral,
     formatFractional,

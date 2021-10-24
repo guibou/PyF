@@ -20,7 +20,7 @@
 -- >>> let x = 10 in [fmt|{x}|]
 -- 10
 --
--- Is an implicit formating to number, but:
+-- Is an implicit formatting to number, but:
 --
 -- >>> let x = 10 in [fmt|{x:d}|]
 --
