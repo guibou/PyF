@@ -1,6 +1,6 @@
 cabal-version:       2.4
 name:                PyF
-version:             0.9.0.3
+version:             0.10.0.1
 synopsis:            Quasiquotations for a python like interpolated string formatter
 description:         Quasiquotations for a python like interpolated string formatter.
 license:             BSD-3-Clause
