@@ -20,4 +20,4 @@ jobs:
 
     # Builds
     - name: Build current GHC
-      run: nix-build -A pyf
+      run: nix build .#pyf

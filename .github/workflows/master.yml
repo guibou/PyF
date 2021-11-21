@@ -20,7 +20,7 @@ jobs:
 
     # Builds cabal (nix)
     - name: Build with all supported GHC
-      run: nix-build -A pyf_all
+      run: nix build .#pyf_all
 
   stack_build:
     runs-on: ubuntu-latest
