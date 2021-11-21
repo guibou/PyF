@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+## 0.10.0.1 -- 2021-10-30
+
 - Due to the dependencies refactor, `PyF` no have no dependencies other than the one packaged with GHC. The direct result is that `PyF` build time is reduced to 6s versus 4 minutes and 20s before.
 - Remove the dependency to `megaparsec` and replaces it by `parsec`. This should have minor impact on the error messages.
 - *Huge Change*. The parsing of embeded expression does not depend anymore on `haskell-src-ext` and `haskell-src-meta` and instead depends on the built-in `ghc` lib.

@@ -93,8 +93,8 @@ parseGenericFormatString = do
 rawString :: Maybe (Char, Char) -> Parser Item
 rawString delimsM = do
   let delims = case delimsM of
-                 Nothing -> []
-                 Just (openingChar, closingChar) -> [openingChar, closingChar]
+        Nothing -> []
+        Just (openingChar, closingChar) -> [openingChar, closingChar]
 
   -- lookahead
   let p = some (noneOf delims)

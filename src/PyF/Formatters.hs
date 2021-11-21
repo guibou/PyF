@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -26,7 +27,6 @@
 -- For integrals:
 --
 --    * Binary / Hexa / Octal / Character representation
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module PyF.Formatters
   ( -- * Generic formatting function
     formatString,
@@ -125,7 +125,6 @@ data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   Alternate :: Format 'CanAlt u f -> Format 'NoAlt u f
   -- Upper should come AFTER Alt, so this disallow any future alt
   Upper :: Format alt 'CanUpper f -> Format 'NoAlt 'NoUpper f
-
 
 newtype ShowIntegral i = ShowIntegral i
   deriving (Real, Enum, Ord, Eq, Num, Integral)

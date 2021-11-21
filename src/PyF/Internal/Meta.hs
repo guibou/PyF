@@ -6,6 +6,8 @@
 
 module PyF.Internal.Meta (toExp, baseDynFlags, translateTHtoGHCExt) where
 
+{- ORMOLU_DISABLE -}
+
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..))
 #elif MIN_VERSION_ghc(8,10,0)
@@ -57,7 +59,6 @@ import BasicTypes (il_value, fl_value, Boxity(..))
 import DynFlags (DynFlags, xopt_set, defaultDynFlags)
 import qualified Module
 #endif
-
 
 #if MIN_VERSION_ghc(9,2,0)
 -- TODO: why this disapears in GHC >= 9.2?

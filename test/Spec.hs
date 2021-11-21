@@ -387,9 +387,9 @@ yeah\
     it "tuples" $ do
       [fmt|{fst (1, 2)}|] `shouldBe` "1"
 
--- Disabled because it does not build with GHC < 8.10
--- xit "tuples section" $ do
--- [fmt|{fst ((,2) 1)}|] `shouldBe` "1"
+  -- Disabled because it does not build with GHC < 8.10
+  -- xit "tuples section" $ do
+  -- [fmt|{fst ((,2) 1)}|] `shouldBe` "1"
 
   describe "multiline trimming" $ do
     it "works with overloading" $ do
@@ -402,26 +402,30 @@ yeah\
       [fmtTrim|
       hello\
 
-      |] `shouldBe` "hello\n"
+      |]
+        `shouldBe` "hello\n"
     it "do not take too much indent in account" $ do
       [fmtTrim|
       hello
       - a
         - b
       - c
-      |] `shouldBe` "hello\n- a\n  - b\n- c\n"
+      |]
+        `shouldBe` "hello\n- a\n  - b\n- c\n"
     it "works with empty lines" $ do
       [fmtTrim|
       hello
 
 
-      |] `shouldBe` "hello\n\n\n"
+      |]
+        `shouldBe` "hello\n\n\n"
     it "works with empty last lines" $ do
       [fmtTrim|
       hello
 
 
-|] `shouldBe` "hello\n\n\n"
+|]
+        `shouldBe` "hello\n\n\n"
     it "works" $ do
       [fmtTrim|
                   hello
@@ -461,17 +465,23 @@ yeah\
     it "Do not touch single lines" $ do
       [fmtTrim|  hello|] `shouldBe` "  hello"
   describe "raw" $ do
-    it "does not escape anything" $ [raw|hello
+    it "does not escape anything" $
+      [raw|hello
   - a \n {\
   - b }
-  |] `shouldBe` "hello\n  - a \\n {\\\n  - b }\n  "
+  |]
+        `shouldBe` "hello\n  - a \\n {\\\n  - b }\n  "
   describe "str" $ do
-    it "basic escaping but no indentation neither formatting" $ [str|hello
+    it "basic escaping but no indentation neither formatting" $
+      [str|hello
   - a \n {\
   - b {pi}
-  |] `shouldBe` "hello\n  - a \n {  - b {pi}\n  "
+  |]
+        `shouldBe` "hello\n  - a \n {  - b {pi}\n  "
   describe "strTrim" $ do
-    it "basic escaping neither formatting" $ [strTrim|
+    it "basic escaping neither formatting" $
+      [strTrim|
   - a \b {
   - b {pi}
-  |] `shouldBe` "- a \b {\n- b {pi}\n"
+  |]
+        `shouldBe` "- a \b {\n- b {pi}\n"
