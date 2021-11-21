@@ -88,7 +88,7 @@
             overrides = self: super: with haskell.lib; { };
           });
 
-          all_pyf = linkFarmFromDrvs "all_pyf" [pyf_810 pyf_88 pyf_86 pyf_90 pyf_92];
+          pyf_all = linkFarmFromDrvs "all_pyf" [pyf_810 pyf_88 pyf_86 pyf_90 pyf_92];
 
           # That the current version for developement
           # We use the current version of nixpkgs in order to reduce build time.
