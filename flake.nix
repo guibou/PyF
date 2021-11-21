@@ -2,13 +2,20 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.hls.url = "github:haskell/haskell-language-server";
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
-  nixConfig.substituters = ["guibou.cachix.net"];
-  nixConfig.trusted-public-keys = ["guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM="];
+  nixConfig.substituters = [
+    "guibou.cachix.net"
+    "https://haskell-language-server.cachix.org"
+  ];
+  nixConfig.trusted-public-keys = [
+    "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM="
+    "haskell-language-server.cachix.org-1:juFfHrwkOxqIOZShtC4YC1uT1bBcq2RSvC7OMKx0Nz8="
+  ];
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, hls }:
     flake-utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages.${system};
       in with pkgs; rec {
@@ -38,7 +45,7 @@
             # Shell with haskell language server
             shell_hls = shell.overrideAttrs (old: {
               nativeBuildInputs = old.nativeBuildInputs
-                ++ [ hPkgs.haskell-language-server ];
+              ++ [ hls.packages."${system}"."haskell-language-server-${builtins.replaceStrings ["."] [""] hPkgs.ghc.version}" ];
             });
 
             pkg = (haskell.lib.buildFromSdist
