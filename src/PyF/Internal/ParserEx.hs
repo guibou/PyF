@@ -1,10 +1,13 @@
-{-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TupleSections #-}
-{-# OPTIONS_GHC -Wno-missing-fields -Wno-name-shadowing -Wno-unused-imports #-}
 {-# LANGUAGE CPP #-}
-module PyF.Internal.ParserEx (fakeSettings, fakeLlvmConfig, parseExpression)
-where
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -Wno-missing-fields -Wno-name-shadowing -Wno-unused-imports #-}
+
+module PyF.Internal.ParserEx (fakeSettings, fakeLlvmConfig, parseExpression) where
+
+{- ORMOLU_DISABLE -}
+
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Settings.Config
 import GHC.Driver.Session
@@ -182,7 +185,6 @@ parse p str flags =
 #else
       mkPState flags buffer location
 #endif
-
 
 #if MIN_VERSION_ghc(9, 2, 0)
 parseExpression :: String -> DynFlags -> ParseResult (LocatedA (HsExpr GhcPs))

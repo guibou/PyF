@@ -8,14 +8,15 @@ module SpecUtils
 where
 
 import Language.Haskell.TH
-import PyF.Internal.QQ
 #ifdef PYTHON_TEST
 import Language.Haskell.TH.Syntax
 import System.Exit
 import System.Process
 #endif
-import Test.Hspec
+
 import PyF (fmtConfig)
+import PyF.Internal.QQ
+import Test.Hspec
 
 -- * Utils
 

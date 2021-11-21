@@ -47,6 +47,7 @@ parseExpression s dynFlags =
        in Right
             expr
 
+{- ORMOLU_DISABLE #-}
 #if MIN_VERSION_ghc(9,2,0)
     -- TODO messages?
     PFailed PState{loc=SrcLoc.psRealLoc -> srcLoc, errors=errorMessages} ->

@@ -96,7 +96,7 @@
           run-ormolu = {
             type = "app";
             program = "${writeScript "pyf-ormolu" ''
-              ${ormolu}/bin/ormolu --mode inplace $(git ls-files | grep '\.hs$' | grep -v ParserEx)
+              ${ormolu}/bin/ormolu --mode inplace $(git ls-files | grep '\.hs$')
               exit 0
             ''}";
           };
