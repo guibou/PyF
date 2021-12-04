@@ -215,17 +215,16 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
   StringF prec -> [|Formatters.formatString (newPaddingKForString $(paddingToPaddingK padding)) $(splicePrecision Nothing prec) . pyfToString|]
 
 newPaddingQ :: Padding -> Q Exp
-newPaddingQ pad = [|pad'|]
-  where
-    pad' = newPaddingUnQ pad
-
-newPaddingUnQ :: Padding -> Maybe (Integer, AnyAlign, Char)
-newPaddingUnQ padding = case padding of
-  PaddingDefault -> Nothing
+newPaddingQ padding = case padding of
+  PaddingDefault -> [|Nothing|]
   (Padding i al) -> case al of
-    Nothing -> Just (i, AnyAlign Formatters.AlignRight, ' ') -- Right align and space is default for any object, except string
-    Just (Nothing, a) -> Just (i, a, ' ')
-    Just (Just c, a) -> Just (i, a, c)
+    Nothing -> [|Just ($(exprToInt i), AnyAlign Formatters.AlignRight, ' ')|] -- Right align and space is default for any object, except string
+    Just (Nothing, a) -> [|Just ($(exprToInt i), a, ' ')|]
+    Just (Just c, a) -> [|Just ($(exprToInt i), a, c)|]
+
+exprToInt :: ExprOrValue Integer -> Q Exp
+exprToInt (Value i) = pure $ LitE (IntegerL i)
+exprToInt (HaskellExpr e) = pure e
 
 data PaddingK k where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll
@@ -234,14 +233,16 @@ data PaddingK k where
 paddingToPaddingK :: Padding -> Q Exp
 paddingToPaddingK p = case p of
   PaddingDefault -> [|PaddingDefaultK|]
-  Padding i Nothing -> [|PaddingK i Nothing :: PaddingK 'Formatters.AlignAll|]
-  Padding i (Just (c, AnyAlign a)) -> [|PaddingK i (Just (c, a))|]
+  Padding i Nothing -> [|PaddingK $(exprToInt i) Nothing :: PaddingK 'Formatters.AlignAll|]
+  Padding i (Just (c, AnyAlign a)) -> [|PaddingK $(exprToInt i) (Just (c, a))|]
 
-paddingKToPadding :: PaddingK k -> Padding
+paddingKToPadding :: PaddingK k -> Maybe (Integer, AnyAlign, Char)
 paddingKToPadding p = case p of
-  PaddingDefaultK -> PaddingDefault
-  PaddingK i Nothing -> Padding i Nothing
-  PaddingK i (Just (c, a)) -> Padding i (Just (c, AnyAlign a))
+  PaddingDefaultK -> Nothing
+  (PaddingK i al) -> case al of
+    Nothing -> Just (i, AnyAlign Formatters.AlignRight, ' ') -- Right align and space is default for any object, except string
+    Just (Nothing, a) -> Just (i, AnyAlign a, ' ')
+    Just (Just c, a) -> Just (i, AnyAlign a, c)
 
 formatAnyIntegral :: PyfFormatIntegral i => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
 formatAnyIntegral f s Nothing grouping i = pyfFormatIntegral f s Nothing grouping i
@@ -261,10 +262,10 @@ class FormatAny2 (c :: PyFCategory) (i :: Type) (k :: Formatters.AlignForString)
   formatAny2 :: Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
 
 instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
-  formatAny2 _ s a p _precision = formatAnyIntegral Formatters.Decimal s (newPaddingUnQ (paddingKToPadding a)) p
+  formatAny2 _ s a p _precision = formatAnyIntegral Formatters.Decimal s (paddingKToPadding a) p
 
 instance (PyfFormatFractional t) => FormatAny2 'PyFFractional t k where
-  formatAny2 _ s a = formatAnyFractional Formatters.Generic s (newPaddingUnQ (paddingKToPadding a))
+  formatAny2 _ s a = formatAnyFractional Formatters.Generic s (paddingKToPadding a)
 
 newPaddingKForString :: PaddingK 'Formatters.AlignAll -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingKForString padding = case padding of

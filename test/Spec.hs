@@ -243,6 +243,11 @@ spec = do
       do
         let n = 3 :: Int
         [fmt|{pi:.{n}}|] `shouldBe` "3.142"
+  describe "variable padding" $ 
+    it "works" $ 
+      do
+        let n = 5 :: Integer
+        [fmt|Bonjour {'a':>{n}}|] `shouldBe` "Bonjour     a"
   it "escape chars" $
     [fmt|}}{{}}{{|] `shouldBe` "}{}{"
   describe "custom delimiters" $ do

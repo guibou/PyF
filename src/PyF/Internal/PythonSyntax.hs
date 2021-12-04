@@ -155,7 +155,7 @@ data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
 -- | Padding, containing the padding width, the padding char and the alignement mode
 data Padding
   = PaddingDefault
-  | Padding Integer (Maybe (Maybe Char, AnyAlign))
+  | Padding (ExprOrValue Integer) (Maybe (Maybe Char, AnyAlign))
   deriving (Show)
 
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
@@ -256,7 +256,7 @@ formatSpec = do
   alternateForm <- option NormalForm (AlternateForm <$ char '#')
   hasZero <- option False (True <$ char '0')
   let al = overrideAlignmentIfZero hasZero al'
-  w <- optionMaybe width
+  w <- optionMaybe parseWidth
   grouping <- optionMaybe groupingOption
   prec <- option PrecisionDefault parsePrecision
 
@@ -273,6 +273,15 @@ formatSpec = do
         pure (FormatMode padding fmt grouping)
       Left typeError ->
         fail typeError
+
+parseWidth :: Parser (ExprOrValue Integer)
+parseWidth = do
+  exts <- asks enabledExtensions
+  Just (charOpening, charClosing) <- asks delimiters
+  choice
+    [ Value <$> width
+    , char charOpening *> (HaskellExpr <$> evalExpr exts (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
+    ]
 
 parsePrecision :: Parser Precision
 parsePrecision = do

@@ -145,13 +145,18 @@ You can ignore a line break with `\` if needed. For example:
 
 Will returns `-a\n-b`. Note how the first and last line breaks are ignored.
 
-## Arbitrary value for precision
+## Arbitrary value for precision and padding
 
-The precision field can be any haskell expression instead of a fixed number:
+The precision and padding width fields can be any Haskell expression (including variables) instead of a fixed number:
 
 ```haskell
 >>> [fmt|{pi:.{1+2}}|]
 3.142
+```
+
+```haskell
+>>> [fmt|{1986:^{2 * 10}d}|]
+"        1986        "
 ```
 
 # Output type
