@@ -60,6 +60,8 @@ import DynFlags (DynFlags, xopt_set, defaultDynFlags)
 import qualified Module
 #endif
 
+import GHC.Stack
+
 #if MIN_VERSION_ghc(9,2,0)
 -- TODO: why this disapears in GHC >= 9.2?
 fl_value = rationalFromFractionalLit
@@ -193,10 +195,10 @@ toExp d (Expr.ExprWithTySig _ e (HsWC _ (HsIB _ (unLoc -> t)))) = TH.SigE (toExp
 #endif
 toExp dynFlags e = todo "toExp" (showSDocDebug dynFlags . ppr $ e)
 
-todo :: (Show e) => String -> e -> a
+todo :: (HasCallStack, Show e) => String -> e -> a
 todo fun thing = error . concat $ [moduleName, ".", fun, ": not implemented: ", show thing]
 
-noTH :: (Show e) => String -> e -> a
+noTH :: (HasCallStack, Show e) => String -> e -> a
 noTH fun thing = error . concat $ [moduleName, ".", fun, ": no TemplateHaskell for: ", show thing]
 
 moduleName :: String
