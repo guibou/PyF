@@ -6,14 +6,14 @@
 
 module PyF.Internal.Meta (toExp, baseDynFlags, translateTHtoGHCExt) where
 
-{- ORMOLU_DISABLE -}
-
-#if MIN_VERSION_ghc(9,0,0)
-import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..))
+#if MIN_VERSION_ghc(9,2,0)
+import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsSigType(HsSig))
+#elif MIN_VERSION_ghc(9,0,0)
+import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs(HsIB))
 #elif MIN_VERSION_ghc(8,10,0)
-import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..))
+import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB))
 #else
-import HsTypes (HsWildCardBndrs (..), HsType (..))
+import HsTypes (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB))
 #endif
 
 #if MIN_VERSION_ghc(8,10,0)
@@ -186,6 +186,11 @@ toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromTo a b) -> TH.FromToR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
+#if MIN_VERSION_ghc(9, 2, 0)
+toExp d (Expr.ExprWithTySig _ e (HsWC _ (unLoc -> HsSig _ _ (unLoc -> t)))) = TH.SigE (toExp d (unLoc e)) (toType t)
+#elif MIN_VERSION_ghc(9, 0, 0)
+toExp d (Expr.ExprWithTySig _ e (HsWC _ (HsIB _ (unLoc -> t)))) = TH.SigE (toExp d (unLoc e)) (toType t)
+#endif
 toExp dynFlags e = todo "toExp" (showSDocDebug dynFlags . ppr $ e)
 
 todo :: (Show e) => String -> e -> a
