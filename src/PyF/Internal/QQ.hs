@@ -180,9 +180,7 @@ defaultFloatPrecision = Just 6
 -- | Precision to maybe
 splicePrecision :: Maybe Int -> Precision -> Q Exp
 splicePrecision def PrecisionDefault = [|def|]
-splicePrecision _ (Precision p) = case p of
-  Value n -> [|Just n|]
-  HaskellExpr e -> [|Just $(pure e)|]
+splicePrecision _ (Precision p) = [|Just $(exprToInt p)|]
 
 toGrp :: Maybe Char -> Int -> Q Exp
 toGrp mb a = [|grp|]
@@ -222,21 +220,22 @@ newPaddingQ padding = case padding of
     Just (Nothing, a) -> [|Just ($(exprToInt i), a, ' ')|]
     Just (Just c, a) -> [|Just ($(exprToInt i), a, c)|]
 
-exprToInt :: ExprOrValue Integer -> Q Exp
-exprToInt (Value i) = pure $ LitE (IntegerL i)
-exprToInt (HaskellExpr e) = pure e
+exprToInt :: ExprOrValue Int -> Q Exp
+-- Note: this is a literal provided integral. We use explicit case to ::Int so it won't warn about defaulting
+exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
+exprToInt (HaskellExpr e) = [|$(pure e)|]
 
 data PaddingK k where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll
-  PaddingK :: Integer -> Maybe (Maybe Char, Formatters.AlignMode k) -> PaddingK k
+  PaddingK :: Int -> Maybe (Maybe Char, Formatters.AlignMode k) -> PaddingK k
 
 paddingToPaddingK :: Padding -> Q Exp
 paddingToPaddingK p = case p of
   PaddingDefault -> [|PaddingDefaultK|]
-  Padding i Nothing -> [|PaddingK $(exprToInt i) Nothing :: PaddingK 'Formatters.AlignAll|]
-  Padding i (Just (c, AnyAlign a)) -> [|PaddingK $(exprToInt i) (Just (c, a))|]
+  Padding i Nothing -> [|PaddingK (fromIntegral $(exprToInt i)) Nothing :: PaddingK 'Formatters.AlignAll|]
+  Padding i (Just (c, AnyAlign a)) -> [|PaddingK (fromIntegral $(exprToInt i)) (Just (c, a))|]
 
-paddingKToPadding :: PaddingK k -> Maybe (Integer, AnyAlign, Char)
+paddingKToPadding :: PaddingK k -> Maybe (Int, AnyAlign, Char)
 paddingKToPadding p = case p of
   PaddingDefaultK -> Nothing
   (PaddingK i al) -> case al of
@@ -244,13 +243,13 @@ paddingKToPadding p = case p of
     Just (Nothing, a) -> Just (i, AnyAlign a, ' ')
     Just (Just c, a) -> Just (i, AnyAlign a, c)
 
-formatAnyIntegral :: PyfFormatIntegral i => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
-formatAnyIntegral f s Nothing grouping i = pyfFormatIntegral f s Nothing grouping i
-formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = pyfFormatIntegral f s (Just (fromIntegral padSize, alignMode, c)) grouping i
+formatAnyIntegral :: forall i a t t'. Integral a => PyfFormatIntegral i => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (a, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
+formatAnyIntegral f s Nothing grouping i = pyfFormatIntegral @i @a f s Nothing grouping i
+formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = pyfFormatIntegral f s (Just (padSize, alignMode, c)) grouping i
 
-formatAnyFractional :: (PyfFormatFractional i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (Integer, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe Int -> i -> String
-formatAnyFractional f s Nothing grouping p i = pyfFormatFractional f s Nothing grouping p i
-formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = pyfFormatFractional f s (Just (fromIntegral padSize, alignMode, c)) grouping p i
+formatAnyFractional :: forall a b i t t'. (Integral a, Integral b, PyfFormatFractional i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (a, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe b -> i -> String
+formatAnyFractional f s Nothing grouping p i = pyfFormatFractional @i @a @b f s Nothing grouping p i
+formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = pyfFormatFractional f s (Just (padSize, alignMode, c)) grouping p i
 
 class FormatAny i k where
   formatAny :: Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String

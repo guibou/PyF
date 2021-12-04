@@ -155,7 +155,7 @@ data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
 -- | Padding, containing the padding width, the padding char and the alignement mode
 data Padding
   = PaddingDefault
-  | Padding (ExprOrValue Integer) (Maybe (Maybe Char, AnyAlign))
+  | Padding (ExprOrValue Int) (Maybe (Maybe Char, AnyAlign))
   deriving (Show)
 
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
@@ -167,7 +167,7 @@ data ExprOrValue t
 -- | Floating point precision
 data Precision
   = PrecisionDefault
-  | Precision (ExprOrValue Integer)
+  | Precision (ExprOrValue Int)
   deriving (Show)
 
 {-
@@ -274,7 +274,7 @@ formatSpec = do
       Left typeError ->
         fail typeError
 
-parseWidth :: Parser (ExprOrValue Integer)
+parseWidth :: Parser (ExprOrValue Int)
 parseWidth = do
   exts <- asks enabledExtensions
   Just (charOpening, charClosing) <- asks delimiters
@@ -383,16 +383,16 @@ sign =
       Space <$ char ' '
     ]
 
-width :: Parser Integer
+width :: Parser Int
 width = integer
 
-integer :: Parser Integer
+integer :: Parser Int
 integer = read <$> some (oneOf ['0' .. '9']) -- incomplete: see: https://docs.python.org/3/reference/lexical_analysis.html#grammar-token-integer
 
 groupingOption :: Parser Char
 groupingOption = oneOf ("_," :: String)
 
-precision :: Parser Integer
+precision :: Parser Int
 precision = integer
 
 type_ :: Parser TypeFlag

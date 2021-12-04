@@ -6,6 +6,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 --
@@ -221,7 +222,7 @@ group (IntegralRepr s str) (Just (size, c)) = IntegralRepr s (groupIntercalate c
 group (FractionalRepr s a b d) (Just (size, c)) = FractionalRepr s (groupIntercalate c size a) b d
 group i _ = i
 
-padAndSign :: Format t t' t'' -> String -> SignMode -> Maybe (Int, AlignMode k, Char) -> Repr -> String
+padAndSign :: Integral paddingWidth => Format t t' t'' -> String -> SignMode -> Maybe (paddingWidth, AlignMode k, Char) -> Repr -> String
 padAndSign format prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignMode <> content <> rightAlignMode
   where
     (signStr, content) = case repr of
@@ -233,7 +234,7 @@ padAndSign format prefix sign padding repr = leftAlignMode <> prefixStr <> middl
     len = length prefixStr + length content
     (leftAlignMode, rightAlignMode, middleAlignMode) = case padding of
       Nothing -> ("", "", "")
-      Just (pad, padMode, padC) ->
+      Just (fromIntegral -> pad, padMode, padC) ->
         let padNeeded = max 0 (pad - len)
          in case padMode of
               AlignLeft -> ("", replicate padNeeded padC, "")
@@ -274,11 +275,12 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- | Format an integral number
 formatIntegral ::
+  Integral paddingWidth => 
   Integral i =>
   Format t t' 'Integral ->
   SignMode ->
   -- | Padding
-  Maybe (Int, AlignMode k, Char) ->
+  Maybe (paddingWidth, AlignMode k, Char) ->
   -- | Grouping
   Maybe (Int, Char) ->
   i ->
@@ -287,18 +289,18 @@ formatIntegral f sign padding grouping i = padAndSign f (prefixIntegral f) sign 
 
 -- | Format a fractional number
 formatFractional ::
-  (RealFloat f) =>
+  (RealFloat f, Integral paddingWidth, Integral precision) =>
   Format t t' 'Fractional ->
   SignMode ->
   -- | Padding
-  Maybe (Int, AlignMode k, Char) ->
+  Maybe (paddingWidth, AlignMode k, Char) ->
   -- | Grouping
   Maybe (Int, Char) ->
   -- | Precision
-  Maybe Int ->
+  Maybe precision ->
   f ->
   String
-formatFractional f sign padding grouping precision i = padAndSign f "" sign padding (group (reprFractional f precision i) grouping)
+formatFractional f sign padding grouping precision i = padAndSign f "" sign padding (group (reprFractional f (fmap fromIntegral precision) i) grouping)
 
 -- | Format a string
 formatString ::

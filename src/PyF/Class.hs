@@ -150,15 +150,16 @@ instance {-# OVERLAPPABLE #-} Show t => PyFToString t where pyfToString = show
 -- 'RealFrac' constraint.
 class PyfFormatFractional a where
   pyfFormatFractional ::
+    (Integral paddingWidth, Integral precision) =>
     Format t t' 'Fractional ->
     -- | Sign formatting
     SignMode ->
     -- | Padding
-    Maybe (Int, AlignMode k, Char) ->
+    Maybe (paddingWidth, AlignMode k, Char) ->
     -- | Grouping
     Maybe (Int, Char) ->
     -- | Precision
-    Maybe Int ->
+    Maybe precision ->
     a ->
     String
 
@@ -183,11 +184,12 @@ instance PyfFormatFractional Float where pyfFormatFractional = formatFractional
 -- 'Integral' constraint.
 class PyfFormatIntegral i where
   pyfFormatIntegral ::
+    Integral paddingWidth =>
     Format t t' 'Integral ->
     -- | Sign formatting
     SignMode ->
     -- | Padding
-    Maybe (Int, AlignMode k, Char) ->
+    Maybe (paddingWidth, AlignMode k, Char) ->
     -- | Grouping
     Maybe (Int, Char) ->
     i ->
