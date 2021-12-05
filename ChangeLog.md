@@ -1,5 +1,11 @@
 # Revision history for PyF
 
+## 0.10.1.0 -- ?
+
+- Padding width can now be any arbitrary Haskell expression, such as `[fmt|hello pi = {pi:<{5 * 10}}|]`.
+- Precision (and now padding width) arbitrary expression can now be any `Integral` and it is not limited to `Int` anymore.
+- (Meta): type expression are now parsed and hence allowed inside arbitrary Haskell expression for padding width and precision. For example, `[fmt|Hello {pi:.{3 :: Int}}|]`.
+
 ## 0.10.0.1 -- 2021-10-30
 
 - Due to the dependencies refactor, `PyF` no have no dependencies other than the one packaged with GHC. The direct result is that `PyF` build time is reduced to 6s versus 4 minutes and 20s before.
