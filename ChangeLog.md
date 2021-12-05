@@ -1,6 +1,6 @@
 # Revision history for PyF
 
-## 0.10.1.0 -- ?
+## 0.10.1.0 -- 2021-12-05
 
 - Padding width can now be any arbitrary Haskell expression, such as `[fmt|hello pi = {pi:<{5 * 10}}|]`.
 - Precision (and now padding width) arbitrary expression can now be any `Integral` and it is not limited to `Int` anymore.
