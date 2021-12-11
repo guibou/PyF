@@ -7,13 +7,13 @@
 module PyF.Internal.Meta (toExp, baseDynFlags, translateTHtoGHCExt) where
 
 #if MIN_VERSION_ghc(9,2,0)
-import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsSigType(HsSig))
+import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsSigType(HsSig), sig_body)
 #elif MIN_VERSION_ghc(9,0,0)
-import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs(HsIB))
+import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs(HsIB), hsib_body)
 #elif MIN_VERSION_ghc(8,10,0)
-import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB))
+import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB, hsib_body))
 #else
-import HsTypes (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB))
+import HsTypes (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB), hsib_body)
 #endif
 
 #if MIN_VERSION_ghc(8,10,0)
@@ -129,8 +129,12 @@ toExp _ Expr.HsIPVar {} = noTH "toExp" "HsIPVar"
 toExp _ (Expr.HsLit _ l) = TH.LitE (toLit l)
 toExp _ (Expr.HsOverLit _ OverLit {ol_val}) = TH.LitE (toLit' ol_val)
 toExp d (Expr.HsApp _ e1 e2) = TH.AppE (toExp d . unLoc $ e1) (toExp d . unLoc $ e2)
-#if MIN_VERSION_ghc(8,8,0)
+#if MIN_VERSION_ghc(9,2,0)
 toExp d (Expr.HsAppType _ e HsWC {hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
+toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=unLoc -> HsSig{sig_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ sig_body)
+#elif MIN_VERSION_ghc(8,8,0)
+toExp d (Expr.HsAppType _ e HsWC {hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
+toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=HsIB{hsib_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ hsib_body)
 #else
 toExp d (Expr.HsAppType HsWC {hswc_body} e) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
 #endif
@@ -188,11 +192,6 @@ toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromTo a b) -> TH.FromToR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
-#if MIN_VERSION_ghc(9, 2, 0)
-toExp d (Expr.ExprWithTySig _ e (HsWC _ (unLoc -> HsSig _ _ (unLoc -> t)))) = TH.SigE (toExp d (unLoc e)) (toType t)
-#elif MIN_VERSION_ghc(9, 0, 0)
-toExp d (Expr.ExprWithTySig _ e (HsWC _ (HsIB _ (unLoc -> t)))) = TH.SigE (toExp d (unLoc e)) (toType t)
-#endif
 toExp dynFlags e = todo "toExp" (showSDocDebug dynFlags . ppr $ e)
 
 todo :: (HasCallStack, Show e) => String -> e -> a
