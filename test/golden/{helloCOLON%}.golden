@@ -1,9 +1,9 @@
 
 INITIALPATH:7:22: error:
     • No instance for (Real String) arising from a use of ‘PyF.Internal.QQ.formatAnyFractional’
-    • In the first argument of ‘putStrLn’, namely ‘((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Percent) PyF.Formatters.Minus) Nothing) Nothing) (Just 6)) hello)’
-      In the expression: putStrLn ((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Percent) PyF.Formatters.Minus) Nothing) Nothing) (Just 6)) hello)
-      In an equation for ‘main’: main = putStrLn ((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Percent) PyF.Formatters.Minus) Nothing) Nothing) (Just 6)) hello)
+    • In the first argument of ‘putStrLn’, namely ‘((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Percent) PyF.Formatters.Minus) (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char))) Nothing) (Just 6 :: Maybe Int)) hello)’
+      In the expression: putStrLn ((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Percent) PyF.Formatters.Minus) (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char))) Nothing) (Just 6 :: Maybe Int)) hello)
+      In an equation for ‘main’: main = putStrLn ((((((PyF.Internal.QQ.formatAnyFractional PyF.Formatters.Percent) PyF.Formatters.Minus) (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char))) Nothing) (Just 6 :: Maybe Int)) hello)
   |
 7 | main = putStrLn [fmt|{hello:%}|]
   |                      ^^^^^^^^^^^

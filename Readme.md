@@ -292,7 +292,7 @@ The implementation is unit-tested against the reference python implementation (p
 ### Not supported
 
 - Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator. There is no plan to support that because of the impure interface needed to read the locale.
-- Python support sub variables in the formatting options in every places, such as `{expression:.{precision}}`. We only support it for `precision`. This is more complexe to setup for others fields.
+- Python support sub variables in the formatting options in every places, such as `{expression:.{precision}}`. We only support it for `precision` and `width`. This is more complexe to setup for others fields.
 - Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones, I don't have a plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
 - Python support adding custom formatters for new types, such as date. This may be really cool, for example `[fmt|{today:%Y-%M-%D}`. I don't know how to support that now.
 

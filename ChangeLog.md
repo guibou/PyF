@@ -1,5 +1,12 @@
 # Revision history for PyF
 
+- Support for `::` in haskell expression. Such as `[fmt| 10 :: Int:d}|]`, as a suggestion from julm (close #87).
+- `Integral` padding width and precision also for formatter without type specifier.
+- Extra care was used to catch all `type-defaults` warning message. PyF should
+  not generate code with this kind of warning, unless the embedded Haskell
+  expression are ambiguous (e.g. `[fmt|{10}|]`). You can use `::` to
+  disambiguate, e.g. `[fmt|{10 :: Int}|]`.
+
 ## 0.10.1.0 -- 2021-12-05
 
 - Padding width can now be any arbitrary Haskell expression, such as `[fmt|hello pi = {pi:<{5 * 10}}|]`.

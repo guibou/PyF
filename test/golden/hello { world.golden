@@ -6,7 +6,7 @@ INITIALPATH:7:22: error:
   |                                   ^
 
 unexpected end of input
-expecting ":" or "}"
+expecting "::", ":" or "}"
 
     • In the quasi-quotation: [fmt|hello { world|]
   |

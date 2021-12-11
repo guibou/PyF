@@ -132,12 +132,22 @@ escapeChars s = case Data.Char.readLitChar s of
   ((c, xs) : _) -> (c :) <$> escapeChars xs
   _ -> Left s
 
+-- | Parses the expression field (i.e. what's appear before the format field)
+parseExpressionString :: Parser String
+parseExpressionString = do
+  Just (_charOpening, charClosing) <- asks delimiters
+  -- Special case for "::", we want to parse it as part of an expression,
+  -- unless it may be the end of the format field (':'), followed by a padding
+  -- char (':') followed by a padding specifier.
+  res <- some ((try (string "::" <* notFollowedBy (oneOf "<>=^"))) <|> (pure <$> noneOf (charClosing : ":" :: String)))
+  pure $ concat res
+
 replacementField :: Parser Item
 replacementField = do
   exts <- asks enabledExtensions
   Just (charOpening, charClosing) <- asks delimiters
   _ <- char charOpening
-  expr <- evalExpr exts (some (noneOf (charClosing : ":" :: String)) <?> "an haskell expression")
+  expr <- evalExpr exts (parseExpressionString <?> "an haskell expression")
   fmt <- optionMaybe $ do
     _ <- char ':'
     formatSpec

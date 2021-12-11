@@ -490,3 +490,15 @@ yeah\
   - b {pi}
   |]
         `shouldBe` "- a \b {\n- b {pi}\n"
+
+  describe "handle ::" $ do
+    it "works in simple context" $ do
+      [fmt|{-10 :: Int:d}|] `shouldBe` "-10"
+    it "works in a padding = context" $ do
+      [fmt|{-10 :: Int::=10d}|] `shouldBe` "-:::::::10"
+    it "works in a padding < context" $ do
+      [fmt|{-10 :: Int::<10d}|] `shouldBe` "-10:::::::"
+    it "works in a padding > context" $ do
+      [fmt|{-10 :: Int::>10d}|] `shouldBe` ":::::::-10"
+    it "works in a padding ^ context" $ do
+      [fmt|{-10 :: Int::^10d}|] `shouldBe` ":::-10::::"

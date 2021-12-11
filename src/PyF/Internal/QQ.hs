@@ -179,7 +179,7 @@ defaultFloatPrecision = Just 6
 
 -- | Precision to maybe
 splicePrecision :: Maybe Int -> Precision -> Q Exp
-splicePrecision def PrecisionDefault = [|def|]
+splicePrecision def PrecisionDefault = [|def :: Maybe Int|]
 splicePrecision _ (Precision p) = [|Just $(exprToInt p)|]
 
 toGrp :: Maybe Char -> Int -> Q Exp
@@ -214,7 +214,7 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
 
 newPaddingQ :: Padding -> Q Exp
 newPaddingQ padding = case padding of
-  PaddingDefault -> [|Nothing|]
+  PaddingDefault -> [|Nothing :: Maybe (Int, AnyAlign, Char)|]
   (Padding i al) -> case al of
     Nothing -> [|Just ($(exprToInt i), AnyAlign Formatters.AlignRight, ' ')|] -- Right align and space is default for any object, except string
     Just (Nothing, a) -> [|Just ($(exprToInt i), a, ' ')|]
@@ -225,17 +225,17 @@ exprToInt :: ExprOrValue Int -> Q Exp
 exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
 exprToInt (HaskellExpr e) = [|$(pure e)|]
 
-data PaddingK k where
-  PaddingDefaultK :: PaddingK 'Formatters.AlignAll
-  PaddingK :: Int -> Maybe (Maybe Char, Formatters.AlignMode k) -> PaddingK k
+data PaddingK k i where
+  PaddingDefaultK :: PaddingK 'Formatters.AlignAll Int
+  PaddingK :: i -> Maybe (Maybe Char, Formatters.AlignMode k) -> PaddingK k i
 
 paddingToPaddingK :: Padding -> Q Exp
 paddingToPaddingK p = case p of
   PaddingDefault -> [|PaddingDefaultK|]
-  Padding i Nothing -> [|PaddingK (fromIntegral $(exprToInt i)) Nothing :: PaddingK 'Formatters.AlignAll|]
-  Padding i (Just (c, AnyAlign a)) -> [|PaddingK (fromIntegral $(exprToInt i)) (Just (c, a))|]
+  Padding i Nothing -> [|PaddingK ($(exprToInt i)) Nothing :: PaddingK 'Formatters.AlignAll Int|]
+  Padding i (Just (c, AnyAlign a)) -> [|PaddingK $(exprToInt i) (Just (c, a))|]
 
-paddingKToPadding :: PaddingK k -> Maybe (Int, AnyAlign, Char)
+paddingKToPadding :: PaddingK k i -> Maybe (i, AnyAlign, Char)
 paddingKToPadding p = case p of
   PaddingDefaultK -> Nothing
   (PaddingK i al) -> case al of
@@ -243,22 +243,22 @@ paddingKToPadding p = case p of
     Just (Nothing, a) -> Just (i, AnyAlign a, ' ')
     Just (Just c, a) -> Just (i, AnyAlign a, c)
 
-formatAnyIntegral :: forall i a t t'. Integral a => PyfFormatIntegral i => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (a, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
-formatAnyIntegral f s Nothing grouping i = pyfFormatIntegral @i @a f s Nothing grouping i
+formatAnyIntegral :: forall i paddingWidth t t'. Integral paddingWidth => PyfFormatIntegral i => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (paddingWidth, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
+formatAnyIntegral f s Nothing grouping i = pyfFormatIntegral @i @paddingWidth f s Nothing grouping i
 formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = pyfFormatIntegral f s (Just (padSize, alignMode, c)) grouping i
 
-formatAnyFractional :: forall a b i t t'. (Integral a, Integral b, PyfFormatFractional i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (a, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe b -> i -> String
-formatAnyFractional f s Nothing grouping p i = pyfFormatFractional @i @a @b f s Nothing grouping p i
+formatAnyFractional :: forall paddingWidth precision i t t'. (Integral paddingWidth, Integral precision, PyfFormatFractional i) => Formatters.Format t t' 'Formatters.Fractional -> Formatters.SignMode -> Maybe (paddingWidth, AnyAlign, Char) -> Maybe (Int, Char) -> Maybe precision -> i -> String
+formatAnyFractional f s Nothing grouping p i = pyfFormatFractional @i @paddingWidth @precision f s Nothing grouping p i
 formatAnyFractional f s (Just (padSize, AnyAlign alignMode, c)) grouping p i = pyfFormatFractional f s (Just (padSize, alignMode, c)) grouping p i
 
 class FormatAny i k where
-  formatAny :: Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
+  formatAny :: forall paddingWidth precision. (Integral paddingWidth, Integral precision) => Formatters.SignMode -> PaddingK k paddingWidth -> Maybe (Int, Char) -> Maybe precision -> i -> String
 
 instance (FormatAny2 (PyFClassify t) t k) => FormatAny t k where
   formatAny = formatAny2 (Proxy :: Proxy (PyFClassify t))
 
 class FormatAny2 (c :: PyFCategory) (i :: Type) (k :: Formatters.AlignForString) where
-  formatAny2 :: Proxy c -> Formatters.SignMode -> PaddingK k -> Maybe (Int, Char) -> Maybe Int -> i -> String
+  formatAny2 :: forall paddingWidth precision. (Integral paddingWidth, Integral precision) => Proxy c -> Formatters.SignMode -> PaddingK k paddingWidth -> Maybe (Int, Char) -> Maybe precision -> i -> String
 
 instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
   formatAny2 _ s a p _precision = formatAnyIntegral Formatters.Decimal s (paddingKToPadding a) p
@@ -266,7 +266,7 @@ instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
 instance (PyfFormatFractional t) => FormatAny2 'PyFFractional t k where
   formatAny2 _ s a = formatAnyFractional Formatters.Generic s (paddingKToPadding a)
 
-newPaddingKForString :: PaddingK 'Formatters.AlignAll -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
+newPaddingKForString :: Integral i => PaddingK 'Formatters.AlignAll i -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingKForString padding = case padding of
   PaddingDefaultK -> Nothing
   PaddingK i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
