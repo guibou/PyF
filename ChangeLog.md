@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+- Support for `::` in haskell expression. Such as `[fmt| 10 :: Int:d}|]`, as a suggestion from julm (close #87).
+
 ## 0.10.1.0 -- 2021-12-05
 
 - Padding width can now be any arbitrary Haskell expression, such as `[fmt|hello pi = {pi:<{5 * 10}}|]`.
