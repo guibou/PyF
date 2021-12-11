@@ -7,6 +7,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 -- |
 --
@@ -304,17 +306,19 @@ formatFractional f sign padding grouping precision i = padAndSign f "" sign padd
 
 -- | Format a string
 formatString ::
+  forall paddingWidth precision.
+  (Integral paddingWidth, Integral precision) =>
   -- | Padding
-  Maybe (Int, AlignMode 'AlignAll, Char) ->
+  Maybe (paddingWidth, AlignMode 'AlignAll, Char) ->
   -- | Precision (will truncate before padding)
-  Maybe Int ->
+  Maybe precision ->
   String ->
   String
 formatString Nothing Nothing s = s
-formatString Nothing (Just i) s = take i s
-formatString (Just (padSize, padMode, padC)) size s = padLeft <> str <> padRight
+formatString Nothing (Just i) s = take (fromIntegral i) s
+formatString (Just (fromIntegral -> padSize, padMode, padC)) size s = padLeft <> str <> padRight
   where
-    str = formatString Nothing size s
+    str = formatString @paddingWidth Nothing size s
     paddingLength = max 0 (padSize - length str)
     (padLeft, padRight) = case padMode of
       AlignLeft -> ("", replicate paddingLength padC)
