@@ -6,11 +6,11 @@
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
-  nixConfig.substituters = [
+  nixConfig.extra-substituters = [
     "guibou.cachix.net"
     "https://haskell-language-server.cachix.org"
   ];
-  nixConfig.trusted-public-keys = [
+  nixConfig.extra-trusted-public-keys = [
     "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM="
     "haskell-language-server.cachix.org-1:juFfHrwkOxqIOZShtC4YC1uT1bBcq2RSvC7OMKx0Nz8="
   ];
