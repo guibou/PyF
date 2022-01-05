@@ -26,7 +26,7 @@ import Control.Applicative (some)
 import Control.Monad.Reader
 import qualified Data.Char
 import Data.Maybe (fromMaybe)
-import qualified Language.Haskell.TH.LanguageExtensions as ParseExtension
+import Language.Haskell.TH.LanguageExtensions (Extension(..))
 import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import PyF.Internal.Meta
@@ -37,7 +37,7 @@ type Parser t = ParsecT String () (Reader ParsingContext) t
 
 data ParsingContext = ParsingContext
   { delimiters :: Maybe (Char, Char),
-    enabledExtensions :: [ParseExtension.Extension]
+    enabledExtensions :: [Extension]
   }
   deriving (Show)
 
@@ -235,12 +235,11 @@ data TypeFormat
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
 
-evalExpr :: [ParseExtension.Extension] -> Parser String -> Parser Exp
+evalExpr :: [Extension] -> Parser String -> Parser Exp
 evalExpr exts exprParser = do
   s <- lookAhead exprParser
   -- Setup the dyn flags using the provided list of extensions
-  let exts' = fmap translateTHtoGHCExt exts
-  let dynFlags = baseDynFlags exts'
+  let dynFlags = baseDynFlags exts
   case ParseExp.parseExpression s dynFlags of
     Right expr -> do
       -- Consumne the expression
