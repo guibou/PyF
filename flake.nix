@@ -19,22 +19,6 @@
     flake-utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages.${system};
       in with pkgs; rec {
-        # Explicit list of used files. Else there is always too much and
-        # cache is invalidated.
-        sources = lib.sourceByRegex ./. [
-          "PyF.cabal$"
-          ".*.hs$"
-          ".*.md$"
-          ".*.golden$"
-          "src"
-          "app"
-          "src/PyF"
-          "src/PyF/Internal"
-          "test"
-          "test/golden"
-          "LICENSE"
-        ];
-
         pyfBuilder = hPkgs:
           let
             shell = pkg.env.overrideAttrs (old: {
@@ -49,7 +33,7 @@
             });
 
             pkg = (haskell.lib.buildFromSdist
-              (hPkgs.callCabal2nix "PyF" sources { })).overrideAttrs
+              (hPkgs.callCabal2nix "PyF" ./. { })).overrideAttrs
               (oldAttrs: {
                 buildInputs = oldAttrs.buildInputs;
                 passthru = oldAttrs.passthru // { inherit shell shell_hls; };
