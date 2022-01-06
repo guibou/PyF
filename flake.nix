@@ -35,7 +35,6 @@
             pkg = (haskell.lib.buildFromSdist
               (hPkgs.callCabal2nix "PyF" ./. { })).overrideAttrs
               (oldAttrs: {
-                buildInputs = oldAttrs.buildInputs;
                 passthru = oldAttrs.passthru // { inherit shell shell_hls; };
               });
             # Add the GHC version in the package name
@@ -59,7 +58,7 @@
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_90 = pyfBuilder (haskell.packages.ghc901.override {
+          pyf_90 = pyfBuilder (haskell.packages.ghc902.override {
             overrides = self: super: with haskell.lib; { };
           });
 
