@@ -316,6 +316,11 @@ yeah\
       let fooDouble = FooFloating (100.123 :: Double) in [fmt|{fooDouble}|] `shouldBe` "100.123"
       let fooFloat = FooFloating (100.123 :: Float) in [fmt|{fooFloat}|] `shouldBe` "100.123"
       [fmt|{FooDefault}|] `shouldBe` "FooDefault"
+  describe "Special syntax " $ do
+    it "[] is correct expression" $ do
+      [fmt|{[] @Char}|] `shouldBe` ""
+    it "() is correct expression" $ do
+      [fmt|{const "STRING" ()}|] `shouldBe` "STRING"
 
   describe "instances" $ do
     describe "default" $ do

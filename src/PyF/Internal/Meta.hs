@@ -105,7 +105,10 @@ toName n = case n of
   (Unqual o) -> TH.mkName (occNameString o)
   (Qual m o) -> TH.mkName (Module.moduleNameString m <> "." <> occNameString o)
   (Orig m o) -> error "orig"
-  (Exact n1) -> error "exact"
+  (Exact nm) -> case getOccString nm of
+    "[]" -> '[]
+    "()" -> '()
+    _    -> error "toName: exact name encountered"
 
 toFieldExp :: a
 toFieldExp = undefined
