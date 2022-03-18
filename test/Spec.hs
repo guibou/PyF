@@ -3,9 +3,13 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
@@ -23,6 +27,9 @@ import qualified Data.Ratio
 import qualified Data.Text
 import qualified Data.Text.Lazy
 import qualified Data.Time
+import Data.Proxy (Proxy(..))
+import GHC.TypeLits (Symbol, KnownSymbol, symbolVal)
+import GHC.OverloadedLabels
 import PyF
 import SpecCustomDelimiters
 import SpecUtils
@@ -59,6 +66,19 @@ type instance PyFClassify (FooFloating t) = 'PyFFractional
 type instance PyFClassify FooIntegral = 'PyFIntegral
 
 type instance PyFClassify FooDefault = 'PyFString
+
+-- Data type to test overloaded labels
+data V (a :: Symbol) = V
+
+instance KnownSymbol a => Show (V a) where
+  show V = "V=" ++ symbolVal (Proxy @a)
+
+instance (a ~ a') => IsLabel a (V a') where
+  fromLabel = V
+
+showV :: KnownSymbol a => V a -> String
+showV = show
+
 
 spec :: Spec
 spec = do
@@ -302,6 +322,8 @@ yeah\
       [fmt|hello {show @_ 10}|] `shouldBe` "hello 10"
     it "parses BinaryLiterals" $
       [fmt|hello {0b1111}|] `shouldBe` "hello 15"
+    it "OverloadedLabels works" $
+      [fmt|{showV #abc}|] `shouldBe` "V=abc"
   describe "custom types" $ do
     it "works with integral" $
       [fmt|{FooIntegral 10:d}|] `shouldBe` "10"
@@ -316,6 +338,11 @@ yeah\
       let fooDouble = FooFloating (100.123 :: Double) in [fmt|{fooDouble}|] `shouldBe` "100.123"
       let fooFloat = FooFloating (100.123 :: Float) in [fmt|{fooFloat}|] `shouldBe` "100.123"
       [fmt|{FooDefault}|] `shouldBe` "FooDefault"
+  describe "Special syntax " $ do
+    it "[] is correct expression" $ do
+      [fmt|{[] @Char}|] `shouldBe` ""
+    it "() is correct expression" $ do
+      [fmt|{const "STRING" ()}|] `shouldBe` "STRING"
 
   describe "instances" $ do
     describe "default" $ do
