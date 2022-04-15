@@ -140,6 +140,7 @@ toExp d (Expr.HsAppType _ e HsWC {hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e
 toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=HsIB{hsib_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ hsib_body)
 #else
 toExp d (Expr.HsAppType HsWC {hswc_body} e) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
+toExp d (Expr.ExprWithTySig HsWC{hswc_body=HsIB{hsib_body}} e) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ hsib_body)
 #endif
 toExp d (Expr.OpApp _ e1 o e2) = TH.UInfixE (toExp d . unLoc $ e1) (toExp d . unLoc $ o) (toExp d . unLoc $ e2)
 toExp d (Expr.NegApp _ e _) = TH.AppE (TH.VarE 'negate) (toExp d . unLoc $ e)
@@ -195,9 +196,13 @@ toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromTo a b) -> TH.FromToR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
+#if MIN_VERSION_ghc(9, 2, 0)
+toExp _ (HsOverLabel _ lbl) = TH.LabelE (unpackFS lbl)
+#else
 -- It's not quite clear what to do in case when overloaded syntax is
 -- enabled thus match on Nothing
 toExp _ (HsOverLabel _ Nothing lbl) = TH.LabelE (unpackFS lbl)
+#endif
 toExp dynFlags e = todo "toExp" (showSDocDebug dynFlags . ppr $ e)
 
 todo :: (HasCallStack, Show e) => String -> e -> a
