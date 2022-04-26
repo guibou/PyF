@@ -3,6 +3,7 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.hls.url = "github:haskell/haskell-language-server";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs";
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
@@ -75,11 +76,11 @@
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_90 = pyfBuilder (haskell.packages.ghc901.override {
+          pyf_90 = pyfBuilder (haskell.packages.ghc902.override {
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_92 = pyfBuilder (haskell.packages.ghc921.override {
+          pyf_92 = pyfBuilder (haskell.packages.ghc922.override {
               overrides = self: super: with haskell.lib; rec { };
           });
 
