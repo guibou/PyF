@@ -7,7 +7,7 @@
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
   nixConfig.extra-substituters = [
-    "guibou.cachix.net"
+    "guibou.cachix.org"
     "https://haskell-language-server.cachix.org"
   ];
   nixConfig.extra-trusted-public-keys = [
