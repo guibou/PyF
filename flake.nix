@@ -80,7 +80,7 @@
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_92 = pyfBuilder (haskell.packages.ghc922.override {
+          pyf_92 = pyfBuilder (haskell.packages.ghc923.override {
               overrides = self: super: with haskell.lib; rec { };
           });
 
@@ -93,7 +93,7 @@
 
           # That the current version for developement
           # We use the current version of nixpkgs in order to reduce build time.
-          pyf_current = pyf_810;
+          pyf_current = pyf_90;
 
           # Only the current build is built with python3 support
           # (i.e. extended tests)
