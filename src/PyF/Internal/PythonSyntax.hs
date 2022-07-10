@@ -246,6 +246,7 @@ evalExpr exts exprParser = do
       void exprParser
       pure (toExp dynFlags expr)
     Left (lineError, colError, err) -> do
+      -- In case of error, we just advance the parser to the error location.
       -- Skip lines
       replicateM_ (lineError - 1) (manyTill anyChar newline)
       -- Skip columns

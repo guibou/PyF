@@ -9,11 +9,9 @@
   #nixConfig.allow-import-from-derivation = true;
   nixConfig.extra-substituters = [
     "guibou.cachix.org"
-    "https://haskell-language-server.cachix.org"
   ];
   nixConfig.extra-trusted-public-keys = [
     "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM="
-    "haskell-language-server.cachix.org-1:juFfHrwkOxqIOZShtC4YC1uT1bBcq2RSvC7OMKx0Nz8="
   ];
 
   outputs = { self, nixpkgs, flake-utils, hls }:
@@ -46,7 +44,7 @@
             # Shell with haskell language server
             shell_hls = shell.overrideAttrs (old: {
               nativeBuildInputs = old.nativeBuildInputs
-              ++ [ hls.packages."${system}"."haskell-language-server-${builtins.replaceStrings ["."] [""] hPkgs.ghc.version}" ];
+              ++ [ hPkgs.haskell-language-server ]; 
             });
 
             pkg = (haskell.lib.buildFromSdist
@@ -80,7 +78,7 @@
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_92 = pyfBuilder (haskell.packages.ghc922.override {
+          pyf_92 = pyfBuilder (haskell.packages.ghc923.override {
               overrides = self: super: with haskell.lib; rec { };
           });
 
@@ -93,7 +91,7 @@
 
           # That the current version for developement
           # We use the current version of nixpkgs in order to reduce build time.
-          pyf_current = pyf_810;
+          pyf_current = pyf_90;
 
           # Only the current build is built with python3 support
           # (i.e. extended tests)

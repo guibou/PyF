@@ -104,7 +104,7 @@ toName :: RdrName -> TH.Name
 toName n = case n of
   (Unqual o) -> TH.mkName (occNameString o)
   (Qual m o) -> TH.mkName (Module.moduleNameString m <> "." <> occNameString o)
-  (Orig m o) -> error "orig"
+  (Orig _m _o) -> error "PyFMeta: not supported toName (Orig _)"
   (Exact nm) -> case getOccString nm of
     "[]" -> '[]
     "()" -> '()

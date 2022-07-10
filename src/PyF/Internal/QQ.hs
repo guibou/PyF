@@ -96,11 +96,9 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
     Left err -> do
       err' <- overrideErrorForFile filename err
       reportErrorAt err'
-      -- returns a dummy exp, so TH continues it life. This TH code won't be
+      -- returns a dummy exp, so TH continues its life. This TH code won't be
       -- executed anyway, there is an error
       [| () |]
-
-      -- fail =<< prettyError filename s err'
     Right items -> postProcess (goFormat items)
 
 -- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
