@@ -1,5 +1,10 @@
 # Revision history for PyF
 
+- Error reporting now uses the native GHC API. In summary, it means that
+ haskell-language-server will point to the correct location of the error, not
+ the beginning of the quasi quotes.
+- Add support for literal `[]` and `()` in haskell expression.
+- Add support for overloaded labels, thank you Shimuuar.
 - Support for `::` in haskell expression. Such as `[fmt| 10 :: Int:d}|]`, as a suggestion from julm (close #87).
 - `Integral` padding width and precision also for formatter without type specifier.
 - Extra care was used to catch all `type-defaults` warning message. PyF should

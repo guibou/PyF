@@ -1,16 +1,12 @@
 
-INITIALPATH:7:22: error:
-    • INITIALPATH:11:10:
-   |
-11 | in 1 + - / lalalal}|]
-   |          ^
-parse error on input `/' in haskell expression
+INITIALPATH:11:10: error:
+    • parse error on input `/' in haskell expression
 
     • In the quasi-quotation: [fmt|hello
     {
 let a = 5
     b = 10
 in 1 + - / lalalal}|]
-  |
-7 | main = putStrLn [fmt|hello
-  |                      ^^^^^...
+   |
+11 | in 1 + - / lalalal}|]
+   |          ^

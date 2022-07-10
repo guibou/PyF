@@ -1,10 +1,6 @@
 
-INITIALPATH:7:22: error:
-    • INITIALPATH:10:6:
-   |
-10 | {pi:l}|]
-   |      ^
-
+INITIALPATH:10:6: error:
+    • 
 unexpected "}"
 expecting "<", ">", "^" or "="
 
@@ -12,6 +8,6 @@ expecting "<", ">", "^" or "="
 
 
 {pi:l}|]
-  |
-7 | main = putStrLn [fmt|hello
-  |                      ^^^^^...
+   |
+10 | {pi:l}|]
+   |      ^
