@@ -9,11 +9,9 @@
   #nixConfig.allow-import-from-derivation = true;
   nixConfig.extra-substituters = [
     "guibou.cachix.org"
-    "https://haskell-language-server.cachix.org"
   ];
   nixConfig.extra-trusted-public-keys = [
     "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM="
-    "haskell-language-server.cachix.org-1:juFfHrwkOxqIOZShtC4YC1uT1bBcq2RSvC7OMKx0Nz8="
   ];
 
   outputs = { self, nixpkgs, flake-utils, hls }:
@@ -46,7 +44,7 @@
             # Shell with haskell language server
             shell_hls = shell.overrideAttrs (old: {
               nativeBuildInputs = old.nativeBuildInputs
-              ++ [ hls.packages."${system}"."haskell-language-server-${builtins.replaceStrings ["."] [""] hPkgs.ghc.version}" ];
+              ++ [ hPkgs.haskell-language-server ]; 
             });
 
             pkg = (haskell.lib.buildFromSdist
