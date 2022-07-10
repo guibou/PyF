@@ -13,6 +13,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE CPP #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
@@ -40,6 +41,17 @@ import PyF.Internal.PythonSyntax
 import Text.Parsec
 import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMessages)
 import Text.ParserCombinators.Parsec.Error (Message (..))
+import Unsafe.Coerce (unsafeCoerce)
+import Language.Haskell.TH.Syntax (Q(Q))
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Tc.Types (TcM)
+import GHC.Types.SrcLoc (SrcSpan(..), mkSrcLoc, mkSrcSpan)
+import GHC.Tc.Utils.Monad (addErrAt)
+#else
+import TcRnTypes (TcM)
+import GhcPlugins (SrcSpan (..), mkSrcLoc, mkSrcSpan)
+import TcRnMonad (addErrAt)
+#endif
 
 -- | Configuration for the quasiquoter
 data Config = Config
@@ -83,43 +95,34 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
   case runReader (runParserT parseGenericFormatString () filename s) context of
     Left err -> do
       err' <- overrideErrorForFile filename err
-      fail =<< prettyError filename s err'
+      reportErrorAt err'
+      -- returns a dummy exp, so TH continues it life. This TH code won't be
+      -- executed anyway, there is an error
+      [| () |]
+
+      -- fail =<< prettyError filename s err'
     Right items -> postProcess (goFormat items)
 
--- | Display a pretty version of an error, with caret and file context.
-prettyError ::
-  -- | Filename of the file which contains the error
-  FilePath ->
-  -- | Content of the file
-  String ->
-  -- | Parse error from parsec
-  ParseError ->
-  Q String
-prettyError filename s err = do
-  let sourceLoc = errorPos err
-      line = sourceLine sourceLoc
-      column = sourceColumn sourceLoc
-      name = sourceName sourceLoc
-      carretOffset = column - 1
-      carret = replicate carretOffset ' ' <> "^"
-      colIndicator = show line <> " | "
-      colPrefix = replicate (length (show line)) ' ' <> " |"
+-- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
+-- This allows to hack inside the the GHC api and use function not exported by template haskell.
+unsafeRunTcM :: TcM a -> Q a
+unsafeRunTcM m = Q (unsafeCoerce m)
 
-  code <- case filename of
-    -- If that's an interectavi file, we don't know much, so just dump the string.
-    "<interactive>" -> pure s
-    _ -> do
-      content <- runIO (readFile filename)
-      pure $ lines content !! (line - 1)
+-- | This function is similar to TH reportError, however it also provide
+-- correct SrcSpan, so error are localised at the correct position in the TH
+-- splice instead of being at the beginning.
+reportErrorAt :: ParseError -> Q ()
+reportErrorAt err = unsafeRunTcM $ addErrAt loc (fromString (unlines $ formatErrorMessages err))
+  where
+    loc :: SrcSpan
+    loc = mkSrcSpan srcLoc srcLoc
 
-  pure $
-    unlines $
-      [ name <> ":" <> show line <> ":" <> show column <> ":",
-        colPrefix,
-        colIndicator <> code,
-        colPrefix <> " " <> carret
-      ]
-        ++ formatErrorMessages err
+    sourceLoc = errorPos err
+    line = sourceLine sourceLoc
+    column = sourceColumn sourceLoc
+    name = sourceName sourceLoc
+
+    srcLoc = mkSrcLoc (fromString name) line column
 
 -- | Format a bunch of error
 formatErrorMessages :: ParseError -> [String]

@@ -1,12 +1,8 @@
 
-INITIALPATH:7:22: error:
-    • INITIALPATH:7:30:
-  |
-7 | main = putStrLn [fmt|{hello:_s}|]
-  |                              ^
-String type is incompatible with grouping (_ or ,).
+INITIALPATH:7:30: error:
+    • String type is incompatible with grouping (_ or ,).
 
     • In the quasi-quotation: [fmt|{hello:_s}|]
   |
 7 | main = putStrLn [fmt|{hello:_s}|]
-  |                      ^^^^^^^^^^^^
+  |                              ^
