@@ -1,7 +1,6 @@
 
 INITIALPATH:8:4: error:
     • Lexical error in literal section
-
     • In the quasi-quotation: [fmt|foo
 bli\Pbar|]
   |

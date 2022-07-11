@@ -42,9 +42,9 @@ import GHC.Data.FastString
 import GHC.Utils.Outputable (ppr)
 import GHC.Types.Basic (Boxity(..))
 import GHC.Types.SourceText (il_value, rationalFromFractionalLit)
-import GHC.Driver.Ppr (showSDocDebug)
+import GHC.Driver.Ppr (showSDoc)
 #else
-import GHC.Utils.Outputable (ppr, showSDocDebug)
+import GHC.Utils.Outputable (ppr, showSDoc)
 import GHC.Types.Basic (il_value, fl_value, Boxity(..))
 #endif
 import GHC.Driver.Session (DynFlags, xopt_set, defaultDynFlags)
@@ -54,7 +54,7 @@ import SrcLoc
 import Name
 import RdrName
 import FastString
-import Outputable (ppr, showSDocDebug)
+import Outputable (ppr, showSDoc)
 import BasicTypes (il_value, fl_value, Boxity(..))
 import DynFlags (DynFlags, xopt_set, defaultDynFlags)
 import qualified Module
@@ -98,7 +98,7 @@ toType (HsTyVar _ _ n) =
    in if isRdrTyVar n'
         then TH.VarT (toName n')
         else TH.ConT (toName n')
-toType t = todo "toType" (showSDocDebug (baseDynFlags []) . ppr $ t)
+toType t = todo "toType" (showSDoc (baseDynFlags []) . ppr $ t)
 
 toName :: RdrName -> TH.Name
 toName n = case n of
@@ -108,14 +108,16 @@ toName n = case n of
   (Exact nm) -> case getOccString nm of
     "[]" -> '[]
     "()" -> '()
-    _    -> error "toName: exact name encountered"
+    _ -> error "toName: exact name encountered"
 
 toFieldExp :: a
 toFieldExp = undefined
 
 toPat :: DynFlags -> Pat.Pat GhcPs -> TH.Pat
 toPat _dynFlags (Pat.VarPat _ (unLoc -> name)) = TH.VarP (toName name)
-toPat dynFlags p = todo "toPat" (showSDocDebug dynFlags . ppr $ p)
+toPat dynFlags p = todo "toPat" (showSDoc dynFlags . ppr $ p)
+
+{- ORMOLU_DISABLE -}
 
 toExp :: DynFlags -> Expr.HsExpr GhcPs -> TH.Exp
 toExp _ (Expr.HsVar _ n) =
@@ -174,12 +176,19 @@ toExp d (Expr.ExplicitTuple _ (map unLoc -> args) boxity) = ctor tupArgs
       Just args -> fmap (toExp d) args
 #endif
 
+{- ORMOLU_ENABLE -}
+
 -- toExp (Expr.List _ xs)                        = TH.ListE (fmap toExp xs)
+#if MIN_VERSION_ghc(9,3,0)
+toExp d (Expr.HsPar _ _ e _) = TH.ParensE (toExp d . unLoc $ e)
+#else
 toExp d (Expr.HsPar _ e) = TH.ParensE (toExp d . unLoc $ e)
+#endif
 toExp d (Expr.SectionL _ (unLoc -> a) (unLoc -> b)) = TH.InfixE (Just . toExp d $ a) (toExp d b) Nothing
 toExp d (Expr.SectionR _ (unLoc -> a) (unLoc -> b)) = TH.InfixE Nothing (toExp d a) (Just . toExp d $ b)
 toExp _ (Expr.RecordCon _ name HsRecFields {rec_flds}) =
   TH.RecConE (toName . unLoc $ name) (fmap toFieldExp rec_flds)
+
 -- toExp (Expr.RecUpdate _ e xs)                 = TH.RecUpdE (toExp e) (fmap toFieldExp xs)
 -- toExp (Expr.ListComp _ e ss)                  = TH.CompE $ map convert ss ++ [TH.NoBindS (toExp e)]
 --  where
@@ -203,7 +212,7 @@ toExp _ (HsOverLabel _ lbl) = TH.LabelE (unpackFS lbl)
 -- enabled thus match on Nothing
 toExp _ (HsOverLabel _ Nothing lbl) = TH.LabelE (unpackFS lbl)
 #endif
-toExp dynFlags e = todo "toExp" (showSDocDebug dynFlags . ppr $ e)
+toExp dynFlags e = todo "toExp" (showSDoc dynFlags . ppr $ e)
 
 todo :: (HasCallStack, Show e) => String -> e -> a
 todo fun thing = error . concat $ [moduleName, ".", fun, ": not implemented: ", show thing]

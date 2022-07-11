@@ -5,10 +5,10 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 --
@@ -277,7 +277,7 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- | Format an integral number
 formatIntegral ::
-  Integral paddingWidth => 
+  Integral paddingWidth =>
   Integral i =>
   Format t t' 'Integral ->
   SignMode ->

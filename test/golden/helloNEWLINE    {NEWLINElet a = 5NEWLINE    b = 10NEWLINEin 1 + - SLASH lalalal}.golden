@@ -1,7 +1,6 @@
 
 INITIALPATH:11:10: error:
     • parse error on input `/' in haskell expression
-
     • In the quasi-quotation: [fmt|hello
     {
 let a = 5

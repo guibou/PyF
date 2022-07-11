@@ -14,6 +14,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- This warning is disabled because any expression with literal leads to it.
 {-# OPTIONS -Wno-type-defaults #-}
@@ -23,13 +24,13 @@ import qualified Data.ByteString.Char8
 import qualified Data.ByteString.Lazy
 import qualified Data.ByteString.Lazy.Char8
 import qualified Data.List as List
+import Data.Proxy (Proxy (..))
 import qualified Data.Ratio
 import qualified Data.Text
 import qualified Data.Text.Lazy
 import qualified Data.Time
-import Data.Proxy (Proxy(..))
-import GHC.TypeLits (Symbol, KnownSymbol, symbolVal)
 import GHC.OverloadedLabels
+import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import PyF
 import SpecCustomDelimiters
 import SpecUtils
@@ -78,7 +79,6 @@ instance (a ~ a') => IsLabel a (V a') where
 
 showV :: KnownSymbol a => V a -> String
 showV = show
-
 
 spec :: Spec
 spec = do
@@ -263,8 +263,8 @@ spec = do
       do
         let n = 3 :: Int
         [fmt|{pi:.{n}}|] `shouldBe` "3.142"
-  describe "variable padding" $ 
-    it "works" $ 
+  describe "variable padding" $
+    it "works" $
       do
         let n = 5 :: Integer
         [fmt|Bonjour {'a':>{n}}|] `shouldBe` "Bonjour     a"
