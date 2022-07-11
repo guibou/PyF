@@ -43,6 +43,8 @@ import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMe
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
 import Language.Haskell.TH.Syntax (Q(Q))
+import Data.List (intercalate)
+
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Types (TcM)
 import GHC.Types.SrcLoc (SrcSpan(..), mkSrcLoc, mkSrcSpan)
@@ -110,8 +112,9 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 -- correct SrcSpan, so error are localised at the correct position in the TH
 -- splice instead of being at the beginning.
 reportErrorAt :: ParseError -> Q ()
-reportErrorAt err = unsafeRunTcM $ addErrAt loc (fromString (unlines $ formatErrorMessages err))
+reportErrorAt err = unsafeRunTcM $ addErrAt loc msg
   where
+    msg = fromString (intercalate "\n" $ formatErrorMessages err)
     loc :: SrcSpan
     loc = mkSrcSpan srcLoc srcLoc'
 
