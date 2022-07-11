@@ -86,6 +86,10 @@ import BasicTypes
 import OccName
 #endif
 
+#if MIN_VERSION_ghc(9,3,0)
+import GHC.Driver.Config.Parser (initParserOpts)
+#endif
+
 import Data.Maybe
 
 fakeSettings :: Settings
@@ -141,6 +145,10 @@ fakeSettings = Settings
 #if MIN_VERSION_ghc(9, 2, 0)
       , platform_constants=platformConstants
 #endif
+#if MIN_VERSION_ghc(9, 3, 0)
+      , platformHasLibm=True
+#endif
+
       ,
 #endif
 

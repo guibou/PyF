@@ -12,6 +12,12 @@ import Lexer (ParseResult (..), PState (..))
 import Lexer (ParseResult (..))
 #endif
 
+#if MIN_VERSION_ghc(9,3,0)
+import GHC.Types.Error
+import GHC.Utils.Outputable
+import GHC.Utils.Error
+#endif
+
 #if MIN_VERSION_ghc(9,2,0)
 import qualified GHC.Parser.Errors.Ppr as ParserErrorPpr
 #endif
@@ -59,11 +65,23 @@ parseExpression s dynFlags =
     -- TODO: check for pattern failure
     PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) doc ->
 #endif
-#if MIN_VERSION_ghc(9,2,0)
+
+#if MIN_VERSION_ghc(9,3,0)
+            let
+                err = renderWithContext defaultSDocContext
+                    $ vcat
+                    $ map (formatBulleted defaultSDocContext)
+                    $ map diagnosticMessage
+                    $ map errMsgDiagnostic
+                    $ sortMsgBag Nothing
+                    $ getMessages $ errorMessages
+                line = SrcLoc.srcLocLine srcLoc
+                col = SrcLoc.srcLocCol srcLoc
+            in Left (line, col, err)
+#elif MIN_VERSION_ghc(9,2,0)
             let
                 psErrToString e = show $ ParserErrorPpr.pprError e
                 err = concatMap psErrToString errorMessages
-                -- err = concatMap show errorMessages
                 line = SrcLoc.srcLocLine srcLoc
                 col = SrcLoc.srcLocCol srcLoc
             in Left (line, col, err)

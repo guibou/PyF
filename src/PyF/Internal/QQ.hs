@@ -43,7 +43,14 @@ import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMe
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
 import Language.Haskell.TH.Syntax (Q(Q))
+
+#if MIN_VERSION_ghc(9,3,0)
+import GHC.Tc.Errors.Types (TcRnMessage(TcRnUnknownMessage))
+import GHC.Types.Error (mkPlainError)
+import GHC.Utils.Outputable (hsep, text)
+#else
 import Data.List (intercalate)
+#endif
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Types (TcM)
@@ -114,7 +121,11 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 reportErrorAt :: ParseError -> Q ()
 reportErrorAt err = unsafeRunTcM $ addErrAt loc msg
   where
+#if MIN_VERSION_ghc(9,3,0)
+    msg = TcRnUnknownMessage (mkPlainError mempty $ hsep (map text $ formatErrorMessages err))
+#else
     msg = fromString (intercalate "\n" $ formatErrorMessages err)
+#endif
     loc :: SrcSpan
     loc = mkSrcSpan srcLoc srcLoc'
 
