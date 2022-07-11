@@ -113,7 +113,7 @@ reportErrorAt :: ParseError -> Q ()
 reportErrorAt err = unsafeRunTcM $ addErrAt loc (fromString (unlines $ formatErrorMessages err))
   where
     loc :: SrcSpan
-    loc = mkSrcSpan srcLoc srcLoc
+    loc = mkSrcSpan srcLoc srcLoc'
 
     sourceLoc = errorPos err
     line = sourceLine sourceLoc
@@ -121,6 +121,7 @@ reportErrorAt err = unsafeRunTcM $ addErrAt loc (fromString (unlines $ formatErr
     name = sourceName sourceLoc
 
     srcLoc = mkSrcLoc (fromString name) line column
+    srcLoc' = mkSrcLoc (fromString name) line (column + 1)
 
 -- | Format a bunch of error
 formatErrorMessages :: ParseError -> [String]
