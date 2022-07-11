@@ -26,6 +26,7 @@ import Control.Applicative (some)
 import Control.Monad.Reader
 import qualified Data.Char
 import Data.Maybe (fromMaybe)
+import GHC (GhcPs, HsExpr)
 import Language.Haskell.TH.LanguageExtensions (Extension (..))
 import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
@@ -66,8 +67,7 @@ data Item
   = -- | A raw string
     Raw String
   | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
-    Replacement Exp (Maybe FormatMode)
-  deriving (Show)
+    Replacement (HsExpr GhcPs, Exp) (Maybe FormatMode)
 
 -- |
 -- Parse a string, returns a list of raw string or replacement fields
@@ -160,25 +160,21 @@ pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault
 
 -- | A Formatter, listing padding, format and and grouping char
 data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
-  deriving (Show)
 
 -- | Padding, containing the padding width, the padding char and the alignement mode
 data Padding
   = PaddingDefault
   | Padding (ExprOrValue Int) (Maybe (Maybe Char, AnyAlign))
-  deriving (Show)
 
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
 data ExprOrValue t
   = Value t
-  | HaskellExpr Exp
-  deriving (Show)
+  | HaskellExpr (HsExpr GhcPs, Exp)
 
 -- | Floating point precision
 data Precision
   = PrecisionDefault
   | Precision (ExprOrValue Int)
-  deriving (Show)
 
 {-
 
@@ -229,13 +225,12 @@ data TypeFormat
     HexCapsF AlternateForm SignMode
   | -- | Percent representation
     PercentF Precision AlternateForm SignMode
-  deriving (Show)
 
 -- | If the formatter use its alternate form
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
 
-evalExpr :: [Extension] -> Parser String -> Parser Exp
+evalExpr :: [Extension] -> Parser String -> Parser (HsExpr GhcPs, Exp)
 evalExpr exts exprParser = do
   s <- lookAhead exprParser
   -- Setup the dyn flags using the provided list of extensions
@@ -244,7 +239,7 @@ evalExpr exts exprParser = do
     Right expr -> do
       -- Consumne the expression
       void exprParser
-      pure (toExp dynFlags expr)
+      pure (expr, toExp dynFlags expr)
     Left (lineError, colError, err) -> do
       -- In case of error, we just advance the parser to the error location.
       -- Skip lines
@@ -346,7 +341,7 @@ failIfPrec (Precision e) _ = Left ("Type incompatible with precision (." ++ show
   where
     showExpr = case e of
       Value v -> show v
-      HaskellExpr expr -> show expr
+      HaskellExpr (_, expr) -> show expr
 
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i

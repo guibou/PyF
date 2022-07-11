@@ -108,7 +108,27 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
       -- returns a dummy exp, so TH continues its life. This TH code won't be
       -- executed anyway, there is an error
       [|()|]
-    Right items -> postProcess (goFormat items)
+    Right items -> do
+      checkResult <- checkVariables items
+      case checkResult of
+        Nothing -> postProcess (goFormat items)
+        Just err -> do
+          err' <- overrideErrorForFile filename err
+          reportErrorAt err'
+          [|()|]
+
+checkOneItem :: Item -> Q (Maybe ParseError)
+checkOneItem (Raw _) = pure Nothing
+checkOneItem (Replacement hsExpr _thExpr) = pure Nothing
+
+-- | Check that all variables used in 'Item' exists, otherwise, fail.
+checkVariables :: [Item] -> Q (Maybe ParseError)
+checkVariables [] = pure Nothing
+checkVariables (x : xs) = do
+  r <- checkOneItem x
+  case r of
+    Nothing -> checkVariables xs
+    Just err -> pure $ Just err
 
 -- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
 -- This allows to hack inside the the GHC api and use function not exported by template haskell.
@@ -188,7 +208,7 @@ sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormat (Replacement expr y) = do
+toFormat (Replacement (_, expr) y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
@@ -242,7 +262,7 @@ newPaddingQ padding = case padding of
 exprToInt :: ExprOrValue Int -> Q Exp
 -- Note: this is a literal provided integral. We use explicit case to ::Int so it won't warn about defaulting
 exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
-exprToInt (HaskellExpr e) = [|$(pure e)|]
+exprToInt (HaskellExpr (_, e)) = [|$(pure e)|]
 
 data PaddingK k i where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll Int
