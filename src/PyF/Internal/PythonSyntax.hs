@@ -26,7 +26,7 @@ import Control.Applicative (some)
 import Control.Monad.Reader
 import qualified Data.Char
 import Data.Maybe (fromMaybe)
-import Language.Haskell.TH.LanguageExtensions (Extension(..))
+import Language.Haskell.TH.LanguageExtensions (Extension (..))
 import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import PyF.Internal.Meta
@@ -289,8 +289,8 @@ parseWidth = do
   exts <- asks enabledExtensions
   Just (charOpening, charClosing) <- asks delimiters
   choice
-    [ Value <$> width
-    , char charOpening *> (HaskellExpr <$> evalExpr exts (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
+    [ Value <$> width,
+      char charOpening *> (HaskellExpr <$> evalExpr exts (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
     ]
 
 parsePrecision :: Parser Precision

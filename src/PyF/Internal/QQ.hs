@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -13,7 +14,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE CPP #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
@@ -34,6 +34,7 @@ import Data.String (fromString)
 import GHC.TypeLits
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Quote
+import Language.Haskell.TH.Syntax (Q (Q))
 import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
@@ -42,7 +43,6 @@ import Text.Parsec
 import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMessages)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
-import Language.Haskell.TH.Syntax (Q(Q))
 
 #if MIN_VERSION_ghc(9,3,0)
 import GHC.Tc.Errors.Types (TcRnMessage(TcRnUnknownMessage))
@@ -107,13 +107,15 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
       reportErrorAt err'
       -- returns a dummy exp, so TH continues its life. This TH code won't be
       -- executed anyway, there is an error
-      [| () |]
+      [|()|]
     Right items -> postProcess (goFormat items)
 
 -- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
 -- This allows to hack inside the the GHC api and use function not exported by template haskell.
 unsafeRunTcM :: TcM a -> Q a
 unsafeRunTcM m = Q (unsafeCoerce m)
+
+{- ORMOLU_DISABLE -}
 
 -- | This function is similar to TH reportError, however it also provide
 -- correct SrcSpan, so error are localised at the correct position in the TH
@@ -137,7 +139,8 @@ reportErrorAt err = unsafeRunTcM $ addErrAt loc msg
     srcLoc = mkSrcLoc (fromString name) line column
     srcLoc' = mkSrcLoc (fromString name) line (column + 1)
 
--- | Format a bunch of error
+{- ORMOLU_ENABLE -}
+
 formatErrorMessages :: ParseError -> [String]
 formatErrorMessages err
   -- If there is an explicit error message from parsec, use only that

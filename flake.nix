@@ -7,12 +7,9 @@
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
-  nixConfig.extra-substituters = [
-    "guibou.cachix.org"
-  ];
-  nixConfig.extra-trusted-public-keys = [
-    "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM="
-  ];
+  nixConfig.extra-substituters = [ "guibou.cachix.org" ];
+  nixConfig.extra-trusted-public-keys =
+    [ "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM=" ];
 
   outputs = { self, nixpkgs, flake-utils, hls }:
     flake-utils.lib.eachDefaultSystem (system:
@@ -44,7 +41,7 @@
             # Shell with haskell language server
             shell_hls = shell.overrideAttrs (old: {
               nativeBuildInputs = old.nativeBuildInputs
-              ++ [ hPkgs.haskell-language-server ]; 
+                ++ [ hPkgs.haskell-language-server ];
             });
 
             pkg = (haskell.lib.buildFromSdist
@@ -79,27 +76,41 @@
           });
 
           pyf_92 = pyfBuilder (haskell.packages.ghc923.override {
-              overrides = self: super: with haskell.lib; rec { };
+            overrides = self: super: with haskell.lib; rec { };
           });
 
           # GHC 9.4
           pyf_HEAD = pyfBuilder ((haskell.packages.ghcHEAD.override {
-            overrides = self: super: with haskell.lib; {
-              # Disabling tests breaks the loop between primitive and its tests
-              # which indirectly depends on primitive.
-              primitive = haskell.lib.dontCheck (super.callHackage "primitive" "0.7.4.0" {});
-              # Tests depends on mockery which does not build with GHC 9.4
-              temporary = haskell.lib.dontCheck super.temporary;
+            overrides = self: super:
+              with haskell.lib; {
+                # Disabling tests breaks the loop between primitive and its tests
+                # which indirectly depends on primitive.
+                primitive = haskell.lib.dontCheck
+                  (super.callHackage "primitive" "0.7.4.0" { });
+                # Tests depends on mockery which does not build with GHC 9.4
+                temporary = haskell.lib.dontCheck super.temporary;
 
-              hspec = haskell.lib.dontCheck (super.callHackage "hspec" "2.10.0" {});
-              hspec-core = haskell.lib.dontCheck (super.callHackage "hspec-core" "2.10.0" {});
-              hspec-meta = haskell.lib.dontCheck (super.callHackage "hspec-meta" "2.9.3" {});
-              base-compat = haskell.lib.dontCheck (super.callHackage "base-compat" "0.12.1" {});
-              hspec-discover = haskell.lib.dontCheck (super.callHackage "hspec-discover" "2.10.0" {});
-            };
+                hspec = haskell.lib.dontCheck
+                  (super.callHackage "hspec" "2.10.0" { });
+                hspec-core = haskell.lib.dontCheck
+                  (super.callHackage "hspec-core" "2.10.0" { });
+                hspec-meta = haskell.lib.dontCheck
+                  (super.callHackage "hspec-meta" "2.9.3" { });
+                base-compat = haskell.lib.dontCheck
+                  (super.callHackage "base-compat" "0.12.1" { });
+                hspec-discover = haskell.lib.dontCheck
+                  (super.callHackage "hspec-discover" "2.10.0" { });
+              };
           }));
 
-          pyf_all = linkFarmFromDrvs "all_pyf" [pyf_810 pyf_88 pyf_86 pyf_90 pyf_92 pyf_HEAD];
+          pyf_all = linkFarmFromDrvs "all_pyf" [
+            pyf_810
+            pyf_88
+            pyf_86
+            pyf_90
+            pyf_92
+            pyf_HEAD
+          ];
 
           # That the current version for developement
           # We use the current version of nixpkgs in order to reduce build time.
