@@ -4,6 +4,8 @@
 
 import Control.DeepSeq
 import Control.Exception
+import Data.Bits (Bits (..))
+import Data.Char (ord)
 import qualified Data.Text as Text
 import System.Exit
 import System.FilePath
@@ -107,17 +109,28 @@ failCompile s = failCompileContent s s (makeTemplate s)
 failCompileContent :: HasCallStack => String -> String -> String -> Spec
 failCompileContent h caption fileContent =
   before (checkCompile fileContent) $ do
-    let goldenPath = concatMap cleanSpecialChars h
+    let goldenName = concatMap cleanSpecialChars h
+        -- Add an unique identifier, so golden files won't conflict on case
+        -- insensitive systems
+        -- See: bug #97.
+        goldenPath = goldenName ++ "." ++ show (stableHash goldenName)
     it (show caption) $ \res -> case res of
       CompileError output -> golden goldenPath output
       _ -> assertFailure (show $ ".golden/" <> goldenPath <> "\n" <> show res)
 
+-- | A stable hash from string, based on
+-- https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1_hash
+stableHash :: String -> Word
+stableHash [] = 14695981039346656037
+stableHash (x : xs) = fromIntegral (ord x) * stableHash xs `xor` 1099511628211
+
 -- Remove chars which are not accepted in a path name
+-- The encoding is rather approximative, I'm trying to avoid too long names.
 cleanSpecialChars :: Char -> [Char]
-cleanSpecialChars '/' = "SLASH"
-cleanSpecialChars '\\' = "BACKSLASH"
-cleanSpecialChars ':' = "COLON"
-cleanSpecialChars '\n' = "NEWLINE"
+cleanSpecialChars '/' = "SL"
+cleanSpecialChars '\\' = "BS"
+cleanSpecialChars ':' = "CL"
+cleanSpecialChars '\n' = "NL"
 cleanSpecialChars e = pure e
 
 main :: IO ()
