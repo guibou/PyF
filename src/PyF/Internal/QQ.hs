@@ -30,19 +30,21 @@ where
 import Control.Monad.Reader
 import Data.Data (Data (gmapQ), Typeable, cast)
 import Data.Kind
-import Data.List (intercalate)
+import Data.List (intercalate, (\\))
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
+import Debug.Trace (traceShow)
 import GHC (GenLocated (L), HsExpr (..), srcLocCol)
 import GHC.Data.FastString (unpackFS)
-import GHC.Hs (GhcPs)
+import GHC.Hs (GRHS (..), GRHSs (..), GhcPs, MatchGroup (..), Pat (..))
+import GHC.Hs.Expr as Expr
 import GHC.Tc.Gen.Splice (lookupThName_maybe)
 import GHC.Tc.Types (TcM)
 import GHC.Tc.Utils.Monad (addErrAt)
 import GHC.TypeLits
 import GHC.Types.Name.Reader (RdrName)
-import GHC.Types.SrcLoc (Located, SrcLoc (..), SrcSpan (..), mkSrcLoc, mkSrcSpan, srcLocFile, srcLocLine, srcSpanEnd, srcSpanStart)
+import GHC.Types.SrcLoc (Located, SrcLoc (..), SrcSpan (..), mkSrcLoc, mkSrcSpan, srcLocFile, srcLocLine, srcSpanEnd, srcSpanStart, unLoc)
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax (Q (Q))
@@ -123,6 +125,7 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
 checkOneItem :: Item -> Q (Maybe (ParseError, ParseError))
 checkOneItem (Raw _) = pure Nothing
 checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
+  let allNames = findFreeVariables hsExpr
   res <- mapM doesExists allNames
   let resFinal = catMaybes res
 
@@ -138,11 +141,26 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
             pos'
               | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
               | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
+
+findFreeVariables :: HsExpr GhcPs -> [(SrcSpan, RdrName)]
+findFreeVariables hsExpr = allNames
   where
+    -- Find all free Variables in an HsExpr
     f :: forall a. (Data a, Typeable a) => a -> [Located RdrName]
     f e = case cast @_ @(HsExpr GhcPs) e of
       Just (HsVar _ l) -> [l]
+      Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])) _)) -> filter keepVar subVars
+        where
+          keepVar (L _ n) = n `notElem` subPats
+          subVars = concat $ gmapQ f [e]
+          subPats = concat $ gmapQ findPats ps
       _ -> concat $ gmapQ f e
+
+    -- Find all Variables bindings (i.e. patterns) in an HsExpr
+    findPats :: forall a. (Data a, Typeable a) => a -> [RdrName]
+    findPats p = case cast @_ @(GHC.Hs.Pat GhcPs) p of
+      Just (VarPat _ (unLoc -> name)) -> [name]
+      _ -> concat $ gmapQ findPats p
     -- Be careful, we wrap hsExpr in a list, so the toplevel hsExpr will be
     -- seen by gmapQ. Otherwise it will miss variables if they are the top
     -- level expression: gmapQ only checks sub constructors.
