@@ -208,3 +208,5 @@ spec =
       failCompile "{True}"
       failCompile "{True:f}"
       failCompile "{True:d}"
+    describe "Missing variables" $ do
+      failCompile "Hello {name}"
