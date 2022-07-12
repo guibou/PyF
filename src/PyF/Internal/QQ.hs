@@ -27,8 +27,9 @@ module PyF.Internal.QQ
 where
 
 import Control.Monad.Reader
+import Data.Generics.Schemes
 import Data.Kind
-import Data.Maybe (fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
 import GHC.TypeLits
@@ -54,8 +55,20 @@ import Data.List (intercalate)
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Types (TcM)
-import GHC.Types.SrcLoc (SrcSpan(..), mkSrcLoc, mkSrcSpan)
+import GHC.Types.SrcLoc (SrcSpan(..), mkSrcLoc, mkSrcSpan, srcSpanStart, srcLocLine, SrcLoc (..), srcLocFile)
 import GHC.Tc.Utils.Monad (addErrAt)
+import GHC (HsExpr(..), srcLocCol)
+import Data.Data (gmapQ)
+import Data.Typeable (cast)
+import GHC.Hs (GhcPs)
+import Debug.Trace (traceShow, traceShowId)
+import GHC (GenLocated(L))
+import GHC.Plugins (RdrName(..))
+import PyF.Internal.Meta (toName)
+import GHC.Tc.Gen.Splice (lookupThName_maybe)
+import Text.Parsec.Error (newErrorMessage)
+import Text.Parsec.Pos (newPos)
+import GHC.Data.FastString (unpackFS)
 #else
 import TcRnTypes (TcM)
 import GhcPlugins (SrcSpan (..), mkSrcLoc, mkSrcSpan)
@@ -119,7 +132,34 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
 
 checkOneItem :: Item -> Q (Maybe ParseError)
 checkOneItem (Raw _) = pure Nothing
-checkOneItem (Replacement (currentPos, hsExpr, _) _) = pure Nothing
+checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
+  res <- mapM doesExists allNames
+  let resFinal = catMaybes res
+
+  case resFinal of
+    [] -> pure Nothing
+    ((err, span) : _) -> pure (Just $ newErrorMessage (Message err) pos')
+      where
+        (RealSrcLoc (traceShowId -> !loc) _) = srcSpanStart span
+        pos = newPos (unpackFS $ srcLocFile loc) (srcLocLine loc) (srcLocCol loc)
+        pos'
+          | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
+          | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
+  where
+    allVars :: [HsExpr GhcPs] =
+      listify
+        ( \e -> case e of
+            HsVar _ _ -> True
+            _ -> False
+        )
+        hsExpr
+    allNames = map (\(HsVar _ (L l e)) -> (l, e)) allVars
+
+doesExists (loc, name) = do
+  res <- unsafeRunTcM $ lookupThName_maybe (toName name)
+  case res of
+    Nothing -> pure (Just ("Variable not found: " <> show (toName name), loc))
+    Just _ -> pure Nothing
 
 -- | Check that all variables used in 'Item' exists, otherwise, fail.
 checkVariables :: [Item] -> Q (Maybe ParseError)

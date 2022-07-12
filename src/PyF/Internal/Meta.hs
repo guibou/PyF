@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module PyF.Internal.Meta (toExp, baseDynFlags) where
+module PyF.Internal.Meta (toExp, baseDynFlags, toName) where
 
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsSigType(HsSig), sig_body)
