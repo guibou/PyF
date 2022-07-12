@@ -119,7 +119,7 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
 
 checkOneItem :: Item -> Q (Maybe ParseError)
 checkOneItem (Raw _) = pure Nothing
-checkOneItem (Replacement hsExpr _thExpr) = pure Nothing
+checkOneItem (Replacement (currentPos, hsExpr, _) _) = pure Nothing
 
 -- | Check that all variables used in 'Item' exists, otherwise, fail.
 checkVariables :: [Item] -> Q (Maybe ParseError)
@@ -218,7 +218,7 @@ sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormat (Replacement (_, expr) y) = do
+toFormat (Replacement (_, _, expr) y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
@@ -272,7 +272,7 @@ newPaddingQ padding = case padding of
 exprToInt :: ExprOrValue Int -> Q Exp
 -- Note: this is a literal provided integral. We use explicit case to ::Int so it won't warn about defaulting
 exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
-exprToInt (HaskellExpr (_, e)) = [|$(pure e)|]
+exprToInt (HaskellExpr (_, _, e)) = [|$(pure e)|]
 
 data PaddingK k i where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll Int

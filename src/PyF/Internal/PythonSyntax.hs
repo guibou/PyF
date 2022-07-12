@@ -67,7 +67,7 @@ data Item
   = -- | A raw string
     Raw String
   | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
-    Replacement (HsExpr GhcPs, Exp) (Maybe FormatMode)
+    Replacement (SourcePos, HsExpr GhcPs, Exp) (Maybe FormatMode)
 
 -- |
 -- Parse a string, returns a list of raw string or replacement fields
@@ -169,7 +169,7 @@ data Padding
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
 data ExprOrValue t
   = Value t
-  | HaskellExpr (HsExpr GhcPs, Exp)
+  | HaskellExpr (SourcePos, HsExpr GhcPs, Exp)
 
 -- | Floating point precision
 data Precision
@@ -230,8 +230,9 @@ data TypeFormat
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show)
 
-evalExpr :: [Extension] -> Parser String -> Parser (HsExpr GhcPs, Exp)
+evalExpr :: [Extension] -> Parser String -> Parser (SourcePos, HsExpr GhcPs, Exp)
 evalExpr exts exprParser = do
+  exprPos <- getPosition
   s <- lookAhead exprParser
   -- Setup the dyn flags using the provided list of extensions
   let dynFlags = baseDynFlags exts
@@ -239,7 +240,7 @@ evalExpr exts exprParser = do
     Right expr -> do
       -- Consumne the expression
       void exprParser
-      pure (expr, toExp dynFlags expr)
+      pure (exprPos, expr, toExp dynFlags expr)
     Left (lineError, colError, err) -> do
       -- In case of error, we just advance the parser to the error location.
       -- Skip lines
@@ -341,7 +342,7 @@ failIfPrec (Precision e) _ = Left ("Type incompatible with precision (." ++ show
   where
     showExpr = case e of
       Value v -> show v
-      HaskellExpr (_, expr) -> show expr
+      HaskellExpr (_, _, expr) -> show expr
 
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i
