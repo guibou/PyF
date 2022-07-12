@@ -28,7 +28,7 @@ module PyF.Internal.QQ
 where
 
 import Control.Monad.Reader
-import Data.Generics.Schemes
+import Data.Data (Data (gmapQ), Typeable, cast)
 import Data.Kind
 import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe)
@@ -139,13 +139,14 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
               | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
               | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
   where
-    allVars :: [HsExpr GhcPs] =
-      listify
-        ( \e -> case e of
-            HsVar _ _ -> True
-            _ -> False
-        )
-        hsExpr
+    f :: forall a. (Data a, Typeable a) => a -> [HsExpr GhcPs]
+    f e = case cast e of
+      Just a@(HsVar _ _) -> [a]
+      _ -> concat $ gmapQ f e
+    -- Be careful, we wrap hsExpr in a list, so the toplevel hsExpr will be
+    -- seen by gmapQ. Otherwise it will miss variables if they are the top
+    -- level expression: gmapQ only checks sub constructors.
+    allVars :: [HsExpr GhcPs] = concat $ gmapQ f [hsExpr]
     allNames = map (\(HsVar _ (L l e)) -> (l, e)) allVars
 
 doesExists :: (b, RdrName) -> Q (Maybe (String, b))
