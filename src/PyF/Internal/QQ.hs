@@ -104,7 +104,7 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
   case runReader (runParserT parseGenericFormatString () filename s) context of
     Left err -> do
       err' <- overrideErrorForFile filename err
-      reportErrorAt err'
+      reportParserErrorAt err'
       -- returns a dummy exp, so TH continues its life. This TH code won't be
       -- executed anyway, there is an error
       [|()|]
@@ -114,7 +114,7 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
         Nothing -> postProcess (goFormat items)
         Just err -> do
           err' <- overrideErrorForFile filename err
-          reportErrorAt err'
+          reportParserErrorAt err'
           [|()|]
 
 checkOneItem :: Item -> Q (Maybe ParseError)
@@ -140,24 +140,34 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 -- | This function is similar to TH reportError, however it also provide
 -- correct SrcSpan, so error are localised at the correct position in the TH
 -- splice instead of being at the beginning.
-reportErrorAt :: ParseError -> Q ()
-reportErrorAt err = unsafeRunTcM $ addErrAt loc msg
+reportErrorAt :: SrcSpan -> String -> Q ()
+reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
 #if MIN_VERSION_ghc(9,3,0)
-    msg = TcRnUnknownMessage (mkPlainError mempty $ hsep (map text $ formatErrorMessages err))
+    msg' = TcRnUnknownMessage (mkPlainError mempty $ hsep (text msg)
 #else
-    msg = fromString (intercalate "\n" $ formatErrorMessages err)
+    msg' = fromString msg
 #endif
-    loc :: SrcSpan
-    loc = mkSrcSpan srcLoc srcLoc'
 
-    sourceLoc = errorPos err
+reportParserErrorAt :: ParseError -> Q ()
+reportParserErrorAt err = reportErrorAt span msg
+  where
+    msg = intercalate "\n" $ formatErrorMessages err
+
+    span :: SrcSpan
+    span = mkSrcSpan loc loc'
+
+    loc = srcLocFromParserError (errorPos err)
+    loc' = srcLocFromParserError (incSourceColumn (errorPos err) 1)
+
+
+srcLocFromParserError sourceLoc = srcLoc
+  where
     line = sourceLine sourceLoc
     column = sourceColumn sourceLoc
     name = sourceName sourceLoc
 
     srcLoc = mkSrcLoc (fromString name) line column
-    srcLoc' = mkSrcLoc (fromString name) line (column + 1)
 
 {- ORMOLU_ENABLE -}
 
