@@ -42,7 +42,7 @@ import GHC.Tc.Types (TcM)
 import GHC.Tc.Utils.Monad (addErrAt)
 import GHC.TypeLits
 import GHC.Types.Name.Reader (RdrName)
-import GHC.Types.SrcLoc (SrcLoc (..), SrcSpan (..), mkSrcLoc, mkSrcSpan, srcLocFile, srcLocLine, srcSpanEnd, srcSpanStart)
+import GHC.Types.SrcLoc (Located, SrcLoc (..), SrcSpan (..), mkSrcLoc, mkSrcSpan, srcLocFile, srcLocLine, srcSpanEnd, srcSpanStart)
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax (Q (Q))
@@ -139,15 +139,15 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
               | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
               | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
   where
-    f :: forall a. (Data a, Typeable a) => a -> [HsExpr GhcPs]
-    f e = case cast e of
-      Just a@(HsVar _ _) -> [a]
+    f :: forall a. (Data a, Typeable a) => a -> [Located RdrName]
+    f e = case cast @_ @(HsExpr GhcPs) e of
+      Just (HsVar _ l) -> [l]
       _ -> concat $ gmapQ f e
     -- Be careful, we wrap hsExpr in a list, so the toplevel hsExpr will be
     -- seen by gmapQ. Otherwise it will miss variables if they are the top
     -- level expression: gmapQ only checks sub constructors.
-    allVars :: [HsExpr GhcPs] = concat $ gmapQ f [hsExpr]
-    allNames = map (\(HsVar _ (L l e)) -> (l, e)) allVars
+    allVars = concat $ gmapQ f [hsExpr]
+    allNames = map (\(L l e) -> (l, e)) allVars
 
 doesExists :: (b, RdrName) -> Q (Maybe (String, b))
 doesExists (loc, name) = do
