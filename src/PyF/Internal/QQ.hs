@@ -30,14 +30,13 @@ where
 import Control.Monad.Reader
 import Data.Data (Data (gmapQ), Typeable, cast)
 import Data.Kind
-import Data.List (intercalate, (\\))
+import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
-import Debug.Trace (traceShow)
-import GHC (GenLocated (L), HsExpr (..), srcLocCol)
+import GHC (GenLocated (L), srcLocCol)
 import GHC.Data.FastString (unpackFS)
-import GHC.Hs (GRHS (..), GRHSs (..), GhcPs, MatchGroup (..), Pat (..))
+import GHC.Hs (GhcPs, Pat (..))
 import GHC.Hs.Expr as Expr
 import GHC.Tc.Gen.Splice (lookupThName_maybe)
 import GHC.Tc.Types (TcM)
@@ -188,19 +187,13 @@ checkVariables (x : xs) = do
 unsafeRunTcM :: TcM a -> Q a
 unsafeRunTcM m = Q (unsafeCoerce m)
 
-{- ORMOLU_DISABLE -}
-
 -- | This function is similar to TH reportError, however it also provide
 -- correct SrcSpan, so error are localised at the correct position in the TH
 -- splice instead of being at the beginning.
 reportErrorAt :: SrcSpan -> String -> Q ()
 reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
-
-
-
     msg' = fromString msg
-
 
 reportParserErrorAt :: ParseError -> Q ()
 reportParserErrorAt err = reportErrorAt span msg
@@ -213,7 +206,7 @@ reportParserErrorAt err = reportErrorAt span msg
     loc = srcLocFromParserError (errorPos err)
     loc' = srcLocFromParserError (incSourceColumn (errorPos err) 1)
 
-
+srcLocFromParserError :: SourcePos -> SrcLoc
 srcLocFromParserError sourceLoc = srcLoc
   where
     line = sourceLine sourceLoc
@@ -221,8 +214,6 @@ srcLocFromParserError sourceLoc = srcLoc
     name = sourceName sourceLoc
 
     srcLoc = mkSrcLoc (fromString name) line column
-
-{- ORMOLU_ENABLE -}
 
 formatErrorMessages :: ParseError -> [String]
 formatErrorMessages err
