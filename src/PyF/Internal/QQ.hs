@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
@@ -29,51 +30,38 @@ where
 import Control.Monad.Reader
 import Data.Generics.Schemes
 import Data.Kind
+import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
+import GHC (GenLocated (L), HsExpr (..), srcLocCol)
+import GHC.Data.FastString (unpackFS)
+import GHC.Hs (GhcPs)
+import GHC.Tc.Gen.Splice (lookupThName_maybe)
+import GHC.Tc.Types (TcM)
+import GHC.Tc.Utils.Monad (addErrAt)
 import GHC.TypeLits
+import GHC.Types.Name.Reader (RdrName)
+import GHC.Types.SrcLoc (SrcLoc (..), SrcSpan (..), mkSrcLoc, mkSrcSpan, srcLocFile, srcLocLine, srcSpanEnd, srcSpanStart)
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax (Q (Q))
 import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
+import PyF.Internal.Meta (toName)
 import PyF.Internal.PythonSyntax
 import Text.Parsec
-import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMessages)
+import Text.Parsec.Error
+  ( errorMessages,
+    messageString,
+    newErrorMessage,
+    setErrorPos,
+    showErrorMessages,
+  )
+import Text.Parsec.Pos (newPos)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
-
-#if MIN_VERSION_ghc(9,3,0)
-import GHC.Tc.Errors.Types (TcRnMessage(TcRnUnknownMessage))
-import GHC.Types.Error (mkPlainError)
-import GHC.Utils.Outputable (hsep, text)
-#else
-import Data.List (intercalate)
-#endif
-
-#if MIN_VERSION_ghc(9,0,0)
-import GHC.Tc.Types (TcM)
-import GHC.Types.SrcLoc (SrcSpan(..), mkSrcLoc, mkSrcSpan, srcSpanStart, srcLocLine, SrcLoc (..), srcLocFile)
-import GHC.Tc.Utils.Monad (addErrAt)
-import GHC (HsExpr(..), srcLocCol)
-import Data.Data (gmapQ)
-import Data.Typeable (cast)
-import GHC.Hs (GhcPs)
-import Debug.Trace (traceShow, traceShowId)
-import GHC (GenLocated(L))
-import GHC.Plugins (RdrName(..))
-import PyF.Internal.Meta (toName)
-import GHC.Tc.Gen.Splice (lookupThName_maybe)
-import Text.Parsec.Error (newErrorMessage)
-import Text.Parsec.Pos (newPos)
-import GHC.Data.FastString (unpackFS)
-#else
-import TcRnTypes (TcM)
-import GhcPlugins (SrcSpan (..), mkSrcLoc, mkSrcSpan)
-import TcRnMonad (addErrAt)
-#endif
 
 -- | Configuration for the quasiquoter
 data Config = Config
@@ -125,12 +113,14 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
       checkResult <- checkVariables items
       case checkResult of
         Nothing -> postProcess (goFormat items)
-        Just err -> do
-          err' <- overrideErrorForFile filename err
-          reportParserErrorAt err'
+        Just (errStart, errEnd) -> do
+          errStart' <- overrideErrorForFile filename errStart
+          errEnd' <- overrideErrorForFile filename errEnd
+          let msg = intercalate "\n" $ formatErrorMessages errStart'
+          reportErrorAt (mkSrcSpan (srcLocFromParserError (errorPos errStart')) (srcLocFromParserError (errorPos errEnd'))) msg
           [|()|]
 
-checkOneItem :: Item -> Q (Maybe ParseError)
+checkOneItem :: Item -> Q (Maybe (ParseError, ParseError))
 checkOneItem (Raw _) = pure Nothing
 checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
   res <- mapM doesExists allNames
@@ -138,13 +128,16 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
 
   case resFinal of
     [] -> pure Nothing
-    ((err, span) : _) -> pure (Just $ newErrorMessage (Message err) pos')
+    ((err, span) : _) -> pure (Just (newErrorMessage (Message err) locStart, newErrorMessage (Message err) locEnd))
       where
-        (RealSrcLoc (traceShowId -> !loc) _) = srcSpanStart span
-        pos = newPos (unpackFS $ srcLocFile loc) (srcLocLine loc) (srcLocCol loc)
-        pos'
-          | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
-          | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
+        locStart = updatePos $ srcSpanStart span
+        locEnd = updatePos $ srcSpanEnd span
+        updatePos (RealSrcLoc loc _) = pos'
+          where
+            pos = newPos (unpackFS $ srcLocFile loc) (srcLocLine loc) (srcLocCol loc)
+            pos'
+              | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
+              | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
   where
     allVars :: [HsExpr GhcPs] =
       listify
@@ -155,6 +148,7 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
         hsExpr
     allNames = map (\(HsVar _ (L l e)) -> (l, e)) allVars
 
+doesExists :: (b, RdrName) -> Q (Maybe (String, b))
 doesExists (loc, name) = do
   res <- unsafeRunTcM $ lookupThName_maybe (toName name)
   case res of
@@ -162,7 +156,7 @@ doesExists (loc, name) = do
     Just _ -> pure Nothing
 
 -- | Check that all variables used in 'Item' exists, otherwise, fail.
-checkVariables :: [Item] -> Q (Maybe ParseError)
+checkVariables :: [Item] -> Q (Maybe (ParseError, ParseError))
 checkVariables [] = pure Nothing
 checkVariables (x : xs) = do
   r <- checkOneItem x
@@ -183,11 +177,11 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 reportErrorAt :: SrcSpan -> String -> Q ()
 reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
-#if MIN_VERSION_ghc(9,3,0)
-    msg' = TcRnUnknownMessage (mkPlainError mempty $ hsep (text msg)
-#else
+
+
+
     msg' = fromString msg
-#endif
+
 
 reportParserErrorAt :: ParseError -> Q ()
 reportParserErrorAt err = reportErrorAt span msg
