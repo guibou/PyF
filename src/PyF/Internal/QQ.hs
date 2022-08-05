@@ -35,15 +35,51 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
 import GHC (GenLocated (L), srcLocCol)
-import GHC.Data.FastString (unpackFS)
-import GHC.Hs (GhcPs, Pat (..))
-import GHC.Hs.Expr as Expr
-import GHC.Tc.Gen.Splice (lookupThName_maybe)
-import GHC.Tc.Types (TcM)
+
+#if MIN_VERSION_ghc(8,8,0)
 import GHC.Tc.Utils.Monad (addErrAt)
+import GHC.Tc.Types (TcM)
+import GHC.Tc.Gen.Splice (lookupThName_maybe)
+#else
+import TcRnTypes (TcM)
+import TcSplice (lookupThName_maybe)
+import TcRnMonad (addErrAt)
+#endif
+
+
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Data.FastString
+import GHC.Types.Name.Reader
+#else
+import FastString
+import RdrName
+#endif
+
+#if MIN_VERSION_ghc(8,10,0)
+import GHC.Hs.Expr as Expr
+import GHC.Hs.Extension as Ext
+import GHC.Hs.Pat as Pat
+#else
+import HsExpr as Expr
+import HsExtension as Ext
+import HsPat as Pat
+import HsLit
+#endif
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Types.SrcLoc
+#else
+import SrcLoc
+#endif
+
+#if MIN_VERSION_ghc(8,10,0)
+import GHC.Hs
+#else
+import HsSyn
+#endif
+
 import GHC.TypeLits
-import GHC.Types.Name.Reader (RdrName)
-import GHC.Types.SrcLoc (Located, SrcLoc (..), SrcSpan (..), mkSrcLoc, mkSrcSpan, srcLocFile, srcLocLine, srcSpanEnd, srcSpanStart, unLoc)
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax (Q (Q))
@@ -134,12 +170,19 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
       where
         locStart = updatePos $ srcSpanStart span
         locEnd = updatePos $ srcSpanEnd span
-        updatePos (RealSrcLoc loc _) = pos'
+        updatePos (getRealSrcLoc -> loc) = pos'
           where
             pos = newPos (unpackFS $ srcLocFile loc) (srcLocLine loc) (srcLocCol loc)
             pos'
               | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
               | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
+
+
+#if MIN_VERSION_ghc(8,10,0)
+getRealSrcLoc (RealSrcLoc loc _) = loc
+#else
+getRealSrcLoc (RealSrcLoc loc) = loc
+#endif
 
 findFreeVariables :: HsExpr GhcPs -> [(SrcSpan, RdrName)]
 findFreeVariables hsExpr = allNames
@@ -157,7 +200,7 @@ findFreeVariables hsExpr = allNames
 
     -- Find all Variables bindings (i.e. patterns) in an HsExpr
     findPats :: forall a. (Data a, Typeable a) => a -> [RdrName]
-    findPats p = case cast @_ @(GHC.Hs.Pat GhcPs) p of
+    findPats p = case cast @_ @(Pat.Pat GhcPs) p of
       Just (VarPat _ (unLoc -> name)) -> [name]
       _ -> concat $ gmapQ findPats p
     -- Be careful, we wrap hsExpr in a list, so the toplevel hsExpr will be
