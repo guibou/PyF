@@ -4,6 +4,7 @@
 - Error reporting now uses the native GHC API. In summary, it means that
  haskell-language-server will point to the correct location of the error, not
  the beginning of the quasi quotes.
+- PyF will now correctly locate the error for variable not found in expression, even if the expression is complicated. The support for complex expression is limited, and PyF may return a false positive if you try to format a complex lambda / case expression. Please open a ticket if you need that.
 - Add support for literal `[]` and `()` in haskell expression.
 - Add support for overloaded labels, thank you Shimuuar.
 - Support for `::` in haskell expression. Such as `[fmt| 10 :: Int:d}|]`, as a suggestion from julm (close #87).
