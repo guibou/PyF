@@ -178,7 +178,7 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
               | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
 
 
-#if MIN_VERSION_ghc(8,10,0)
+#if MIN_VERSION_ghc(9,0,0)
 getRealSrcLoc (RealSrcLoc loc _) = loc
 #else
 getRealSrcLoc (RealSrcLoc loc) = loc
