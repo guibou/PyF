@@ -46,6 +46,14 @@ import TcSplice (lookupThName_maybe)
 import TcRnMonad (addErrAt)
 #endif
 
+#if MIN_VERSION_ghc(9,3,0)
+import GHC.Tc.Errors.Types
+import GHC.Types.Error
+import GHC.Driver.Errors.Types
+import GHC.Parser.Errors.Types
+import GHC.Utils.Outputable (text)
+#endif
+
 
 
 #if MIN_VERSION_ghc(9,0,0)
@@ -190,7 +198,11 @@ findFreeVariables hsExpr = allNames
     -- Find all free Variables in an HsExpr
     f :: forall a. (Data a, Typeable a) => a -> [Located RdrName]
     f e = case cast @_ @(HsExpr GhcPs) e of
+#if MIN_VERSION_ghc(9,2,0)
+      Just (HsVar _ l@(L a b)) -> [L (locA a) (unLoc l)]
+#else
       Just (HsVar _ l) -> [l]
+#endif
       Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])) _)) -> filter keepVar subVars
         where
           keepVar (L _ n) = n `notElem` subPats
@@ -236,7 +248,12 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 reportErrorAt :: SrcSpan -> String -> Q ()
 reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
+#if MIN_VERSION_ghc(9,3,0)
+    msg' = TcRnUnknownMessage (GhcPsMessage $ PsUnknownMessage $ mkPlainError noHints $
+                         text msg)
+#else
     msg' = fromString msg
+#endif
 
 reportParserErrorAt :: ParseError -> Q ()
 reportParserErrorAt err = reportErrorAt span msg
