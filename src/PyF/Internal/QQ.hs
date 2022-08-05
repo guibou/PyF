@@ -36,7 +36,7 @@ import Data.Proxy
 import Data.String (fromString)
 import GHC (GenLocated (L), srcLocCol)
 
-#if MIN_VERSION_ghc(8,8,0)
+#if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Utils.Monad (addErrAt)
 import GHC.Tc.Types (TcM)
 import GHC.Tc.Gen.Splice (lookupThName_maybe)
