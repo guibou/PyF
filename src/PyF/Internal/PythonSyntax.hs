@@ -4,6 +4,8 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE CPP #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -33,6 +35,15 @@ import PyF.Formatters
 import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
+import Data.Data (Data)
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Types.SrcLoc
+import GHC.Data.FastString
+#else
+import SrcLoc
+import FastString
+#endif
 
 type Parser t = ParsecT String () (Reader ParsingContext) t
 
@@ -67,7 +78,7 @@ data Item
   = -- | A raw string
     Raw String
   | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
-    Replacement (SourcePos, HsExpr GhcPs, Exp) (Maybe FormatMode)
+    Replacement (HsExpr GhcPs, Exp) (Maybe FormatMode)
 
 -- |
 -- Parse a string, returns a list of raw string or replacement fields
@@ -169,12 +180,14 @@ data Padding
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
 data ExprOrValue t
   = Value t
-  | HaskellExpr (SourcePos, HsExpr GhcPs, Exp)
+  | HaskellExpr (HsExpr GhcPs, Exp)
+  deriving (Data)
 
 -- | Floating point precision
 data Precision
   = PrecisionDefault
   | Precision (ExprOrValue Int)
+  deriving (Data)
 
 {-
 
@@ -225,22 +238,24 @@ data TypeFormat
     HexCapsF AlternateForm SignMode
   | -- | Percent representation
     PercentF Precision AlternateForm SignMode
+  deriving (Data)
 
 -- | If the formatter use its alternate form
 data AlternateForm = AlternateForm | NormalForm
-  deriving (Show)
+  deriving (Show, Data)
 
-evalExpr :: [Extension] -> Parser String -> Parser (SourcePos, HsExpr GhcPs, Exp)
+evalExpr :: [Extension] -> Parser String -> Parser (HsExpr GhcPs, Exp)
 evalExpr exts exprParser = do
   exprPos <- getPosition
+  let initLoc = mkRealSrcLoc (mkFastString "<string>") (sourceLine exprPos) (sourceColumn exprPos)
   s <- lookAhead exprParser
   -- Setup the dyn flags using the provided list of extensions
   let dynFlags = baseDynFlags exts
-  case ParseExp.parseExpression s dynFlags of
+  case ParseExp.parseExpression initLoc s dynFlags of
     Right expr -> do
-      -- Consumne the expression
+      -- Consume the expression
       void exprParser
-      pure (exprPos, expr, toExp dynFlags expr)
+      pure (expr, toExp dynFlags expr)
     Left (lineError, colError, err) -> do
       -- In case of error, we just advance the parser to the error location.
       -- Skip lines
@@ -342,7 +357,7 @@ failIfPrec (Precision e) _ = Left ("Type incompatible with precision (." ++ show
   where
     showExpr = case e of
       Value v -> show v
-      HaskellExpr (_, _, expr) -> show expr
+      HaskellExpr (_, expr) -> show expr
 
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i

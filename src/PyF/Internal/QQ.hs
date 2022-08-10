@@ -165,10 +165,16 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
           reportErrorAt (mkSrcSpan (srcLocFromParserError (errorPos errStart')) (srcLocFromParserError (errorPos errEnd'))) msg
           [|()|]
 
+findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
+findFreeVariablesInFormatMode Nothing = []
+findFreeVariablesInFormatMode (Just (FormatMode padding tf _ )) = findFreeVariables tf <> case padding of
+  PaddingDefault -> []
+  Padding eoi _ -> findFreeVariables eoi
+
 checkOneItem :: Item -> Q (Maybe (ParseError, ParseError))
 checkOneItem (Raw _) = pure Nothing
-checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
-  let allNames = findFreeVariables hsExpr
+checkOneItem (Replacement (hsExpr, _) formatMode) = do
+  let allNames = findFreeVariables hsExpr <> findFreeVariablesInFormatMode formatMode
   res <- mapM doesExists allNames
   let resFinal = catMaybes res
 
@@ -178,12 +184,9 @@ checkOneItem (Replacement (currentPos, hsExpr, _) _) = do
       where
         locStart = updatePos $ srcSpanStart span
         locEnd = updatePos $ srcSpanEnd span
-        updatePos (getRealSrcLoc -> loc) = pos'
+        updatePos (getRealSrcLoc -> loc) = pos
           where
             pos = newPos (unpackFS $ srcLocFile loc) (srcLocLine loc) (srcLocCol loc)
-            pos'
-              | sourceLine pos == 1 = incSourceColumn currentPos (sourceColumn pos - 1)
-              | otherwise = setSourceColumn (incSourceLine currentPos (sourceLine pos - 1)) (sourceColumn pos)
 
 
 #if MIN_VERSION_ghc(9,0,0)
@@ -192,8 +195,8 @@ getRealSrcLoc (RealSrcLoc loc _) = loc
 getRealSrcLoc (RealSrcLoc loc) = loc
 #endif
 
-findFreeVariables :: HsExpr GhcPs -> [(SrcSpan, RdrName)]
-findFreeVariables hsExpr = allNames
+findFreeVariables :: Data a => a -> [(SrcSpan, RdrName)]
+findFreeVariables item = allNames
   where
     -- Find all free Variables in an HsExpr
     f :: forall a. (Data a, Typeable a) => a -> [Located RdrName]
@@ -218,7 +221,7 @@ findFreeVariables hsExpr = allNames
     -- Be careful, we wrap hsExpr in a list, so the toplevel hsExpr will be
     -- seen by gmapQ. Otherwise it will miss variables if they are the top
     -- level expression: gmapQ only checks sub constructors.
-    allVars = concat $ gmapQ f [hsExpr]
+    allVars = concat $ gmapQ f [item]
     allNames = map (\(L l e) -> (l, e)) allVars
 
 doesExists :: (b, RdrName) -> Q (Maybe (String, b))
@@ -295,13 +298,13 @@ overrideErrorForFile :: FilePath -> ParseError -> Q ParseError
 -- error relative to the quasi quote content
 overrideErrorForFile "<interactive>" err = pure err
 -- We know the content of the file here
-overrideErrorForFile _ err = do
+overrideErrorForFile filename err = do
   (line, col) <- loc_start <$> location
   let sourcePos = errorPos err
       sourcePos'
         | sourceLine sourcePos == 1 = incSourceColumn (incSourceLine sourcePos (line - 1)) (col - 1)
         | otherwise = setSourceColumn (incSourceLine sourcePos (line - 1)) (sourceColumn sourcePos)
-  pure $ setErrorPos sourcePos' err
+  pure $ setErrorPos (setSourceName sourcePos' filename) err
 
 {-
 Note: Empty String Lifting
@@ -322,7 +325,7 @@ sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormat (Replacement (_, _, expr) y) = do
+toFormat (Replacement ( _, expr) y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
@@ -376,7 +379,7 @@ newPaddingQ padding = case padding of
 exprToInt :: ExprOrValue Int -> Q Exp
 -- Note: this is a literal provided integral. We use explicit case to ::Int so it won't warn about defaulting
 exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
-exprToInt (HaskellExpr (_, _, e)) = [|$(pure e)|]
+exprToInt (HaskellExpr (_, e)) = [|$(pure e)|]
 
 data PaddingK k i where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll Int

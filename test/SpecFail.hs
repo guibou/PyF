@@ -221,3 +221,7 @@ spec =
       failCompile "{True:d}"
     describe "Missing variables" $ do
       failCompile "Hello {name}"
+      failCompile "Hello {length name}"
+      failCompile "Hello {pi:.{precision}}"
+      failCompile "Hello {pi:.{truncate number + precision}}"
+      failCompile "Hello {pi:.{precision}}"
