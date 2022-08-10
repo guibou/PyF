@@ -538,3 +538,11 @@ yeah\
       [fmt|{var}|] `shouldBe` "Guillaume"
     it "global" $ do
       [fmt|{globalName}|] `shouldBe` "Valérian"
+    it "multiple expressions with variables" $ do
+      let padding = 10
+      let precision = 3
+      [fmt|{globalName:{padding}} and pi = {pi:.{precision}}|] `shouldBe` "Valérian   and pi = 3.142"
+    it "an expression with multiples variables" $ do
+      let padding = 10
+      let precision = 3
+      [fmt|pi = {pi:{padding}.{precision}}|] `shouldBe` "pi =      3.142"

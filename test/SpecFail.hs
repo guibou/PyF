@@ -225,3 +225,4 @@ spec =
       failCompile "Hello {pi:.{precision}}"
       failCompile "Hello {pi:.{truncate number + precision}}"
       failCompile "Hello {pi:.{precision}}"
+      failCompile "Hello {pi:{width}}"
