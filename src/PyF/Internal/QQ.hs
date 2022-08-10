@@ -34,7 +34,7 @@ import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
-import GHC (GenLocated (L), srcLocCol)
+import GHC (GenLocated (L))
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Utils.Monad (addErrAt)
@@ -57,7 +57,6 @@ import GHC.Utils.Outputable (text)
 
 
 #if MIN_VERSION_ghc(9,0,0)
-import GHC.Data.FastString
 import GHC.Types.Name.Reader
 #else
 import FastString
@@ -183,12 +182,6 @@ checkOneItem (Replacement (hsExpr, _) formatMode) = do
     [] -> pure Nothing
     ((err, span) : _) -> pure $ Just (span, err)
 
-
-#if MIN_VERSION_ghc(9,0,0)
-getRealSrcLoc (RealSrcLoc loc _) = loc
-#else
-getRealSrcLoc (RealSrcLoc loc) = loc
-#endif
 
 findFreeVariables :: Data a => a -> [(SrcSpan, RdrName)]
 findFreeVariables item = allNames

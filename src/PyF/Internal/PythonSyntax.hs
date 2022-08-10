@@ -260,11 +260,16 @@ evalExpr exts exprParser = do
       pure (expr, toExp dynFlags expr)
     Left (lineError, colError, err) -> do
       -- In case of error, we just advance the parser to the error location.
+      -- Note: we have to remove what was introduced in `initLoc`
       -- Skip lines
-      replicateM_ (lineError - 1) (manyTill anyChar newline)
+      replicateM_ (lineError - sourceLine exprPos) (manyTill anyChar newline)
       -- Skip columns
-      void $ count (colError - 2) anyChar
-
+      -- This is a bit more counter intuitive. If we have skipped not lines, we
+      -- must remove the introduced column offset, otherwise no.
+      let columnSkip
+            | lineError - sourceLine exprPos == 0 = colError - 1 - sourceColumn exprPos
+            | otherwise = colError - 2
+      void $ count columnSkip anyChar
       fail $ err <> " in haskell expression"
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
