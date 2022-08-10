@@ -216,7 +216,7 @@ doesExists :: (b, RdrName) -> Q (Maybe (String, b))
 doesExists (loc, name) = do
   res <- unsafeRunTcM $ lookupThName_maybe (toName name)
   case res of
-    Nothing -> pure (Just ("Variable not found: " <> show (toName name), loc))
+    Nothing -> pure (Just ("Variable not in scope: " <> show (toName name), loc))
     Just _ -> pure Nothing
 
 -- | Check that all variables used in 'Item' exists, otherwise, fail.

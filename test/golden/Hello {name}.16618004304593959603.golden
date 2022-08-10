@@ -1,6 +1,6 @@
 
 INITIALPATH:7:29: error:
-    • Variable not found: name
+    • Variable not in scope: name
     • In the quasi-quotation: [fmt|Hello {name}|]
   |
 7 | main = putStrLn [fmt|Hello {name}|]
