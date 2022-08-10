@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 import Control.DeepSeq
 import Control.Exception
@@ -15,6 +16,8 @@ import System.Process (readProcessWithExitCode)
 import Test.HUnit.Lang
 import Test.Hspec
 
+import PyF
+
 -- * Check compilation with external GHC (this is usefull to test compilation failure)
 
 data CompilationStatus
@@ -24,8 +27,16 @@ data CompilationStatus
   | Ok String
   deriving (Show, Eq)
 
+
 makeTemplate :: String -> String
-makeTemplate s = "{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}\nimport PyF\ntruncate' = truncate @Float @Int\nhello = \"hello\"\nnumber = 3.14 :: Float\nmain :: IO ()\nmain = putStrLn [fmt|" ++ s ++ "|]\n"
+makeTemplate s = [fmt|\
+{{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}}
+import PyF
+truncate' = truncate @Float @Int
+hello = "hello"
+number = 3.14 :: Float
+main :: IO ()
+main = putStrLn [fmt|{s}|] <> "|]\n"
 
 -- | Compile a formatting string
 --
@@ -208,3 +219,10 @@ spec =
       failCompile "{True}"
       failCompile "{True:f}"
       failCompile "{True:d}"
+    describe "Missing variables" $ do
+      failCompile "Hello {name}"
+      failCompile "Hello {length name}"
+      failCompile "Hello {pi:.{precision}}"
+      failCompile "Hello {pi:.{truncate number + precision}}"
+      failCompile "Hello {pi:.{precision}}"
+      failCompile "Hello {pi:{width}}"

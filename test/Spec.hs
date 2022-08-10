@@ -80,6 +80,8 @@ instance (a ~ a') => IsLabel a (V a') where
 showV :: KnownSymbol a => V a -> String
 showV = show
 
+globalName = "Valérian"
+
 spec :: Spec
 spec = do
   describe "simple with external variable" $ do
@@ -529,3 +531,18 @@ yeah\
       [fmt|{-10 :: Int::>10d}|] `shouldBe` ":::::::-10"
     it "works in a padding ^ context" $ do
       [fmt|{-10 :: Int::^10d}|] `shouldBe` ":::-10::::"
+
+  describe "variables" $ do
+    it "local" $ do
+      let var = "Guillaume" :: String
+      [fmt|{var}|] `shouldBe` "Guillaume"
+    it "global" $ do
+      [fmt|{globalName}|] `shouldBe` "Valérian"
+    it "multiple expressions with variables" $ do
+      let padding = 10
+      let precision = 3
+      [fmt|{globalName:{padding}} and pi = {pi:.{precision}}|] `shouldBe` "Valérian   and pi = 3.142"
+    it "an expression with multiples variables" $ do
+      let padding = 10
+      let precision = 3
+      [fmt|pi = {pi:{padding}.{precision}}|] `shouldBe` "pi =      3.142"

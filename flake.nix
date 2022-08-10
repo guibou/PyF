@@ -75,7 +75,7 @@
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_92 = pyfBuilder (haskell.packages.ghc923.override {
+          pyf_92 = pyfBuilder (haskell.packages.ghc924.override {
             overrides = self: super: with haskell.lib; rec { };
           });
 

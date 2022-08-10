@@ -9,6 +9,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -- |
 --
@@ -55,6 +56,7 @@ import Data.Char (chr, toUpper)
 import Data.List (intercalate)
 import Language.Haskell.TH.Syntax
 import qualified Numeric
+import Data.Data (Data)
 
 -- ADT for API
 
@@ -66,7 +68,7 @@ data SignMode
     Minus
   | -- | Display '-' sign and a space for positive numbers
     Space
-  deriving (Show)
+  deriving (Show, Data)
 
 data AlignForString = AlignAll | AlignNumber
   deriving (Show)
@@ -79,8 +81,9 @@ data AlignMode (k :: AlignForString) where
   AlignRight :: AlignMode 'AlignAll
   -- | Padding will be added between the sign and the number
   AlignInside :: AlignMode 'AlignNumber
-  -- | Padding will be added around the valueber
+  -- | Padding will be added around the value
   AlignCenter :: AlignMode 'AlignAll
+
 
 deriving instance Show (AlignMode k)
 

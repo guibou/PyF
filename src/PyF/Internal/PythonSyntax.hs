@@ -4,6 +4,8 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE CPP #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -26,12 +28,22 @@ import Control.Applicative (some)
 import Control.Monad.Reader
 import qualified Data.Char
 import Data.Maybe (fromMaybe)
+import GHC (GhcPs, HsExpr)
 import Language.Haskell.TH.LanguageExtensions (Extension (..))
 import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
 import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
+import Data.Data (Data)
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Types.SrcLoc
+import GHC.Data.FastString
+#else
+import SrcLoc
+import FastString
+#endif
 
 type Parser t = ParsecT String () (Reader ParsingContext) t
 
@@ -66,8 +78,7 @@ data Item
   = -- | A raw string
     Raw String
   | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
-    Replacement Exp (Maybe FormatMode)
-  deriving (Show)
+    Replacement (HsExpr GhcPs, Exp) (Maybe FormatMode)
 
 -- |
 -- Parse a string, returns a list of raw string or replacement fields
@@ -160,25 +171,23 @@ pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault
 
 -- | A Formatter, listing padding, format and and grouping char
 data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
-  deriving (Show)
 
 -- | Padding, containing the padding width, the padding char and the alignement mode
 data Padding
   = PaddingDefault
   | Padding (ExprOrValue Int) (Maybe (Maybe Char, AnyAlign))
-  deriving (Show)
 
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
 data ExprOrValue t
   = Value t
-  | HaskellExpr Exp
-  deriving (Show)
+  | HaskellExpr (HsExpr GhcPs, Exp)
+  deriving (Data)
 
 -- | Floating point precision
 data Precision
   = PrecisionDefault
   | Precision (ExprOrValue Int)
-  deriving (Show)
+  deriving (Data)
 
 {-
 
@@ -229,29 +238,38 @@ data TypeFormat
     HexCapsF AlternateForm SignMode
   | -- | Percent representation
     PercentF Precision AlternateForm SignMode
-  deriving (Show)
+  deriving (Data)
 
 -- | If the formatter use its alternate form
 data AlternateForm = AlternateForm | NormalForm
-  deriving (Show)
+  deriving (Show, Data)
 
-evalExpr :: [Extension] -> Parser String -> Parser Exp
+evalExpr :: [Extension] -> Parser String -> Parser (HsExpr GhcPs, Exp)
 evalExpr exts exprParser = do
+  exprPos <- getPosition
+  -- Inject the correct source location in the GHC parser, so it already match
+  -- the input source file.
+  let initLoc = mkRealSrcLoc (mkFastString (sourceName exprPos)) (sourceLine exprPos) (sourceColumn exprPos)
   s <- lookAhead exprParser
   -- Setup the dyn flags using the provided list of extensions
   let dynFlags = baseDynFlags exts
-  case ParseExp.parseExpression s dynFlags of
+  case ParseExp.parseExpression initLoc s dynFlags of
     Right expr -> do
-      -- Consumne the expression
+      -- Consume the expression
       void exprParser
-      pure (toExp dynFlags expr)
+      pure (expr, toExp dynFlags expr)
     Left (lineError, colError, err) -> do
       -- In case of error, we just advance the parser to the error location.
+      -- Note: we have to remove what was introduced in `initLoc`
       -- Skip lines
-      replicateM_ (lineError - 1) (manyTill anyChar newline)
+      replicateM_ (lineError - sourceLine exprPos) (manyTill anyChar newline)
       -- Skip columns
-      void $ count (colError - 2) anyChar
-
+      -- This is a bit more counter intuitive. If we have skipped not lines, we
+      -- must remove the introduced column offset, otherwise no.
+      let columnSkip
+            | lineError - sourceLine exprPos == 0 = colError - 1 - sourceColumn exprPos
+            | otherwise = colError - 2
+      void $ count columnSkip anyChar
       fail $ err <> " in haskell expression"
 
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
@@ -346,7 +364,7 @@ failIfPrec (Precision e) _ = Left ("Type incompatible with precision (." ++ show
   where
     showExpr = case e of
       Value v -> show v
-      HaskellExpr expr -> show expr
+      HaskellExpr (_, expr) -> show expr
 
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i

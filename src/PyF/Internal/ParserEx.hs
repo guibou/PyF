@@ -181,31 +181,30 @@ fakeLlvmConfig = ([], [])
 
 -- From Language.Haskell.GhclibParserEx.GHC.Parser
 
-parse :: P a -> String -> DynFlags -> ParseResult a
-parse p str flags =
+parse :: RealSrcLoc -> P a -> String -> DynFlags -> ParseResult a
+parse initLoc p str flags =
   Lexer.unP p parseState
   where
-    location = mkRealSrcLoc (mkFastString "<string>") 1 1
     buffer = stringToStringBuffer str
     parseState =
 #if MIN_VERSION_ghc(9, 2, 0)
-      initParserState (initParserOpts flags) buffer location
+      initParserState (initParserOpts flags) buffer initLoc
 #else
-      mkPState flags buffer location
+      mkPState flags buffer initLoc
 #endif
 
 #if MIN_VERSION_ghc(9, 2, 0)
-parseExpression :: String -> DynFlags -> ParseResult (LocatedA (HsExpr GhcPs))
-parseExpression s flags =
-  case parse Parser.parseExpression s flags of
+parseExpression :: RealSrcLoc -> String -> DynFlags -> ParseResult (LocatedA (HsExpr GhcPs))
+parseExpression initLoc s flags =
+  case parse initLoc Parser.parseExpression s flags of
     POk s e -> unP (runPV (unECP e)) s
     PFailed ps -> PFailed ps
 #elif MIN_VERSION_ghc(8, 10, 0)
-parseExpression :: String -> DynFlags -> ParseResult (Located (HsExpr GhcPs))
-parseExpression s flags =
-  case parse Parser.parseExpression s flags of
+parseExpression :: RealSrcLoc -> String -> DynFlags -> ParseResult (Located (HsExpr GhcPs))
+parseExpression initLoc s flags =
+  case parse initLoc Parser.parseExpression s flags of
     POk s e -> unP (runECP_P e) s
     PFailed ps -> PFailed ps
 #else
-parseExpression = parse Parser.parseExpression
+parseExpression initLoc = parse initLoc Parser.parseExpression
 #endif

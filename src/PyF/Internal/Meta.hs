@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module PyF.Internal.Meta (toExp, baseDynFlags) where
+module PyF.Internal.Meta (toExp, baseDynFlags, toName) where
 
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsSigType(HsSig), sig_body)
@@ -115,7 +115,7 @@ toFieldExp = undefined
 
 toPat :: DynFlags -> Pat.Pat GhcPs -> TH.Pat
 toPat _dynFlags (Pat.VarPat _ (unLoc -> name)) = TH.VarP (toName name)
-toPat dynFlags p = todo "toPat" (showSDoc dynFlags . ppr $ p)
+toPat dynFlags p = todo "Advanced pattern match are not supported in PyF. See https://github.com/guibou/PyF/issues/107 if that's a problem for you." (showSDoc dynFlags . ppr $ p)
 
 {- ORMOLU_DISABLE -}
 

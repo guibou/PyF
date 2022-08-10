@@ -30,8 +30,10 @@ import qualified SrcLoc
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Driver.Session (DynFlags)
+import GHC.Types.SrcLoc
 #else
 import DynFlags (DynFlags)
+import SrcLoc
 #endif
 
 #if MIN_VERSION_ghc(8,10,0)
@@ -45,9 +47,9 @@ import Outputable (showSDoc)
 
 import qualified PyF.Internal.ParserEx as ParseExp
 
-parseExpression :: String -> DynFlags -> Either (Int, Int, String) (HsExpr GhcPs)
-parseExpression s dynFlags =
-  case ParseExp.parseExpression s dynFlags of
+parseExpression :: RealSrcLoc -> String -> DynFlags -> Either (Int, Int, String) (HsExpr GhcPs)
+parseExpression initLoc s dynFlags =
+  case ParseExp.parseExpression initLoc s dynFlags of
     POk _ locatedExpr ->
       let expr = SrcLoc.unLoc locatedExpr
        in Right

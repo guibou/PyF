@@ -203,21 +203,30 @@ However, in PyF, we took great care to provide clear error reporting, this means
 - Any parsing error on the mini language results in a clear indication of the error, for example:
 
 ```haskell
->>> [fmt|{age:.3d}|]
+foo = [fmt|{age:.3d}|]
+```
 
-<interactive>:77:4: error:
-    • <interactive>:1:8:
+```
+File.hs:77:19: error:
   |
 1 | {age:.3d}
   |        ^
 Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.
 ```
 
+Note: error reporting uses the native GHC error infrastructure, so they will correctly appear in your editor (using [HLS](https://github.com/haskell/haskell-language-server)), for example:
+
+  ![Error reported in editor](error_example.png)
+
 - Error in variable name are also readable:
 
 ```haskell
->>> [fmt|{toto}|]
-<interactive>:78:4: error: Variable not in scope: toto
+test/SpecUtils.hs:81:33: error:
+    • Variable not found: chien
+    • In the quasi-quotation: [fmt|A missing variable: {chien}|]
+   |
+81 | fiz = [fmt|A missing variable: {chien}|]
+   |                                 ^^^^^
 ```
 
 - However, if the interpolated name is not of a compatible type (or
@@ -242,7 +251,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 ...
 ```
 
-- Finally, if you make any type error inside the expression field, you are on your own:
+- Finally, if you make any type error inside the expression field, you are on your own, you'll get an awful error in the middle of the generated template Haskell splice.
 
 ```haskell
 >>> [fmt|{3 + pi + "hello":10}|]

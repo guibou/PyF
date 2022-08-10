@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
@@ -27,10 +28,64 @@ module PyF.Internal.QQ
 where
 
 import Control.Monad.Reader
+import Data.Data (Data (gmapQ), Typeable, cast)
 import Data.Kind
-import Data.Maybe (fromMaybe)
+import Data.List (intercalate)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
+import GHC (GenLocated (L))
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Tc.Utils.Monad (addErrAt)
+import GHC.Tc.Types (TcM)
+import GHC.Tc.Gen.Splice (lookupThName_maybe)
+#else
+import TcRnTypes (TcM)
+import TcSplice (lookupThName_maybe)
+import TcRnMonad (addErrAt)
+#endif
+
+#if MIN_VERSION_ghc(9,3,0)
+import GHC.Tc.Errors.Types
+import GHC.Types.Error
+import GHC.Driver.Errors.Types
+import GHC.Parser.Errors.Types
+import GHC.Utils.Outputable (text)
+#endif
+
+
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Types.Name.Reader
+#else
+import FastString
+import RdrName
+#endif
+
+#if MIN_VERSION_ghc(8,10,0)
+import GHC.Hs.Expr as Expr
+import GHC.Hs.Extension as Ext
+import GHC.Hs.Pat as Pat
+#else
+import HsExpr as Expr
+import HsExtension as Ext
+import HsPat as Pat
+import HsLit
+#endif
+
+#if MIN_VERSION_ghc(9,0,0)
+import GHC.Types.SrcLoc
+#else
+import SrcLoc
+#endif
+
+#if MIN_VERSION_ghc(8,10,0)
+import GHC.Hs
+#else
+import HsSyn
+#endif
+
 import GHC.TypeLits
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Quote
@@ -38,29 +93,19 @@ import Language.Haskell.TH.Syntax (Q (Q))
 import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
+import PyF.Internal.Meta (toName)
 import PyF.Internal.PythonSyntax
 import Text.Parsec
-import Text.Parsec.Error (errorMessages, messageString, setErrorPos, showErrorMessages)
+import Text.Parsec.Error
+  ( errorMessages,
+    messageString,
+    newErrorMessage,
+    setErrorPos,
+    showErrorMessages,
+  )
+import Text.Parsec.Pos (newPos, initialPos)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
-
-#if MIN_VERSION_ghc(9,3,0)
-import GHC.Tc.Errors.Types (TcRnMessage(TcRnUnknownMessage))
-import GHC.Types.Error (mkPlainError)
-import GHC.Utils.Outputable (hsep, text)
-#else
-import Data.List (intercalate)
-#endif
-
-#if MIN_VERSION_ghc(9,0,0)
-import GHC.Tc.Types (TcM)
-import GHC.Types.SrcLoc (SrcSpan(..), mkSrcLoc, mkSrcSpan)
-import GHC.Tc.Utils.Monad (addErrAt)
-#else
-import TcRnTypes (TcM)
-import GhcPlugins (SrcSpan (..), mkSrcLoc, mkSrcSpan)
-import TcRnMonad (addErrAt)
-#endif
 
 -- | Configuration for the quasiquoter
 data Config = Config
@@ -98,48 +143,128 @@ wrapFromString e = do
 -- | Parse a string and return a formatter for it
 toExp :: Config -> String -> Q Exp
 toExp Config {delimiters = expressionDelimiters, postProcess} s = do
-  filename <- loc_filename <$> location
+  loc <- location
   exts <- extsEnabled
   let context = ParsingContext expressionDelimiters exts
-  case runReader (runParserT parseGenericFormatString () filename s) context of
+
+  -- Setup the parser so it matchs the real original position in the source
+  -- code.
+  let filename = loc_filename loc
+  let initPos = setSourceColumn (setSourceLine (initialPos filename) (fst $ loc_start loc)) (snd $ loc_start loc)
+  case runReader (runParserT (setPosition initPos >> parseGenericFormatString) () filename s) context of
     Left err -> do
-      err' <- overrideErrorForFile filename err
-      reportErrorAt err'
+      reportParserErrorAt err
       -- returns a dummy exp, so TH continues its life. This TH code won't be
       -- executed anyway, there is an error
       [|()|]
-    Right items -> postProcess (goFormat items)
+    Right items -> do
+      checkResult <- checkVariables items
+      case checkResult of
+        Nothing -> postProcess (goFormat items)
+        Just (srcSpan, msg) -> do
+          reportErrorAt srcSpan msg
+          [|()|]
+
+findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
+findFreeVariablesInFormatMode Nothing = []
+findFreeVariablesInFormatMode (Just (FormatMode padding tf _ )) = findFreeVariables tf <> case padding of
+  PaddingDefault -> []
+  Padding eoi _ -> findFreeVariables eoi
+
+checkOneItem :: Item -> Q (Maybe (SrcSpan, String))
+checkOneItem (Raw _) = pure Nothing
+checkOneItem (Replacement (hsExpr, _) formatMode) = do
+  let allNames = findFreeVariables hsExpr <> findFreeVariablesInFormatMode formatMode
+  res <- mapM doesExists allNames
+  let resFinal = catMaybes res
+
+  case resFinal of
+    [] -> pure Nothing
+    ((err, span) : _) -> pure $ Just (span, err)
+
+
+findFreeVariables :: Data a => a -> [(SrcSpan, RdrName)]
+findFreeVariables item = allNames
+  where
+    -- Find all free Variables in an HsExpr
+    f :: forall a. (Data a, Typeable a) => a -> [Located RdrName]
+    f e = case cast @_ @(HsExpr GhcPs) e of
+#if MIN_VERSION_ghc(9,2,0)
+      Just (HsVar _ l@(L a b)) -> [L (locA a) (unLoc l)]
+#else
+      Just (HsVar _ l) -> [l]
+#endif
+      Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])) _)) -> filter keepVar subVars
+        where
+          keepVar (L _ n) = n `notElem` subPats
+          subVars = concat $ gmapQ f [e]
+          subPats = concat $ gmapQ findPats ps
+      _ -> concat $ gmapQ f e
+
+    -- Find all Variables bindings (i.e. patterns) in an HsExpr
+    findPats :: forall a. (Data a, Typeable a) => a -> [RdrName]
+    findPats p = case cast @_ @(Pat.Pat GhcPs) p of
+      Just (VarPat _ (unLoc -> name)) -> [name]
+      _ -> concat $ gmapQ findPats p
+    -- Be careful, we wrap hsExpr in a list, so the toplevel hsExpr will be
+    -- seen by gmapQ. Otherwise it will miss variables if they are the top
+    -- level expression: gmapQ only checks sub constructors.
+    allVars = concat $ gmapQ f [item]
+    allNames = map (\(L l e) -> (l, e)) allVars
+
+doesExists :: (b, RdrName) -> Q (Maybe (String, b))
+doesExists (loc, name) = do
+  res <- unsafeRunTcM $ lookupThName_maybe (toName name)
+  case res of
+    Nothing -> pure (Just ("Variable not in scope: " <> show (toName name), loc))
+    Just _ -> pure Nothing
+
+-- | Check that all variables used in 'Item' exists, otherwise, fail.
+checkVariables :: [Item] -> Q (Maybe (SrcSpan, String))
+checkVariables [] = pure Nothing
+checkVariables (x : xs) = do
+  r <- checkOneItem x
+  case r of
+    Nothing -> checkVariables xs
+    Just err -> pure $ Just err
 
 -- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
 -- This allows to hack inside the the GHC api and use function not exported by template haskell.
 unsafeRunTcM :: TcM a -> Q a
 unsafeRunTcM m = Q (unsafeCoerce m)
 
-{- ORMOLU_DISABLE -}
-
 -- | This function is similar to TH reportError, however it also provide
 -- correct SrcSpan, so error are localised at the correct position in the TH
 -- splice instead of being at the beginning.
-reportErrorAt :: ParseError -> Q ()
-reportErrorAt err = unsafeRunTcM $ addErrAt loc msg
+reportErrorAt :: SrcSpan -> String -> Q ()
+reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
 #if MIN_VERSION_ghc(9,3,0)
-    msg = TcRnUnknownMessage (mkPlainError mempty $ hsep (map text $ formatErrorMessages err))
+    msg' = TcRnUnknownMessage (GhcPsMessage $ PsUnknownMessage $ mkPlainError noHints $
+                         text msg)
 #else
-    msg = fromString (intercalate "\n" $ formatErrorMessages err)
+    msg' = fromString msg
 #endif
-    loc :: SrcSpan
-    loc = mkSrcSpan srcLoc srcLoc'
 
-    sourceLoc = errorPos err
+reportParserErrorAt :: ParseError -> Q ()
+reportParserErrorAt err = reportErrorAt span msg
+  where
+    msg = intercalate "\n" $ formatErrorMessages err
+
+    span :: SrcSpan
+    span = mkSrcSpan loc loc'
+
+    loc = srcLocFromParserError (errorPos err)
+    loc' = srcLocFromParserError (incSourceColumn (errorPos err) 1)
+
+srcLocFromParserError :: SourcePos -> SrcLoc
+srcLocFromParserError sourceLoc = srcLoc
+  where
     line = sourceLine sourceLoc
     column = sourceColumn sourceLoc
     name = sourceName sourceLoc
 
     srcLoc = mkSrcLoc (fromString name) line column
-    srcLoc' = mkSrcLoc (fromString name) line (column + 1)
-
-{- ORMOLU_ENABLE -}
 
 formatErrorMessages :: ParseError -> [String]
 formatErrorMessages err
@@ -151,24 +276,6 @@ formatErrorMessages err
     (_sysUnExpect, msgs1) = span (SysUnExpect "" ==) (errorMessages err)
     (_unExpect, msgs2) = span (UnExpect "" ==) msgs1
     (_expect, messages) = span (Expect "" ==) msgs2
-
--- Parsec displays error relative to what they parsed
--- However the formatting string is part of a more complex file and we
--- want error reporting relative to that file
-overrideErrorForFile :: FilePath -> ParseError -> Q ParseError
--- We have no may to recover interactive content
--- So we won't do better than displaying the Parsec
--- error relative to the quasi quote content
-overrideErrorForFile "<interactive>" err = pure err
--- We know the content of the file here
-overrideErrorForFile _ err = do
-  (line, col) <- loc_start <$> location
-  let sourcePos = errorPos err
-      sourcePos'
-        | sourceLine sourcePos == 1 = incSourceColumn (incSourceLine sourcePos (line - 1)) (col - 1)
-        | otherwise = setSourceColumn (incSourceLine sourcePos (line - 1)) (sourceColumn sourcePos)
-  pure $ setErrorPos sourcePos' err
-
 {-
 Note: Empty String Lifting
 
@@ -188,7 +295,7 @@ sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormat (Replacement expr y) = do
+toFormat (Replacement ( _, expr) y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
@@ -242,7 +349,7 @@ newPaddingQ padding = case padding of
 exprToInt :: ExprOrValue Int -> Q Exp
 -- Note: this is a literal provided integral. We use explicit case to ::Int so it won't warn about defaulting
 exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
-exprToInt (HaskellExpr e) = [|$(pure e)|]
+exprToInt (HaskellExpr (_, e)) = [|$(pure e)|]
 
 data PaddingK k i where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll Int

@@ -65,7 +65,7 @@ test-suite pyf-failure
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             SpecFail.hs
-  build-depends:       base, hspec, text, process, hspec, temporary, filepath, deepseq, HUnit
+  build-depends:       base, hspec, text, process, hspec, temporary, filepath, deepseq, HUnit, PyF
   ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N -Wunused-packages
   default-language:    Haskell2010
 
