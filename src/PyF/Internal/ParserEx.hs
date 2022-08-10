@@ -195,7 +195,7 @@ parse initLoc p str flags =
 
 #if MIN_VERSION_ghc(9, 2, 0)
 parseExpression :: RealSrcLoc -> String -> DynFlags -> ParseResult (LocatedA (HsExpr GhcPs))
-parseExpression s flags =
+parseExpression initLoc s flags =
   case parse initLoc Parser.parseExpression s flags of
     POk s e -> unP (runPV (unECP e)) s
     PFailed ps -> PFailed ps
@@ -206,5 +206,5 @@ parseExpression initLoc s flags =
     POk s e -> unP (runECP_P e) s
     PFailed ps -> PFailed ps
 #else
-parseExpression = parse Parser.parseExpression
+parseExpression initLoc = parse initLoc Parser.parseExpression
 #endif
