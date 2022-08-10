@@ -162,9 +162,8 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
       checkResult <- checkVariables items
       case checkResult of
         Nothing -> postProcess (goFormat items)
-        Just (errStart, errEnd) -> do
-          let msg = intercalate "\n" $ formatErrorMessages errStart
-          reportErrorAt (mkSrcSpan (srcLocFromParserError (errorPos errStart)) (srcLocFromParserError (errorPos errEnd))) msg
+        Just (srcSpan, msg) -> do
+          reportErrorAt srcSpan msg
           [|()|]
 
 findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
@@ -173,7 +172,7 @@ findFreeVariablesInFormatMode (Just (FormatMode padding tf _ )) = findFreeVariab
   PaddingDefault -> []
   Padding eoi _ -> findFreeVariables eoi
 
-checkOneItem :: Item -> Q (Maybe (ParseError, ParseError))
+checkOneItem :: Item -> Q (Maybe (SrcSpan, String))
 checkOneItem (Raw _) = pure Nothing
 checkOneItem (Replacement (hsExpr, _) formatMode) = do
   let allNames = findFreeVariables hsExpr <> findFreeVariablesInFormatMode formatMode
@@ -182,13 +181,7 @@ checkOneItem (Replacement (hsExpr, _) formatMode) = do
 
   case resFinal of
     [] -> pure Nothing
-    ((err, span) : _) -> pure (Just (newErrorMessage (Message err) locStart, newErrorMessage (Message err) locEnd))
-      where
-        locStart = updatePos $ srcSpanStart span
-        locEnd = updatePos $ srcSpanEnd span
-        updatePos (getRealSrcLoc -> loc) = pos
-          where
-            pos = newPos (unpackFS $ srcLocFile loc) (srcLocLine loc) (srcLocCol loc)
+    ((err, span) : _) -> pure $ Just (span, err)
 
 
 #if MIN_VERSION_ghc(9,0,0)
@@ -234,7 +227,7 @@ doesExists (loc, name) = do
     Just _ -> pure Nothing
 
 -- | Check that all variables used in 'Item' exists, otherwise, fail.
-checkVariables :: [Item] -> Q (Maybe (ParseError, ParseError))
+checkVariables :: [Item] -> Q (Maybe (SrcSpan, String))
 checkVariables [] = pure Nothing
 checkVariables (x : xs) = do
   r <- checkOneItem x
