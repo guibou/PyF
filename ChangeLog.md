@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+## 0.11.0.0 -- 2022-08-10
+
 - Support for GHC 9.4. (Written with a pre-release of GHC 9.4, hopefully it won't change too much before the release).
 - Error reporting now uses the native GHC API. In summary, it means that
  haskell-language-server will point to the correct location of the error, not
