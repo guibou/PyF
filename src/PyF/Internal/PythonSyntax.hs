@@ -247,7 +247,9 @@ data AlternateForm = AlternateForm | NormalForm
 evalExpr :: [Extension] -> Parser String -> Parser (HsExpr GhcPs, Exp)
 evalExpr exts exprParser = do
   exprPos <- getPosition
-  let initLoc = mkRealSrcLoc (mkFastString "<string>") (sourceLine exprPos) (sourceColumn exprPos)
+  -- Inject the correct source location in the GHC parser, so it already match
+  -- the input source file.
+  let initLoc = mkRealSrcLoc (mkFastString (sourceName exprPos)) (sourceLine exprPos) (sourceColumn exprPos)
   s <- lookAhead exprParser
   -- Setup the dyn flags using the provided list of extensions
   let dynFlags = baseDynFlags exts

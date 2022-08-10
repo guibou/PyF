@@ -104,7 +104,7 @@ import Text.Parsec.Error
     setErrorPos,
     showErrorMessages,
   )
-import Text.Parsec.Pos (newPos)
+import Text.Parsec.Pos (newPos, initialPos)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -144,13 +144,17 @@ wrapFromString e = do
 -- | Parse a string and return a formatter for it
 toExp :: Config -> String -> Q Exp
 toExp Config {delimiters = expressionDelimiters, postProcess} s = do
-  filename <- loc_filename <$> location
+  loc <- location
   exts <- extsEnabled
   let context = ParsingContext expressionDelimiters exts
-  case runReader (runParserT parseGenericFormatString () filename s) context of
+
+  -- Setup the parser so it matchs the real original position in the source
+  -- code.
+  let filename = loc_filename loc
+  let initPos = setSourceColumn (setSourceLine (initialPos filename) (fst $ loc_start loc)) (snd $ loc_start loc)
+  case runReader (runParserT (setPosition initPos >> parseGenericFormatString) () filename s) context of
     Left err -> do
-      err' <- overrideErrorForFile filename err
-      reportParserErrorAt err'
+      reportParserErrorAt err
       -- returns a dummy exp, so TH continues its life. This TH code won't be
       -- executed anyway, there is an error
       [|()|]
@@ -159,10 +163,8 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
       case checkResult of
         Nothing -> postProcess (goFormat items)
         Just (errStart, errEnd) -> do
-          errStart' <- overrideErrorForFile filename errStart
-          errEnd' <- overrideErrorForFile filename errEnd
-          let msg = intercalate "\n" $ formatErrorMessages errStart'
-          reportErrorAt (mkSrcSpan (srcLocFromParserError (errorPos errStart')) (srcLocFromParserError (errorPos errEnd'))) msg
+          let msg = intercalate "\n" $ formatErrorMessages errStart
+          reportErrorAt (mkSrcSpan (srcLocFromParserError (errorPos errStart)) (srcLocFromParserError (errorPos errEnd))) msg
           [|()|]
 
 findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
@@ -288,24 +290,6 @@ formatErrorMessages err
     (_sysUnExpect, msgs1) = span (SysUnExpect "" ==) (errorMessages err)
     (_unExpect, msgs2) = span (UnExpect "" ==) msgs1
     (_expect, messages) = span (Expect "" ==) msgs2
-
--- Parsec displays error relative to what they parsed
--- However the formatting string is part of a more complex file and we
--- want error reporting relative to that file
-overrideErrorForFile :: FilePath -> ParseError -> Q ParseError
--- We have no may to recover interactive content
--- So we won't do better than displaying the Parsec
--- error relative to the quasi quote content
-overrideErrorForFile "<interactive>" err = pure err
--- We know the content of the file here
-overrideErrorForFile filename err = do
-  (line, col) <- loc_start <$> location
-  let sourcePos = errorPos err
-      sourcePos'
-        | sourceLine sourcePos == 1 = incSourceColumn (incSourceLine sourcePos (line - 1)) (col - 1)
-        | otherwise = setSourceColumn (incSourceLine sourcePos (line - 1)) (sourceColumn sourcePos)
-  pure $ setErrorPos (setSourceName sourcePos' filename) err
-
 {-
 Note: Empty String Lifting
 
