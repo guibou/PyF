@@ -3,7 +3,7 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.hls.url = "github:haskell/haskell-language-server";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
@@ -80,6 +80,31 @@
           });
 
           # GHC 9.4
+          pyf_94 = pyfBuilder ((haskell.packages.ghc941.override {
+            overrides = self: super:
+              with haskell.lib; {
+                splitmix = doJailbreak super.splitmix;
+
+                # Disabling tests breaks the loop between primitive and its tests
+                # which indirectly depends on primitive.
+                primitive = haskell.lib.dontCheck
+                  (super.callHackage "primitive" "0.7.4.0" { });
+                # Tests depends on mockery which does not build with GHC 9.4
+                temporary = haskell.lib.dontCheck super.temporary;
+
+                hspec = haskell.lib.dontCheck
+                  (super.callHackage "hspec" "2.10.0" { });
+                hspec-core = haskell.lib.dontCheck
+                  (super.callHackage "hspec-core" "2.10.0" { });
+                hspec-meta = haskell.lib.dontCheck
+                  (super.callHackage "hspec-meta" "2.9.3" { });
+                base-compat = haskell.lib.dontCheck
+                  (super.callHackage "base-compat" "0.12.1" { });
+                hspec-discover = haskell.lib.dontCheck
+                  (super.callHackage "hspec-discover" "2.10.0" { });
+              };
+          }));
+
           pyf_HEAD = pyfBuilder ((haskell.packages.ghcHEAD.override {
             overrides = self: super:
               with haskell.lib; {
@@ -109,6 +134,7 @@
             pyf_86
             pyf_90
             pyf_92
+            pyf_94
             pyf_HEAD
           ];
 
