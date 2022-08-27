@@ -1,0 +1,2 @@
+(interpolation_content) @haskell
+
