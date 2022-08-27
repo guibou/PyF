@@ -1,10 +1,47 @@
-# Syntax highlighting with treesitter
+# Syntax highlighting with tree-sitter
 
-With this grammar for treesitter, you can get PyF syntax highlighting into your
-treesitter compatible editor, such as nvim or emacs.
+With this grammar for tree-sitter, you can get PyF syntax highlighting into your
+tree-sitter compatible editor, such as nvim or emacs.
 
 ![](nvim_ts_highlight.png)
 ## Installation
+
+### Neovim
+
+You can use this documentation: [NVim documentation for adding parsers](https://github.com/nvim-treesitter/nvim-treesitter#adding-parsers).
+
+I've added the following in my nvim lua configuration file:
+
+```lua
+-- Install my own parser
+local parser_config = require "nvim-treesitter.parsers".get_parser_configs()
+parser_config.pyf = {
+  install_info = {
+    url = "https://github.com/guibou/PyF",
+    files = {"src/parser.c"},
+    branch = "main",
+    location = "tree-sitter-pyf",
+    generate_requires_npm = false, -- if stand-alone parser without npm dependencies
+  },
+}
+```
+
+Then do `:TSInstallFromGrammar pyf` and you are good to go.
+
+Then, install the content of [./vim-plugin](./vim-plugin) as a vim plugin. I'm using [vim-plug](https://github.com/junegunn/vim-plug) to do it:
+
+```vim
+Plug 'guibou/PyF', { 'rtp': 'tree-sitter-pyf/vim-plugin' }
+```
+
+### Other editors
+
+Ensure tree-sitter support, and then, the `highlight.scm` and `injections.scm`
+files are in the [./vim-plugin](./vim-plugin) directory. The parser is located
+here, in [./grammar.js](./grammar.js). Please open an issue if you know / want
+more informations for specific editors.
+
+## Development
 
 ## Building the grammar
 
@@ -42,73 +79,3 @@ You can also experiment with `tree-sitter parse example-file`
   (text [0, 121] - [1, 0]))
 ```
 
-### Neovim
-
-You can use this documentation: [NVim documentation for adding parsers](https://github.com/nvim-treesitter/nvim-treesitter#adding-parsers).
-
-I've added the following in my nvim lua configuration file, where `~/PyF/tree-sitter-pyf` points to this directory.
-
-```lua
--- Install my own parser
-local parser_config = require "nvim-treesitter.parsers".get_parser_configs()
-parser_config.pyf = {
-  install_info = {
-    url = "~/PyF/tree-sitter-pyf", -- local path or git repo
-    files = {"src/parser.c"},
-    -- optional entries:
-    branch = "main", -- default branch in case of git repo if different from master
-    generate_requires_npm = false, -- if stand-alone parser without npm dependencies
-    requires_generate_from_grammar = false, -- if folder contains pre-generated src/parser.c
-  },
-}
-```
-
-Then do `:TSInstall pyf` and you are good to go.
-
-Then I've added the following files in my nvim configuration in `~/.config/nvim/after/queries/`:
-
-- `haskell/highlights.scm`:
-
-```sexp
-(quasiquote_body) @string
-```
-
-It just change the quasiquote body so it looks like string content by default.
-This is not mandatory, but that's nicer (from my point of view ;).
-
-- `haskell/injections.scm`:
-
-```sexp
-(quasiquote
-  ((quoter) @_quoter (#eq? @_quoter "fmt"))
-  (quasiquote_body) @pyf
-)
-
-(quasiquote
-  ((quoter) @_quoter (#eq? @_quoter "fmtTrim"))
-  (quasiquote_body) @pyf
-)
-```
-
-It says that `fmt` and `fmtTrim` should applieds the `pyf` parser.
-
-- `pyf/injections.scm`
-
-```sexp
-(interpolation_content) @haskell
-```
-
-Here it says that the haskell expression should be formatted as `haskell`.
-
-- `pyf/highlights.scm`
-
-```sexp
-(escape) @string.escape
-(interpolation) @punctuation.special
-
-(type) @string.escape
-(width) @number
-(precision) @number
-```
-
-And here it sets the colors for a few of the items in the format string, as well as special characters.
