@@ -1,0 +1,1 @@
+this is an example {{ with {interpolated_values} }} and {1 + 1:.3x} and also text and the final weird field {10 :: Int:d}.
