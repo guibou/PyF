@@ -373,3 +373,11 @@ The codebase is formatted with `ormolu`. Please run:
 - `nix run .\#run-ormolu`
 
 Before submitting.
+
+## Treesitter support
+
+Have a look in the [./tree-sitter-pyf/](./tree-sitter-pyf) directory for a
+parser of PyF which can be integrated in your treesitter compatible editor to
+get syntax highlighting for PyF.
+
+![](./tree-sitter-pyf/nvim_ts_highlight.png)

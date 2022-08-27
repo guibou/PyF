@@ -1,0 +1,11 @@
+{
+  "name": "tree-sitter-pyf",
+  "version": "1.0.0",
+  "description": "Parser for PyF interpolated strings",
+  "main": "bindings/node",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Guillaume Bouchard",
+  "license": "ISC"
+}

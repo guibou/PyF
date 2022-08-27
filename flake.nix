@@ -161,6 +161,8 @@
 
         defaultPackage = packages.pyf;
         devShell = packages.pyf.shell_hls;
-        devShells = builtins.mapAttrs (name: value: value.shell) packages;
+        devShells = (builtins.mapAttrs (name: value: value.shell) packages) // {
+          treesitter = pkgs.mkShell { buildInputs = [ pkgs.tree-sitter pkgs.nodejs ]; };
+        };
       });
 }
