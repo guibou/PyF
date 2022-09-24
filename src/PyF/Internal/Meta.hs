@@ -212,6 +212,13 @@ toExp _ (HsOverLabel _ lbl) = TH.LabelE (unpackFS lbl)
 -- enabled thus match on Nothing
 toExp _ (HsOverLabel _ Nothing lbl) = TH.LabelE (unpackFS lbl)
 #endif
+#if MIN_VERSION_ghc(9, 4, 0)
+toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . unLoc . dfoLabel . unLoc $ field)
+toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . dfoLabel . unLoc) fields)
+#elif MIN_VERSION_ghc(9, 2, 0)
+toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . unLoc . hflLabel . unLoc $ field)
+toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . hflLabel . unLoc) fields)
+#endif
 toExp dynFlags e = todo "toExp" (showSDoc dynFlags . ppr $ e)
 
 todo :: (HasCallStack, Show e) => String -> e -> a
