@@ -34,13 +34,14 @@ import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Proxy
 import Data.String (fromString)
-import GHC (GenLocated (L))
+import GHC (GenLocated (L), moduleNameString)
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Utils.Monad (addErrAt)
 import GHC.Tc.Types (TcM)
-import GHC.Tc.Gen.Splice (lookupThName_maybe)
+import GHC.Types.Name (occNameString)
 #else
+import OccName
 import TcRnTypes (TcM)
 import TcSplice (lookupThName_maybe)
 import TcRnMonad (addErrAt)
@@ -106,6 +107,7 @@ import Text.Parsec.Error
 import Text.Parsec.Pos (newPos, initialPos)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
+import Data.Maybe (isJust)
 
 -- | Configuration for the quasiquoter
 data Config = Config
@@ -212,12 +214,20 @@ findFreeVariables item = allNames
     allVars = concat $ gmapQ f [item]
     allNames = map (\(L l e) -> (l, e)) allVars
 
+lookupName :: RdrName -> Q Bool
+lookupName n = case n of
+  (Unqual o) -> isJust <$> lookupValueName (occNameString o)
+  (Qual m o) -> isJust <$> lookupValueName (moduleNameString m <> "." <> occNameString o)
+  -- No idea how to lookup for theses names, so consider that they exists
+  (Orig _m _o) -> pure True
+  (Exact _) -> pure True
+
 doesExists :: (b, RdrName) -> Q (Maybe (String, b))
 doesExists (loc, name) = do
-  res <- unsafeRunTcM $ lookupThName_maybe (toName name)
+  res <- lookupName name
   case res of
-    Nothing -> pure (Just ("Variable not in scope: " <> show (toName name), loc))
-    Just _ -> pure Nothing
+    False -> pure (Just ("Variable not in scope: " <> show (toName name), loc))
+    True -> pure Nothing
 
 -- | Check that all variables used in 'Item' exists, otherwise, fail.
 checkVariables :: [Item] -> Q (Maybe (SrcSpan, String))
@@ -230,6 +240,9 @@ checkVariables (x : xs) = do
 
 -- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
 -- This allows to hack inside the the GHC api and use function not exported by template haskell.
+-- This may not be always safe, see https://github.com/guibou/PyF/issues/115,
+-- hence keep that for "failing path" (i.e. error reporting), but not on
+-- codepath which are executed otherwise.
 unsafeRunTcM :: TcM a -> Q a
 unsafeRunTcM m = Q (unsafeCoerce m)
 
