@@ -135,7 +135,6 @@
             pyf_90
             pyf_92
             pyf_94
-            pyf_HEAD
           ];
 
           # That the current version for developement
