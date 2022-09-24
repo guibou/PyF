@@ -1,6 +1,7 @@
 # Revision history for PyF
 
 - Support for OverloadedRecordsDot syntax in Meta. Thank you @Profpatsch for the report.
+- In some context, the error reporting for variable not found in the quasi quote expression was incorrectly reporting existing variables as not found. See https://github.com/guibou/PyF/issues/115 for details. This is now fixed by not abusing GHC api. Thank you @michaelpj for reporting this really weird problem.
 
 ## 0.11.0.0 -- 2022-08-10
 

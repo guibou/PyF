@@ -35,6 +35,7 @@ import PyF
 import SpecCustomDelimiters
 import SpecUtils
 import Test.Hspec
+import qualified Data.Text as Text
 
 {-
    - Normal tests are done using the recommanded API: [fmt|.....|]
@@ -546,3 +547,5 @@ yeah\
       let padding = 10
       let precision = 3
       [fmt|pi = {pi:{padding}.{precision}}|] `shouldBe` "pi =      3.142"
+    it "an expression with module.variable" $ do
+      [fmt|{Text.intercalate " " ["a" :: Text.Text, "b" :: Text.Text]}|] `shouldBe` "a b"
