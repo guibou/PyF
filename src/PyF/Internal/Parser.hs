@@ -1,8 +1,14 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 -- | This module is here to parse Haskell expression using the GHC Api
 module PyF.Internal.Parser (parseExpression) where
+
+#if MIN_VERSION_ghc(9,6,0)
+import GHC.Parser.Errors.Types (PsMessage)
+#endif
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Parser.Lexer (ParseResult (..), PState (..))
@@ -68,7 +74,19 @@ parseExpression initLoc s dynFlags =
     PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) doc ->
 #endif
 
-#if MIN_VERSION_ghc(9,3,0)
+#if MIN_VERSION_ghc(9,6,0)
+            let
+                err = renderWithContext defaultSDocContext
+                    $ vcat
+                    $ map (formatBulleted defaultSDocContext)
+                    $ map (\psMessage -> diagnosticMessage (defaultDiagnosticOpts @PsMessage) psMessage)
+                    $ map errMsgDiagnostic
+                    $ sortMsgBag Nothing
+                    $ getMessages $ errorMessages
+                line = SrcLoc.srcLocLine srcLoc
+                col = SrcLoc.srcLocCol srcLoc
+            in Left (line, col, err)
+#elif MIN_VERSION_ghc(9,3,0)
             let
                 err = renderWithContext defaultSDocContext
                     $ vcat

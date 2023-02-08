@@ -8,7 +8,13 @@ module PyF.Internal.ParserEx (fakeSettings, fakeLlvmConfig, parseExpression) whe
 
 {- ORMOLU_DISABLE -}
 
-#if MIN_VERSION_ghc(9,0,0)
+#if MIN_VERSION_ghc(9,6,0)
+import GHC.Settings.Config
+import GHC.CmmToLlvm.Config (LlvmConfig(..))
+import GHC.Utils.Fingerprint
+import GHC.Platform
+import GHC.Settings
+#elif MIN_VERSION_ghc(9,0,0)
 import GHC.Settings.Config
 import GHC.Driver.Session
 import GHC.Utils.Fingerprint

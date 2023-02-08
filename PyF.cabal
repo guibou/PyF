@@ -33,9 +33,9 @@ library
                      , text >= 1.2.3 && <= 2.1
                      , time >= 1.8.0 && < 1.13
                      , parsec >= 3.1.13 && < 3.2
-                     , mtl >= 2.2.2 && < 2.3
+                     , mtl >= 2.2.2 && < 2.4
                      , ghc >= 8.6.1 && < 9.6
-                     , ghc-boot >= 8.6.1 && < 9.5
+                     --, ghc-boot >= 8.6.1 && < 9.5
   hs-source-dirs: src
   ghc-options: -Wall -Wunused-packages -Wincomplete-uni-patterns
   default-language:    Haskell2010
