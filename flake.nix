@@ -2,8 +2,7 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.hls.url = "github:haskell/haskell-language-server";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
+  inputs.nixpkgs.url = "github:sternenseemann/nixpkgs/ghc-9.6.1";
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
@@ -11,7 +10,7 @@
   nixConfig.extra-trusted-public-keys =
     [ "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM=" ];
 
-  outputs = { self, nixpkgs, flake-utils, hls }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages.${system};
       in with pkgs; rec {
@@ -45,7 +44,7 @@
             });
 
             pkg = (haskell.lib.buildFromSdist
-              (hPkgs.callCabal2nix "PyF" sources { })).overrideAttrs
+              (haskell.lib.dontCheck (hPkgs.callCabal2nix "PyF" sources { }))).overrideAttrs
               (oldAttrs: {
                 buildInputs = oldAttrs.buildInputs;
                 passthru = oldAttrs.passthru // { inherit shell shell_hls; };
@@ -63,24 +62,46 @@
             });
           });
 
-          pyf_88 = pyfBuilder (haskell.packages.ghc884.override {
+          pyf_88 = pyfBuilder (haskell.packages.ghc88.override {
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_810 = pyfBuilder (haskell.packages.ghc8107.override {
+          pyf_810 = pyfBuilder (haskell.packages.ghc810.override {
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_90 = pyfBuilder (haskell.packages.ghc902.override {
+          pyf_90 = pyfBuilder (haskell.packages.ghc90.override {
             overrides = self: super: with haskell.lib; { };
           });
 
-          pyf_92 = pyfBuilder (haskell.packages.ghc924.override {
+          pyf_92 = pyfBuilder (haskell.packages.ghc92.override {
             overrides = self: super: with haskell.lib; rec { };
           });
 
+          # The current version for debug
+          pyf_current = pyfBuilder (haskellPackages.override {
+            overrides = self: super: with haskell.lib; rec { };
+          });
+
+          pyf_96 = pyfBuilder (haskell.packages.ghc96.override {
+            overrides = self: super: with haskell.lib; rec {
+              # ghcWithPackages = p: (super.ghcWithPackages p).overrideAttrs(old: {
+              #   postBuild = if old ? postBuild then builtins.trace old.postBuild old.postBuild else "";
+              # });
+
+            # Tests depends on mockery which does not build with GHC >= 9.4
+            temporary = haskell.lib.dontCheck super.temporary;
+
+            splitmix = haskell.lib.doJailbreak super.splitmix;
+            # Disabling tests breaks the loop between primitive and its tests
+            # which indirectly depends on primitive.
+            primitive = haskell.lib.doJailbreak (haskell.lib.dontCheck
+              (super.callHackage "primitive" "0.7.4.0" { }));
+            };
+          });
+
           # GHC 9.4
-          pyf_94 = pyfBuilder ((haskell.packages.ghc941.override {
+          pyf_94 = pyfBuilder ((haskell.packages.ghc94.override {
             overrides = self: super:
               with haskell.lib; {
                 splitmix = doJailbreak super.splitmix;
@@ -133,13 +154,10 @@
             pyf_88
             pyf_86
             pyf_90
+            pyf_current
             pyf_92
             pyf_94
           ];
-
-          # That the current version for developement
-          # We use the current version of nixpkgs in order to reduce build time.
-          pyf_current = pyf_90;
 
           # Only the current build is built with python3 support
           # (i.e. extended tests)
