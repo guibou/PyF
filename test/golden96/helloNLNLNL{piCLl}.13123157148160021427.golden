@@ -1,0 +1,12 @@
+
+INITIALPATH:10:6: error:
+    • 
+unexpected "}"
+expecting "<", ">", "^" or "="
+    • In the quasi-quotation: [fmt|hello
+
+
+{pi:l}|]
+   |
+10 | {pi:l}|]
+   |      ^

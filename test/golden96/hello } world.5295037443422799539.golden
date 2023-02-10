@@ -1,0 +1,9 @@
+
+INITIALPATH:7:28: error:
+    • 
+unexpected '}'
+expecting "{{", "}}", "{" or end of input
+    • In the quasi-quotation: [fmt|hello } world|]
+  |
+7 | main = putStrLn [fmt|hello } world|]
+  |                            ^

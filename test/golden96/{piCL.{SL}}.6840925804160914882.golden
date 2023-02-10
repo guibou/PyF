@@ -1,0 +1,7 @@
+
+INITIALPATH:7:28: error:
+    • parse error on input `/' in haskell expression
+    • In the quasi-quotation: [fmt|{pi:.{/}}|]
+  |
+7 | main = putStrLn [fmt|{pi:.{/}}|]
+  |                            ^

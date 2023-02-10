@@ -1,8 +1,0 @@
-packages: PyF.cabal
--- You need your own copy of 9.6 alpha
-with-compiler: ghc-9.6
-allow-newer: *:base
-allow-newer: *:template-haskell
-allow-newer: *:Cabal
-allow-newer: *:ghc
-allow-newer: *:time

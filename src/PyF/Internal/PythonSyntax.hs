@@ -36,6 +36,8 @@ import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
 import Data.Data (Data)
+import Data.Functor (void)
+import Control.Monad (replicateM_)
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.SrcLoc

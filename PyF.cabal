@@ -9,7 +9,7 @@ author:              Guillaume Bouchard
 maintainer:          guillaum.bouchard@gmail.com
 category:            Text
 build-type:          Simple
-extra-source-files:  ChangeLog.md Readme.md test/golden/*.golden
+extra-source-files:  ChangeLog.md Readme.md test/golden/*.golden test/golden96/*.golden
 
 Flag python_test
     Description: Enable extensive python testing
@@ -27,15 +27,15 @@ library
                   PyF.Internal.ParserEx
                   PyF.Internal.Parser
 
-  build-depends:       base >= 4.12 && < 4.18
+  build-depends:       base >= 4.12 && < 4.19
                      , bytestring >= 0.10.8 && < 0.12
-                     , template-haskell >= 2.14.0 && < 2.20
+                     , template-haskell >= 2.14.0 && < 2.21
                      , text >= 1.2.3 && <= 2.1
                      , time >= 1.8.0 && < 1.13
                      , parsec >= 3.1.13 && < 3.2
                      , mtl >= 2.2.2 && < 2.4
-                     , ghc >= 8.6.1 && < 9.6
-                     --, ghc-boot >= 8.6.1 && < 9.5
+                     , ghc >= 8.6.1 && < 9.7
+                     , ghc-boot >= 8.6.1 && < 9.7
   hs-source-dirs: src
   ghc-options: -Wall -Wunused-packages -Wincomplete-uni-patterns
   default-language:    Haskell2010

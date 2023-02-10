@@ -196,7 +196,12 @@ findFreeVariables item = allNames
 #else
       Just (HsVar _ l) -> [l]
 #endif
+
+#if MIN_VERSION_ghc(9,6,0)
+      Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
+#else
       Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])) _)) -> filter keepVar subVars
+#endif
         where
           keepVar (L _ n) = n `notElem` subPats
           subVars = concat $ gmapQ f [e]
@@ -252,7 +257,10 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 reportErrorAt :: SrcSpan -> String -> Q ()
 reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
-#if MIN_VERSION_ghc(9,3,0)
+#if MIN_VERSION_ghc(9,6,0)
+    msg' = TcRnUnknownMessage (UnknownDiagnostic $ mkPlainError noHints $
+                         text msg)
+#elif MIN_VERSION_ghc(9,3,0)
     msg' = TcRnUnknownMessage (GhcPsMessage $ PsUnknownMessage $ mkPlainError noHints $
                          text msg)
 #else

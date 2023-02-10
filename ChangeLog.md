@@ -1,5 +1,7 @@
 # Revision history for PyF
 
+- Support for GHC 9.6 alpha 3. Thank you @Kleidukos for initiating the port.
+
 ## 0.11.1.0 -- 2022-09-24
 
 - Support for OverloadedRecordsDot syntax in Meta. Thank you @Profpatsch for the report.

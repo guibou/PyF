@@ -16,6 +16,10 @@ import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB, h
 import HsTypes (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB), hsib_body)
 #endif
 
+#if MIN_VERSION_ghc(9,6,0)
+import Language.Haskell.Syntax.Basic (field_label)
+#endif
+
 #if MIN_VERSION_ghc(8,10,0)
 import GHC.Hs.Expr as Expr
 import GHC.Hs.Extension as Ext
@@ -117,12 +121,7 @@ toPat :: DynFlags -> Pat.Pat GhcPs -> TH.Pat
 toPat _dynFlags (Pat.VarPat _ (unLoc -> name)) = TH.VarP (toName name)
 toPat dynFlags p = todo "Advanced pattern match are not supported in PyF. See https://github.com/guibou/PyF/issues/107 if that's a problem for you." (showSDoc dynFlags . ppr $ p)
 
-fromSourceText :: SourceText -> String
-fromSourceText (SourceText s) = s
-fromSourceText NoSourceText = ""
-
 {- ORMOLU_DISABLE -}
-
 toExp :: DynFlags -> Expr.HsExpr GhcPs -> TH.Exp
 toExp _ (Expr.HsVar _ n) =
   let n' = unLoc n
@@ -141,7 +140,8 @@ toExp _ (Expr.HsLit _ l) = TH.LitE (toLit l)
 toExp _ (Expr.HsOverLit _ OverLit {ol_val}) = TH.LitE (toLit' ol_val)
 toExp d (Expr.HsApp _ e1 e2) = TH.AppE (toExp d . unLoc $ e1) (toExp d . unLoc $ e2)
 #if MIN_VERSION_ghc(9,6,0)
-toExp d (Expr.HsAppType _ e HsWC{hswc_body} _) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
+toExp d (Expr.HsAppType _ e _ HsWC{hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
+toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=unLoc -> HsSig{sig_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ sig_body)
 #elif MIN_VERSION_ghc(9,2,0)
 toExp d (Expr.HsAppType _ e HsWC {hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
 toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=unLoc -> HsSig{sig_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ sig_body)
@@ -219,6 +219,10 @@ toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
 #if MIN_VERSION_ghc(9,6,0)
 toExp _ (HsOverLabel _ lbl _) = TH.LabelE (fromSourceText lbl)
+   where
+     fromSourceText :: SourceText -> String
+     fromSourceText (SourceText s) = s
+     fromSourceText NoSourceText = ""
 #elif MIN_VERSION_ghc(9, 2, 0)
 toExp _ (HsOverLabel _ lbl) = TH.LabelE (unpackFS lbl)
 #else
@@ -227,8 +231,7 @@ toExp _ (HsOverLabel _ lbl) = TH.LabelE (unpackFS lbl)
 toExp _ (HsOverLabel _ Nothing lbl) = TH.LabelE (unpackFS lbl)
 #endif
 #if MIN_VERSION_ghc(9,6,0)
--- TODO: FINISH ME!
-toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . unLoc . dfoLabel . unLoc $ field)
+toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . field_label . unLoc . dfoLabel . unLoc $ field)
 #elif MIN_VERSION_ghc(9, 4, 0)
 toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . unLoc . dfoLabel . unLoc $ field)
 toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . dfoLabel . unLoc) fields)
@@ -247,7 +250,13 @@ noTH fun thing = error . concat $ [moduleName, ".", fun, ": no TemplateHaskell f
 moduleName :: String
 moduleName = "PyF.Internal.Meta"
 
+#if MIN_VERSION_ghc(9,6,0)
+dynFlags = defaultDynFlags fakeSettings
+#else
+dynFlags = defaultDynFlags fakeSettings fakeLlvmConfig
+#endif
+
 baseDynFlags :: [GhcTH.Extension] -> DynFlags
 baseDynFlags exts =
   let enable = GhcTH.TemplateHaskellQuotes : exts
-   in foldl xopt_set (defaultDynFlags fakeSettings fakeLlvmConfig) enable
+   in foldl xopt_set dynFlags enable
