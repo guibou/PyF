@@ -81,6 +81,7 @@ instance (a ~ a') => IsLabel a (V a') where
 showV :: KnownSymbol a => V a -> String
 showV = show
 
+globalName :: String
 globalName = "Valérian"
 
 spec :: Spec

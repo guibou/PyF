@@ -36,8 +36,12 @@ import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
 import Data.Data (Data)
+
+#if MIN_VERSION_ghc(9,6,0)
+-- For some reasons, theses function are not exported anymore by some others
 import Data.Functor (void)
 import Control.Monad (replicateM_)
+#endif
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.SrcLoc
@@ -152,7 +156,7 @@ parseExpressionString = do
   -- Special case for "::", we want to parse it as part of an expression,
   -- unless it may be the end of the format field (':'), followed by a padding
   -- char (':') followed by a padding specifier.
-  res <- some ((try (string "::" <* notFollowedBy (oneOf "<>=^"))) <|> (pure <$> noneOf (charClosing : ":" :: String)))
+  res <- some (try (string "::" <* notFollowedBy (oneOf "<>=^")) <|> (pure <$> noneOf (charClosing : ":" :: String)))
   pure $ concat res
 
 replacementField :: Parser Item

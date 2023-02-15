@@ -37,6 +37,10 @@ import qualified Language.Haskell.TH.Syntax as GhcTH
 import qualified Language.Haskell.TH.Syntax as TH
 import PyF.Internal.ParserEx (fakeLlvmConfig, fakeSettings)
 
+#if MIN_VERSION_ghc(9,6,0)
+import GHC.Types.SourceText (il_value, rationalFromFractionalLit,SourceText(..))
+#endif
+
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.SrcLoc
 import GHC.Types.Name
@@ -45,7 +49,7 @@ import GHC.Data.FastString
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Utils.Outputable (ppr)
 import GHC.Types.Basic (Boxity(..))
-import GHC.Types.SourceText (il_value, rationalFromFractionalLit,SourceText(..))
+import GHC.Types.SourceText (il_value, rationalFromFractionalLit, FractionalLit)
 import GHC.Driver.Ppr (showSDoc)
 #else
 import GHC.Utils.Outputable (ppr, showSDoc)
@@ -68,6 +72,7 @@ import GHC.Stack
 
 #if MIN_VERSION_ghc(9,2,0)
 -- TODO: why this disapears in GHC >= 9.2?
+fl_value :: FractionalLit -> Rational
 fl_value = rationalFromFractionalLit
 #endif
 
@@ -250,13 +255,13 @@ noTH fun thing = error . concat $ [moduleName, ".", fun, ": no TemplateHaskell f
 moduleName :: String
 moduleName = "PyF.Internal.Meta"
 
+baseDynFlags :: [GhcTH.Extension] -> DynFlags
+baseDynFlags exts = foldl xopt_set dynFlags enable
+  where
+    enable = GhcTH.TemplateHaskellQuotes : exts
 #if MIN_VERSION_ghc(9,6,0)
-dynFlags = defaultDynFlags fakeSettings
+    dynFlags = defaultDynFlags fakeSettings
 #else
-dynFlags = defaultDynFlags fakeSettings fakeLlvmConfig
+    dynFlags = defaultDynFlags fakeSettings fakeLlvmConfig
 #endif
 
-baseDynFlags :: [GhcTH.Extension] -> DynFlags
-baseDynFlags exts =
-  let enable = GhcTH.TemplateHaskellQuotes : exts
-   in foldl xopt_set dynFlags enable
