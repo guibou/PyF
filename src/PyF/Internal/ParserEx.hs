@@ -212,5 +212,6 @@ parseExpression initLoc s flags =
     POk s e -> unP (runECP_P e) s
     PFailed ps -> PFailed ps
 #else
+parseExpression :: RealSrcLoc -> String -> DynFlags -> ParseResult (LHsExpr GhcPs)
 parseExpression initLoc = parse initLoc Parser.parseExpression
 #endif

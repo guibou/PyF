@@ -35,7 +35,6 @@ import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Proxy
 import Data.String (fromString)
 
-import GHC (moduleNameString)
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Utils.Monad (addErrAt)
@@ -44,16 +43,24 @@ import GHC.Types.Name (occNameString)
 #else
 import OccName
 import TcRnTypes (TcM)
-import TcSplice (lookupThName_maybe)
 import TcRnMonad (addErrAt)
+#endif
+
+#if MIN_VERSION_ghc(9,6,0)
+#else
+import GHC (moduleNameString)
 #endif
 
 #if MIN_VERSION_ghc(9,3,0)
 import GHC.Tc.Errors.Types
 import GHC.Types.Error
+import GHC.Utils.Outputable (text)
+
+#if MIN_VERSION_ghc(9,6,0)
+#else
 import GHC.Driver.Errors.Types
 import GHC.Parser.Errors.Types
-import GHC.Utils.Outputable (text)
+#endif
 #endif
 
 
@@ -61,7 +68,6 @@ import GHC.Utils.Outputable (text)
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.Name.Reader
 #else
-import FastString
 import RdrName
 #endif
 
@@ -73,7 +79,6 @@ import GHC.Hs.Pat as Pat
 import HsExpr as Expr
 import HsExtension as Ext
 import HsPat as Pat
-import HsLit
 #endif
 
 #if MIN_VERSION_ghc(9,0,0)
@@ -82,10 +87,8 @@ import GHC.Types.SrcLoc
 import SrcLoc
 #endif
 
-#if MIN_VERSION_ghc(8,10,0)
+#if MIN_VERSION_ghc(9,2,0)
 import GHC.Hs
-#else
-import HsSyn
 #endif
 
 import GHC.TypeLits
