@@ -1,0 +1,9 @@
+
+INITIALPATH:7:22: error: [GHC-39999]
+    • No instance for ‘PyF.Internal.QQ.FormatAny2 (PyFClassify Bool) Bool PyF.Formatters.AlignAll’ arising from a use of ‘PyF.Internal.QQ.formatAny’
+    • In the first argument of ‘putStrLn’, namely ‘(PyF.Internal.QQ.formatAny PyF.Formatters.Minus PyF.Internal.QQ.PaddingDefaultK Nothing (Nothing :: Maybe Int) True)’
+      In the expression: putStrLn (PyF.Internal.QQ.formatAny PyF.Formatters.Minus PyF.Internal.QQ.PaddingDefaultK Nothing (Nothing :: Maybe Int) True)
+      In an equation for ‘main’: main = putStrLn (PyF.Internal.QQ.formatAny PyF.Formatters.Minus PyF.Internal.QQ.PaddingDefaultK Nothing (Nothing :: Maybe Int) True)
+  |
+7 | main = putStrLn [fmt|{True}|]
+  |                      ^^^^^^^^

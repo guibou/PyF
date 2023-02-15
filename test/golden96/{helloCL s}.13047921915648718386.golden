@@ -1,0 +1,7 @@
+
+INITIALPATH:7:30: error:
+    • Type incompatible with sign field ( ), use any of {'b', 'd', 'e', 'E', 'f', 'F', 'g', 'G', 'n', 'o', 'x', 'X', '%'} or remove the sign field.
+    • In the quasi-quotation: [fmt|{hello: s}|]
+  |
+7 | main = putStrLn [fmt|{hello: s}|]
+  |                              ^

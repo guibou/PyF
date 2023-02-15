@@ -16,6 +16,10 @@ import GHC.Hs.Types (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB, h
 import HsTypes (HsWildCardBndrs (..), HsType (..), HsImplicitBndrs (HsIB), hsib_body)
 #endif
 
+#if MIN_VERSION_ghc(9,6,0)
+import Language.Haskell.Syntax.Basic (field_label)
+#endif
+
 #if MIN_VERSION_ghc(8,10,0)
 import GHC.Hs.Expr as Expr
 import GHC.Hs.Extension as Ext
@@ -41,7 +45,7 @@ import GHC.Data.FastString
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Utils.Outputable (ppr)
 import GHC.Types.Basic (Boxity(..))
-import GHC.Types.SourceText (il_value, rationalFromFractionalLit)
+import GHC.Types.SourceText (il_value, rationalFromFractionalLit,SourceText(..))
 import GHC.Driver.Ppr (showSDoc)
 #else
 import GHC.Utils.Outputable (ppr, showSDoc)
@@ -118,14 +122,15 @@ toPat _dynFlags (Pat.VarPat _ (unLoc -> name)) = TH.VarP (toName name)
 toPat dynFlags p = todo "Advanced pattern match are not supported in PyF. See https://github.com/guibou/PyF/issues/107 if that's a problem for you." (showSDoc dynFlags . ppr $ p)
 
 {- ORMOLU_DISABLE -}
-
 toExp :: DynFlags -> Expr.HsExpr GhcPs -> TH.Exp
 toExp _ (Expr.HsVar _ n) =
   let n' = unLoc n
    in if isRdrDataCon n'
         then TH.ConE (toName n')
         else TH.VarE (toName n')
-#if MIN_VERSION_ghc(9,0,0)
+#if MIN_VERSION_ghc(9,6,0)
+toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString . rdrNameOcc $ n)
+#elif MIN_VERSION_ghc(9,0,0)
 toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString $ n)
 #else
 toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString . Expr.unboundVarOcc $ n)
@@ -134,7 +139,10 @@ toExp _ Expr.HsIPVar {} = noTH "toExp" "HsIPVar"
 toExp _ (Expr.HsLit _ l) = TH.LitE (toLit l)
 toExp _ (Expr.HsOverLit _ OverLit {ol_val}) = TH.LitE (toLit' ol_val)
 toExp d (Expr.HsApp _ e1 e2) = TH.AppE (toExp d . unLoc $ e1) (toExp d . unLoc $ e2)
-#if MIN_VERSION_ghc(9,2,0)
+#if MIN_VERSION_ghc(9,6,0)
+toExp d (Expr.HsAppType _ e _ HsWC{hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
+toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=unLoc -> HsSig{sig_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ sig_body)
+#elif MIN_VERSION_ghc(9,2,0)
 toExp d (Expr.HsAppType _ e HsWC {hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
 toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=unLoc -> HsSig{sig_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ sig_body)
 #elif MIN_VERSION_ghc(8,8,0)
@@ -147,7 +155,11 @@ toExp d (Expr.ExprWithTySig HsWC{hswc_body=HsIB{hsib_body}} e) = TH.SigE (toExp 
 toExp d (Expr.OpApp _ e1 o e2) = TH.UInfixE (toExp d . unLoc $ e1) (toExp d . unLoc $ o) (toExp d . unLoc $ e2)
 toExp d (Expr.NegApp _ e _) = TH.AppE (TH.VarE 'negate) (toExp d . unLoc $ e)
 -- NOTE: for lambda, there is only one match
+#if MIN_VERSION_ghc(9,6,0)
+toExp d (Expr.HsLam _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
+#else
 toExp d (Expr.HsLam _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])) _)) = TH.LamE (fmap (toPat d) ps) (toExp d e)
+#endif
 -- toExp (Expr.Let _ bs e)                       = TH.LetE (toDecs bs) (toExp e)
 -- toExp (Expr.If _ a b c)                       = TH.CondE (toExp a) (toExp b) (toExp c)
 -- toExp (Expr.MultiIf _ ifs)                    = TH.MultiIfE (map toGuard ifs)
@@ -205,14 +217,22 @@ toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromTo a b) -> TH.FromToR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
-#if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9,6,0)
+toExp _ (HsOverLabel _ lbl _) = TH.LabelE (fromSourceText lbl)
+   where
+     fromSourceText :: SourceText -> String
+     fromSourceText (SourceText s) = s
+     fromSourceText NoSourceText = ""
+#elif MIN_VERSION_ghc(9, 2, 0)
 toExp _ (HsOverLabel _ lbl) = TH.LabelE (unpackFS lbl)
 #else
 -- It's not quite clear what to do in case when overloaded syntax is
 -- enabled thus match on Nothing
 toExp _ (HsOverLabel _ Nothing lbl) = TH.LabelE (unpackFS lbl)
 #endif
-#if MIN_VERSION_ghc(9, 4, 0)
+#if MIN_VERSION_ghc(9,6,0)
+toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . field_label . unLoc . dfoLabel . unLoc $ field)
+#elif MIN_VERSION_ghc(9, 4, 0)
 toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . unLoc . dfoLabel . unLoc $ field)
 toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . dfoLabel . unLoc) fields)
 #elif MIN_VERSION_ghc(9, 2, 0)
@@ -230,7 +250,13 @@ noTH fun thing = error . concat $ [moduleName, ".", fun, ": no TemplateHaskell f
 moduleName :: String
 moduleName = "PyF.Internal.Meta"
 
+#if MIN_VERSION_ghc(9,6,0)
+dynFlags = defaultDynFlags fakeSettings
+#else
+dynFlags = defaultDynFlags fakeSettings fakeLlvmConfig
+#endif
+
 baseDynFlags :: [GhcTH.Extension] -> DynFlags
 baseDynFlags exts =
   let enable = GhcTH.TemplateHaskellQuotes : exts
-   in foldl xopt_set (defaultDynFlags fakeSettings fakeLlvmConfig) enable
+   in foldl xopt_set dynFlags enable

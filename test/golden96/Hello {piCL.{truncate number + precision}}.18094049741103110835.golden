@@ -1,0 +1,7 @@
+
+INITIALPATH:7:52: error:
+    • Variable not in scope: precision
+    • In the quasi-quotation: [fmt|Hello {pi:.{truncate number + precision}}|]
+  |
+7 | main = putStrLn [fmt|Hello {pi:.{truncate number + precision}}|]
+  |                                                    ^^^^^^^^^

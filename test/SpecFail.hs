@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -29,8 +30,7 @@ data CompilationStatus
 
 
 makeTemplate :: String -> String
-makeTemplate s = [fmt|\
-{{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}}
+makeTemplate s = [fmt|{{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}}
 import PyF
 truncate' = truncate @Float @Int
 hello = "hello"
@@ -94,7 +94,12 @@ sanitize path =
 
 golden :: HasCallStack => String -> String -> IO ()
 golden name output = do
-  let goldenFile = "test/golden" </> (name <> ".golden")
+  let
+#if __GLASGOW_HASKELL__ >= 906
+      goldenFile = "test/golden96" </> (name <> ".golden")
+#else
+      goldenFile = "test/golden" </> (name <> ".golden")
+#endif
       actualFile = "test/golden" </> (name <> ".actual")
   -- It can fail if the golden file does not exists
   goldenContentE :: Either SomeException String <- try $ readFile goldenFile
