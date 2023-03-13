@@ -35,7 +35,16 @@ import HsLit
 import qualified Data.ByteString as B
 import qualified Language.Haskell.TH.Syntax as GhcTH
 import qualified Language.Haskell.TH.Syntax as TH
+
+#if MIN_VERSION_ghc(9,6,0)
+import PyF.Internal.ParserEx (fakeSettings)
+#else
 import PyF.Internal.ParserEx (fakeLlvmConfig, fakeSettings)
+#endif
+
+#if MIN_VERSION_ghc(9,6,0)
+import GHC.Types.SourceText (il_value, rationalFromFractionalLit,SourceText(..))
+#endif
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.SrcLoc
@@ -45,7 +54,11 @@ import GHC.Data.FastString
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Utils.Outputable (ppr)
 import GHC.Types.Basic (Boxity(..))
-import GHC.Types.SourceText (il_value, rationalFromFractionalLit,SourceText(..))
+#if MIN_VERSION_ghc(9,6,0)
+import GHC.Types.SourceText (FractionalLit)
+#else
+import GHC.Types.SourceText (il_value, rationalFromFractionalLit, FractionalLit)
+#endif
 import GHC.Driver.Ppr (showSDoc)
 #else
 import GHC.Utils.Outputable (ppr, showSDoc)
@@ -68,6 +81,7 @@ import GHC.Stack
 
 #if MIN_VERSION_ghc(9,2,0)
 -- TODO: why this disapears in GHC >= 9.2?
+fl_value :: FractionalLit -> Rational
 fl_value = rationalFromFractionalLit
 #endif
 
@@ -185,7 +199,7 @@ toExp d (Expr.ExplicitTuple _ (map unLoc -> args) boxity) = ctor tupArgs
 #else
     tupArgs = case traverse toTupArg args of
       Nothing -> error "Tuple section are not supported by template haskell < 8.10"
-      Just args -> fmap (toExp d) args
+      Just args' -> fmap (toExp d) args'
 #endif
 
 {- ORMOLU_ENABLE -}
@@ -242,21 +256,21 @@ toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . hflLa
 toExp dynFlags e = todo "toExp" (showSDoc dynFlags . ppr $ e)
 
 todo :: (HasCallStack, Show e) => String -> e -> a
-todo fun thing = error . concat $ [moduleName, ".", fun, ": not implemented: ", show thing]
+todo fun thing = error . concat $ [moduleName, ".", fun, ": not implemented: ", show thing, "Please open an issue at https://github.com/guibou/PyF/issues"]
 
 noTH :: (HasCallStack, Show e) => String -> e -> a
-noTH fun thing = error . concat $ [moduleName, ".", fun, ": no TemplateHaskell for: ", show thing]
+noTH fun thing = error . concat $ [moduleName, ".", fun, ": no TemplateHaskell for: ", show thing, "Please open an issue at https://github.com/guibou/PyF/issues"]
 
 moduleName :: String
 moduleName = "PyF.Internal.Meta"
 
+baseDynFlags :: [GhcTH.Extension] -> DynFlags
+baseDynFlags exts = foldl xopt_set dynFlags enable
+  where
+    enable = GhcTH.TemplateHaskellQuotes : exts
 #if MIN_VERSION_ghc(9,6,0)
-dynFlags = defaultDynFlags fakeSettings
+    dynFlags = defaultDynFlags fakeSettings
 #else
-dynFlags = defaultDynFlags fakeSettings fakeLlvmConfig
+    dynFlags = defaultDynFlags fakeSettings fakeLlvmConfig
 #endif
 
-baseDynFlags :: [GhcTH.Extension] -> DynFlags
-baseDynFlags exts =
-  let enable = GhcTH.TemplateHaskellQuotes : exts
-   in foldl xopt_set dynFlags enable

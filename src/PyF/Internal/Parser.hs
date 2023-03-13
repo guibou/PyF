@@ -24,14 +24,13 @@ import GHC.Utils.Outputable
 import GHC.Utils.Error
 #endif
 
-#if MIN_VERSION_ghc(9,2,0)
+#if MIN_VERSION_ghc(9,4,0)
+#elif MIN_VERSION_ghc(9,2,0)
 import qualified GHC.Parser.Errors.Ppr as ParserErrorPpr
 #endif
 
 #if MIN_VERSION_ghc(9,0,0)
 import qualified GHC.Types.SrcLoc as SrcLoc
-#else
-import qualified SrcLoc
 #endif
 
 #if MIN_VERSION_ghc(9,0,0)
@@ -70,7 +69,6 @@ parseExpression initLoc s dynFlags =
 #elif MIN_VERSION_ghc(8,10,0)
     PFailed PState{loc=srcLoc, messages=msgs} ->
 #else
-    -- TODO: check for pattern failure
     PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) doc ->
 #endif
 
@@ -83,9 +81,9 @@ parseExpression initLoc s dynFlags =
                     $ map errMsgDiagnostic
                     $ sortMsgBag Nothing
                     $ getMessages $ errorMessages
-                line = SrcLoc.srcLocLine srcLoc
+                line' = SrcLoc.srcLocLine srcLoc
                 col = SrcLoc.srcLocCol srcLoc
-            in Left (line, col, err)
+            in Left (line', col, err)
 #elif MIN_VERSION_ghc(9,3,0)
             let
                 err = renderWithContext defaultSDocContext
@@ -118,4 +116,10 @@ parseExpression initLoc s dynFlags =
                 line = SrcLoc.srcLocLine srcLoc
                 col = SrcLoc.srcLocCol srcLoc
             in Left (line, col, err)
+#endif
+
+#if MIN_VERSION_ghc(8,10,0)
+#elif MIN_VERSION_ghc(8,6,0)
+    -- Only here to satisfy GHC checker which was not able to consider this as total with GHC <8.10
+    PFailed _ _ _ -> error "The impossible happen: this case is not possible"
 #endif

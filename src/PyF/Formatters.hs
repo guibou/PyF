@@ -173,9 +173,9 @@ reprFractional :: (RealFloat f) => Format t t' 'Fractional -> Maybe Int -> f -> 
 reprFractional fmt precision f
   | isInfinite f = Infinite sign (upperIt "inf")
   | isNaN f = NaN (upperIt "nan")
-  | isNegativeZero f =
-    let (FractionalRepr Positive aa bb cc) = reprFractional fmt precision (abs f)
-     in FractionalRepr Negative aa bb cc
+  | isNegativeZero f = case reprFractional fmt precision (abs f) of
+       FractionalRepr Positive aa bb cc -> FractionalRepr Negative aa bb cc
+       other -> error $ "reprFractional (isNegativeZero f): The impossible happened : " ++ show other ++ ". Please open an issue at https://github.com/guibou/PyF/issues/"
   | otherwise = FractionalRepr sign decimalPart fractionalPart suffixPart
   where
     upperIt s = case fmt of
@@ -188,7 +188,9 @@ reprFractional fmt precision f
       Fixed -> splitFractional (Numeric.showFFloatAlt precision iAbs "")
       Exponent -> overrideExponent precision $ splitFractionalExp (Numeric.showEFloat precision iAbs "")
       Generic -> splitFractionalExp (Numeric.showGFloatAlt precision iAbs "")
-      Percent -> let (a, b, "") = splitFractional (Numeric.showFFloatAlt precision (iAbs * 100) "") in (a, b, "%")
+      Percent -> case splitFractional (Numeric.showFFloatAlt precision (iAbs * 100) "") of
+                  (a, b, "") -> (a, b, "%")
+                  other -> error $ "reprFractional (format): The impossible happened : " ++ show other ++ ". Please open an issue at https://github.com/guibou/PyF/issues/"
       Alternate fmt' -> format fmt'
       Upper fmt' ->
         let (a, b, c) = format fmt'
