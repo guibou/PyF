@@ -1,6 +1,8 @@
 # Revision history for PyF
 
-- Support for GHC 9.6 alpha 3. Thank you @Kleidukos for initiating the port.
+## 0.11.1.1 -- 2023-03-15
+
+- Support for GHC 9.6. Thank you @Kleidukos for initiating the port.
 
 ## 0.11.1.0 -- 2022-09-24
 
