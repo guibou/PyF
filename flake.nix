@@ -2,7 +2,7 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs";
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
