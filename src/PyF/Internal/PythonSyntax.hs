@@ -25,7 +25,8 @@ module PyF.Internal.PythonSyntax
 where
 
 import Control.Applicative (some)
-import Control.Monad.Reader
+import Control.Monad (replicateM_, void)
+import Control.Monad.Reader (Reader, asks)
 import qualified Data.Char
 import Data.Maybe (fromMaybe)
 import GHC (GhcPs, HsExpr)
