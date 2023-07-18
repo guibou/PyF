@@ -258,7 +258,9 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 reportErrorAt :: SrcSpan -> String -> Q ()
 reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9,7,0)
+    msg' = TcRnUnknownMessage (UnknownDiagnostic (const NoDiagnosticOpts) (mkPlainError noHints (text msg)))
+#elif MIN_VERSION_ghc(9,6,0)
     msg' = TcRnUnknownMessage (UnknownDiagnostic $ mkPlainError noHints $
                          text msg)
 #elif MIN_VERSION_ghc(9,3,0)
