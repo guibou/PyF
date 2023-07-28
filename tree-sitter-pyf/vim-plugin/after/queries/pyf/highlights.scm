@@ -1,3 +1,4 @@
+(text) @string
 (escape) @string.escape
 (interpolation) @punctuation.special
 
