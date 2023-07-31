@@ -99,6 +99,14 @@ toLit (HsInteger _ i _) = TH.IntegerL i
 toLit (HsRat _ f _) = TH.FloatPrimL (fl_value f)
 toLit (HsFloatPrim _ f) = TH.FloatPrimL (fl_value f)
 toLit (HsDoublePrim _ f) = TH.DoublePrimL (fl_value f)
+#if MIN_VERSION_ghc(9,7,0)
+toLit (HsInt8Prim _ i) = TH.IntPrimL i
+toLit (HsInt16Prim _ i) = TH.IntPrimL i
+toLit (HsInt32Prim _ i) = TH.IntPrimL i
+toLit (HsWord8Prim _ i) = TH.WordPrimL i
+toLit (HsWord16Prim _ i) = TH.WordPrimL i
+toLit (HsWord32Prim _ i) = TH.WordPrimL i
+#endif
 
 #if !MIN_VERSION_ghc(9,0,0)
 toLit (XLit _) = noTH "toLit" "XLit"
@@ -231,7 +239,13 @@ toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromTo a b) -> TH.FromToR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9,7,0)
+toExp _ (HsOverLabel _ lbl _) = TH.LabelE (fromSourceText lbl)
+   where
+     fromSourceText :: SourceText -> String
+     fromSourceText (SourceText s) = unpackFS s
+     fromSourceText NoSourceText = ""
+#elif MIN_VERSION_ghc(9,6,0)
 toExp _ (HsOverLabel _ lbl _) = TH.LabelE (fromSourceText lbl)
    where
      fromSourceText :: SourceText -> String

@@ -72,7 +72,19 @@ parseExpression initLoc s dynFlags =
     PFailed _ (SrcLoc.srcSpanEnd -> SrcLoc.RealSrcLoc srcLoc) doc ->
 #endif
 
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9,7,0)
+            let
+                err = renderWithContext defaultSDocContext
+                    $ vcat
+                    $ map formatBulleted
+                    $ map (\psMessage -> diagnosticMessage (defaultDiagnosticOpts @PsMessage) psMessage)
+                    $ map errMsgDiagnostic
+                    $ sortMsgBag Nothing
+                    $ getMessages $ errorMessages
+                line' = SrcLoc.srcLocLine srcLoc
+                col = SrcLoc.srcLocCol srcLoc
+            in Left (line', col, err)
+#elif MIN_VERSION_ghc(9,6,0)
             let
                 err = renderWithContext defaultSDocContext
                     $ vcat

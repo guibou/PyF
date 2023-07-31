@@ -34,7 +34,7 @@ library
                      , time >= 1.8.0 && < 1.13
                      , parsec >= 3.1.13 && < 3.2
                      , mtl >= 2.2.2 && < 2.4
-                     , ghc >= 8.6.1 && < 9.7
+                     , ghc >= 8.6.1
   if impl(ghc < 9.2.1)
     build-depends:
                        ghc-boot >= 8.6.1 && < 9.7

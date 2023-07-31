@@ -38,7 +38,9 @@ import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
 import Data.Data (Data)
 
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9,7,0)
+
+#elif MIN_VERSION_ghc(9,6,0)
 -- For some reasons, theses function are not exported anymore by some others
 import Data.Functor (void)
 import Control.Monad (replicateM_)
