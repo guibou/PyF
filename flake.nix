@@ -85,48 +85,17 @@
             overrides = self: super: with haskell.lib; rec { };
           });
 
-          pyf_96 = pyfBuilder (haskell.packages.ghc96.override {
-            overrides = self: super: with haskell.lib; rec {
-              # ghcWithPackages = p: (super.ghcWithPackages p).overrideAttrs(old: {
-              #   postBuild = if old ? postBuild then builtins.trace old.postBuild old.postBuild else "";
-              # });
-
-            # Tests depends on mockery which does not build with GHC >= 9.4
-            temporary = haskell.lib.dontCheck super.temporary;
-
-            splitmix = haskell.lib.doJailbreak super.splitmix;
-            # Disabling tests breaks the loop between primitive and its tests
-            # which indirectly depends on primitive.
-            primitive = haskell.lib.doJailbreak (haskell.lib.dontCheck
-              (super.callHackage "primitive" "0.7.4.0" { }));
-            };
-          });
-
           # GHC 9.4
           pyf_94 = pyfBuilder ((haskell.packages.ghc94.override {
             overrides = self: super:
               with haskell.lib; {
-                splitmix = doJailbreak super.splitmix;
-
-                # Disabling tests breaks the loop between primitive and its tests
-                # which indirectly depends on primitive.
-                primitive = haskell.lib.dontCheck
-                  (super.callHackage "primitive" "0.7.4.0" { });
-                # Tests depends on mockery which does not build with GHC 9.4
-                temporary = haskell.lib.dontCheck super.temporary;
-
-                hspec = haskell.lib.dontCheck
-                  (super.callHackage "hspec" "2.10.0" { });
-                hspec-core = haskell.lib.dontCheck
-                  (super.callHackage "hspec-core" "2.10.0" { });
-                hspec-meta = haskell.lib.dontCheck
-                  (super.callHackage "hspec-meta" "2.9.3" { });
-                base-compat = haskell.lib.dontCheck
-                  (super.callHackage "base-compat" "0.12.1" { });
-                hspec-discover = haskell.lib.dontCheck
-                  (super.callHackage "hspec-discover" "2.10.0" { });
               };
           }));
+
+          pyf_96 = pyfBuilder (haskell.packages.ghc96.override {
+            overrides = self: super: with haskell.lib; rec {
+            };
+          });
 
           pyf_98 = pyfBuilder ((haskell.packages.ghcHEAD.override {
             overrides = self: super:
