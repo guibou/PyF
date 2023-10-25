@@ -2,7 +2,7 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs";
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
@@ -82,7 +82,10 @@
 
           # The current version for debug
           pyf_current = pyfBuilder (haskellPackages.override {
-            overrides = self: super: with haskell.lib; rec { };
+            overrides = self: super: with haskell.lib; rec {
+              hls-floskell-plugin = doJailbreak super.hls-floskell-plugin;
+              hls-formolu-plugin = doJailbreak super.hls-formolu-plugin;
+            };
           });
 
           # GHC 9.4
@@ -97,17 +100,20 @@
             };
           });
 
-          pyf_98 = pyfBuilder ((haskell.packages.ghcHEAD.override {
+          pyf_98 = pyfBuilder ((haskell.packages.ghc98.override {
             overrides = self: super:
               with haskell.lib; {
                 # Bump hspec (and dependencies)
-                hspec-core = super.callHackage "hspec-core" "2.11.4" {};
-                hspec-meta = super.callHackage "hspec-meta" "2.11.4" {};
-                hspec = super.callHackage "hspec" "2.11.4" {};
-                hspec-discover = super.callHackage "hspec-discover" "2.11.4" {};
+                hspec-core = super.callHackage "hspec-core" "2.11.6" {};
+                hspec-meta = super.callHackage "hspec-meta" "2.11.6" {};
+                hspec = super.callHackage "hspec" "2.11.6" {};
+                hspec-discover = super.callHackage "hspec-discover" "2.11.6" {};
                 hspec-expectations = super.callHackage "hspec-expectations" "0.8.4" {};
+                tagged = doJailbreak super.tagged;
+
                 # Disabling tests breaks the loop with hspec
                 base-orphans = dontCheck super.base-orphans;
+                splitmix = doJailbreak super.splitmix;
 
               };
           }));
@@ -120,7 +126,10 @@
             pyf_92
             pyf_94
             pyf_96
-            pyf_98
+
+            # Nix build of the different component for testing in 98 are not working
+            # But building with cabal works
+            # pyf_98
           ];
 
           # Only the current build is built with python3 support
