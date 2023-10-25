@@ -1,5 +1,9 @@
 # Revision history for PyF
 
+## 0.11.2.1
+
+- Final version for GHC 9.8
+
 ## 0.11.2.0
 
 - Fix for the neovim treesitter syntax highlighter for `fmt` and `fmtTrim` quasiquotes
