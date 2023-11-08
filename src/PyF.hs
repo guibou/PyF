@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
 
--- | A lot of quasiquoters to format and interpolate string expression
+-- | A lot of quasiquoters to format and interpolate string expressions.
 module PyF
   ( fmt,
     fmtTrim,
@@ -40,27 +40,27 @@ fmt = mkFormatter "fmt" fmtConfig
 fmtTrim :: QuasiQuoter
 fmtTrim = mkFormatter "fmtTrim" (addTrim fmtConfig)
 
--- | multiline string, no interpolation.
+-- | Multiline string, no interpolation.
 str :: QuasiQuoter
 str = mkFormatter "str" strConfig
 
--- | multiline string, no interpolation, but does indentation trimming.
+-- | Multiline string, no interpolation, but does indentation trimming.
 strTrim :: QuasiQuoter
 strTrim = mkFormatter "strTrim" (addTrim strConfig)
 
--- | Raw string, no interpolation neither escaping is performed.
+-- | Raw string, neither interpolation nor escaping is performed.
 raw :: QuasiQuoter
 raw = expQQ "raw" (\s -> [|s|])
 
 -- | Removes the trailing whitespace of a string.
 --
 -- - First line is ignored if it only contains whitespaces
--- - All other line common indentation is removed, ignoring line with only whitespaces.
+-- - All other line common indentation is removed, ignoring lines with only whitespaces.
 --
 -- >>> trimIndent "\n   hello\n   - a\n   - b\n   "
 -- "hello\n- a\n- b\n"
 --
--- See 'fmtTrim' for a quasiquoter with this behavior
+-- See 'fmtTrim' for a quasiquoter with this behavior.
 trimIndent :: String -> String
 trimIndent s =
   case lines s of
@@ -95,7 +95,7 @@ defaultConfig =
       postProcess = id
     }
 
--- | Configuration for 'str' it just wrap the multiline string with 'fromString'.
+-- | Configuration for 'str'. It just wraps the multiline string with 'fromString'.
 strConfig :: Config
 strConfig =
   Config
@@ -114,7 +114,7 @@ addTrim config =
     { postProcess = \q -> postProcess config [|PyF.trimIndent $(q)|]
     }
 
--- | Enable formatting
+-- | Enable formatting.
 addFormatting :: (Char, Char) -> Config -> Config
 addFormatting delims c = c {delimiters = Just delims}
 

@@ -15,13 +15,13 @@
 --
 -- Formatters for integral / fractional and strings.
 --
--- Is support:
+-- The following is supported:
 --
 -- For all types:
 --
---   * Grouping of the integral part (i.e: adding a custom char to separate groups of digits)
+--   * Grouping of the integral part (i.e. adding a custom char to separate groups of digits)
 --   * Padding (left, right, around, and between the sign and the number)
---   * Sign handling (i.e: display the positive sign or not)
+--   * Sign handling (i.e. display the positive sign or not)
 --
 -- For floating:
 --
@@ -30,7 +30,7 @@
 --
 -- For integrals:
 --
---    * Binary / Hexa / Octal / Character representation
+--    * Binary / Hexadecimal / Octal / Character representation
 module PyF.Formatters
   ( -- * Generic formatting function
     formatString,
@@ -105,16 +105,16 @@ getAlignForString AlignRight = Just AlignRight
 getAlignForString AlignCenter = Just AlignCenter
 getAlignForString AlignLeft = Just AlignLeft
 
--- | This formatter support alternate version
+-- | This formatter supports an alternate version.
 data AltStatus = CanAlt | NoAlt
 
--- | This formatter support Upper case version
+-- | This formatter support an uppercase version.
 data UpperStatus = CanUpper | NoUpper
 
--- | This formatter formats an integral or a fractional
+-- | This formatter formats an integral or a fractional.
 data FormatType = Fractional | Integral
 
--- | All the Formatters
+-- | All the Formatters.
 data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   -- Integrals
   Decimal :: Format 'NoAlt 'NoUpper 'Integral
@@ -280,7 +280,7 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- Final formatters
 
--- | Format an integral number
+-- | Format an integral number.
 formatIntegral ::
   Integral paddingWidth =>
   Integral i =>
@@ -294,7 +294,7 @@ formatIntegral ::
   String
 formatIntegral f sign padding grouping i = padAndSign f (prefixIntegral f) sign padding (group (reprIntegral f i) grouping)
 
--- | Format a fractional number
+-- | Format a fractional number.
 formatFractional ::
   (RealFloat f, Integral paddingWidth, Integral precision) =>
   Format t t' 'Fractional ->
@@ -309,7 +309,7 @@ formatFractional ::
   String
 formatFractional f sign padding grouping precision i = padAndSign f "" sign padding (group (reprFractional f (fmap fromIntegral precision) i) grouping)
 
--- | Format a string
+-- | Format a string.
 formatString ::
   forall paddingWidth precision.
   (Integral paddingWidth, Integral precision) =>

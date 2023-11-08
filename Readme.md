@@ -2,11 +2,12 @@
 
 *PyF* is a Haskell library for string interpolation and formatting.
 
-*PyF* exposes a quasiquoter `f` which introduces string interpolation and formatting with a mini language inspired from printf and Python.
+*PyF* exposes a quasiquoter `fmt` which introduces string interpolation and formatting with a mini language inspired by printf and Python.
 
 # Quick Start
 
 ```haskell
+>>> :set -XQuasiQuotes
 >>> import PyF
 
 >>> name = "Dave"
@@ -27,7 +28,7 @@ The formatting mini language can represent:
 
 You will need the extension `QuasiQuotes`, enable it with `{-# LANGUAGE QuasiQuotes #-}` in top of your source file or with `:set -XQuasiQuotes` in your `ghci` session. `ExtendedDefaultRules` and `OverloadedStrings` may be more convenient.
 
-Expression to be formatted are referenced by `{expression:formattingOptions}` where `formattingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the python documentation, but the [Test file](https://github.com/guibou/PyF/blob/main/test/Spec.hs) as well as this readme contain many examples.
+Expression to be formatted are referenced by `{expression:formattingOptions}` where `formattingOptions` follows the [Python format mini-language](https://docs.python.org/3/library/string.html#formatspec). It is recommended to read the Python documentation, but the [Test file](https://github.com/guibou/PyF/blob/main/test/Spec.hs) as well as this readme contain many examples.
 
 # More Examples
 
@@ -70,7 +71,7 @@ Padding inside `=` the sign
 >>> [fmt|Octal (no prefix): {v:o}|]
 "Octal (no prefix): 37"
 >>> [fmt|Hexa (caps and prefix): {v:#X}|]
-"Hexa (caps and prefix): 0x1F"
+"Hexa (caps and prefix): 0X1F"
 ```
 
 ## Grouping
@@ -104,9 +105,9 @@ Using `+` to display the positive sign (if any) or ` ` to display a space instea
 Preceding the width with a `0` enables sign-aware zero-padding, this is equivalent to inside `=` padding with a fill char of `0`.
 
 ```haskell
->>> [f{10:010}|]
+>>> [fmt|{10:010}|]
 0000000010
->>> [f{-10:010}|]
+>>> [fmt|{-10:010}|]
 -000000010
 ```
 
@@ -143,7 +144,7 @@ You can ignore a line break with `\` if needed. For example:
 |]
 ```
 
-Will returns `-a\n-b`. Note how the first and last line breaks are ignored.
+Will returns `"- a\n- b"`. Note how the first and last line breaks are ignored.
 
 ## Arbitrary value for precision and padding
 
@@ -194,8 +195,8 @@ A float: 10
 
 ## Error reporting
 
-Template haskell is generally known to give developers a lot of
-frustration when it comes to error message, dumping an unreadable
+Template Haskell is generally known to give developers a lot of
+frustration when it comes to error messages, dumping an unreadable
 piece of generated code.
 
 However, in PyF, we took great care to provide clear error reporting, this means that:
@@ -251,7 +252,7 @@ test/SpecUtils.hs:81:33: error:
 ...
 ```
 
-- Finally, if you make any type error inside the expression field, you are on your own, you'll get an awful error in the middle of the generated template Haskell splice.
+- Finally, if you make any type error inside the expression field, you are on your own, you'll get an awful error in the middle of the generated Template Haskell splice.
 
 ```haskell
 >>> [fmt|{3 + pi + "hello":10}|]
@@ -263,7 +264,7 @@ test/SpecUtils.hs:81:33: error:
 
 ## Custom Delimiters
 
-If `{` and `}` does not fit your needs, for example if you are formatting a lot of json, you can use custom delimiters. All quasi quoters have a parametric form which accepts custom delimiters. Due to template haskell stage restriction, you must define your custom quasi quoter in an other module.
+If `{` and `}` do not fit your needs, for example if you are formatting a lot of JSON, you can use custom delimiters. All quasi quoters have a parametric form which accepts custom delimiters. Due to the Template Haskell stage restriction, you must define your custom quasi quoter in another module.
 
 For example, in `MyCustomDelimiter.hs`:
 
@@ -294,21 +295,21 @@ Escaping still works by doubling the delimiters, `@@!!@@!!` will be formatted as
 
 Have a look at `PyF.mkFormatter` for all the details about customization.
 
-## Difference with the Python Syntax
+## Differences with the Python Syntax
 
-The implementation is unit-tested against the reference python implementation (python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
+The implementation is unit-tested against the reference Python implementation (Python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
 
 ### Not supported
 
-- Number `n` formatter is not supported. In python this formatter can format a number and use current locale information for decimal part and thousand separator. There is no plan to support that because of the impure interface needed to read the locale.
-- Python support sub variables in the formatting options in every places, such as `{expression:.{precision}}`. We only support it for `precision` and `width`. This is more complexe to setup for others fields.
-- Python literal integers accepts binary/octal/hexa/decimal literals, PyF only accept decimal ones, I don't have a plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
-- Python support adding custom formatters for new types, such as date. This may be really cool, for example `[fmt|{today:%Y-%M-%D}`. I don't know how to support that now.
+- Number `n` formatter is not supported. In Python this formatter can format a number and use current locale information for decimal part and thousand separator. There is no plan to support that because of the impure interface needed to read the locale.
+- Python supports sub variables in the formatting options in all places, such as `{expression:.{precision}}`. We only support it for `precision` and `width`. This is more complexe to setup for others fields.
+- Python literal integers accept binary/octal/hexa/decimal literals, PyF only accept decimal ones, I don't have a plan to support that, if you really need to format a float with a number of digit provided as a binary constant, open an issue.
+- Python supports adding custom formatters for new types, such as date. This may be really cool, for example `[fmt|{today:%Y-%M-%D}`. I don't know how to support that now.
 
-### Difference
+### Differences
 
 - General formatters *g* and *G* behaves a bit differently. Precision influence the number of significant digits instead of the number of the magnitude at which the representation changes between fixed and exponential.
-- Grouping options allows grouping with an `_` for floating point, python only allows `,`.
+- Grouping options allows grouping with an `_` for floating point, Python only allows `,`.
 - Custom delimiters
 
 # Build / test
@@ -317,8 +318,8 @@ Should work with `stack build; stack test`, and with `cabal` and (optionally) `n
 
 ```shell
 nix-shell # Optional, if you use nix
-cabal new-build
-cabal new-test
+cabal build
+cabal test
 ```
 
 There are a few available shells for you.
