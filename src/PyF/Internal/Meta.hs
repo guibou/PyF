@@ -260,6 +260,7 @@ toExp _ (HsOverLabel _ Nothing lbl) = TH.LabelE (unpackFS lbl)
 #endif
 #if MIN_VERSION_ghc(9,6,0)
 toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . field_label . unLoc . dfoLabel . unLoc $ field)
+toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . fmap field_label . dfoLabel . unLoc) fields)
 #elif MIN_VERSION_ghc(9, 4, 0)
 toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . unLoc . dfoLabel . unLoc $ field)
 toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . dfoLabel . unLoc) fields)
