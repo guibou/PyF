@@ -1,5 +1,9 @@
 # Revision history for PyF
 
+##
+
+- Support for GHC 9.10.
+
 ## 0.11.2.1 -- 2023-10-25
 
 - Final version for GHC 9.8

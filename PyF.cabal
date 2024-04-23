@@ -27,9 +27,9 @@ library
                   PyF.Internal.ParserEx
                   PyF.Internal.Parser
 
-  build-depends:       base >= 4.12 && < 4.20
+  build-depends:       base >= 4.12 && < 4.22
                      , bytestring >= 0.10.8 && < 0.13
-                     , template-haskell >= 2.14.0 && < 2.22
+                     , template-haskell >= 2.14.0 && < 2.24
                      , text >= 1.2.3 && < 2.2
                      , time >= 1.8.0 && < 1.14
                      , parsec >= 3.1.13 && < 3.2

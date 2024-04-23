@@ -161,7 +161,10 @@ toExp _ Expr.HsIPVar {} = noTH "toExp" "HsIPVar"
 toExp _ (Expr.HsLit _ l) = TH.LitE (toLit l)
 toExp _ (Expr.HsOverLit _ OverLit {ol_val}) = TH.LitE (toLit' ol_val)
 toExp d (Expr.HsApp _ e1 e2) = TH.AppE (toExp d . unLoc $ e1) (toExp d . unLoc $ e2)
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9,8,0)
+toExp d (Expr.HsAppType _ e HsWC{hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
+toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=unLoc -> HsSig{sig_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ sig_body)
+#elif MIN_VERSION_ghc(9,6,0)
 toExp d (Expr.HsAppType _ e _ HsWC{hswc_body}) = TH.AppTypeE (toExp d . unLoc $ e) (toType . unLoc $ hswc_body)
 toExp d (Expr.ExprWithTySig _ e HsWC{hswc_body=unLoc -> HsSig{sig_body}}) = TH.SigE (toExp d . unLoc $ e) (toType . unLoc $ sig_body)
 #elif MIN_VERSION_ghc(9,2,0)
@@ -177,7 +180,9 @@ toExp d (Expr.ExprWithTySig HsWC{hswc_body=HsIB{hsib_body}} e) = TH.SigE (toExp 
 toExp d (Expr.OpApp _ e1 o e2) = TH.UInfixE (toExp d . unLoc $ e1) (toExp d . unLoc $ o) (toExp d . unLoc $ e2)
 toExp d (Expr.NegApp _ e _) = TH.AppE (TH.VarE 'negate) (toExp d . unLoc $ e)
 -- NOTE: for lambda, there is only one match
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9,8,0)
+toExp d (Expr.HsLam _ _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
+#elif MIN_VERSION_ghc(9,6,0)
 toExp d (Expr.HsLam _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
 #else
 toExp d (Expr.HsLam _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])) _)) = TH.LamE (fmap (toPat d) ps) (toExp d e)
@@ -213,7 +218,9 @@ toExp d (Expr.ExplicitTuple _ (map unLoc -> args) boxity) = ctor tupArgs
 {- ORMOLU_ENABLE -}
 
 -- toExp (Expr.List _ xs)                        = TH.ListE (fmap toExp xs)
-#if MIN_VERSION_ghc(9,3,0)
+#if MIN_VERSION_ghc(9,8,0)
+toExp d (Expr.HsPar _ e) = TH.ParensE (toExp d . unLoc $ e)
+#elif MIN_VERSION_ghc(9,3,0)
 toExp d (Expr.HsPar _ _ e _) = TH.ParensE (toExp d . unLoc $ e)
 #else
 toExp d (Expr.HsPar _ e) = TH.ParensE (toExp d . unLoc $ e)
