@@ -7,9 +7,14 @@ on:
     branches: [ main ]
 
 jobs:
-  nix_build:
+  nix_matrix:
+    strategy:
+      matrix:
+        # 88 is not in nixpkgs anymore
+        # 910 does not build yet for unknown reason
+        # We are not using nix build .#pyf_all because of github disk limitations
+        ghc: [86, 90, 92, 94, 96, 98]
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - uses: cachix/install-nix-action@v21
@@ -19,8 +24,8 @@ jobs:
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     # Builds cabal (nix)
-    - name: Build with all supported GHC
-      run: nix build .#pyf_all
+    - name: Build with GHC ${{ matrix.ghc }}
+      run: nix build .#pyf_${{ matrix.ghc }}
 
   stack_build:
     runs-on: ubuntu-latest
