@@ -2,7 +2,7 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
 
   # Broken: see https://github.com/NixOS/nix/issues/5621
   #nixConfig.allow-import-from-derivation = true;
@@ -45,7 +45,7 @@
                 ++ [ hPkgs.haskell-language-server ];
             });
 
-            pkg = (haskell.lib.buildFromSdist
+            pkg = (
               (hPkgs.callCabal2nix "PyF" sources { })).overrideAttrs
               (oldAttrs: {
                 buildInputs = oldAttrs.buildInputs;
@@ -64,9 +64,7 @@
             });
           });
 
-          pyf_88 = pyfBuilder (haskell.packages.ghc88.override {
-            overrides = self: super: with haskell.lib; { };
-          });
+          # GHC 8.8 is not in nixpkgs anymore.
 
           pyf_810 = pyfBuilder (haskell.packages.ghc810.override {
             overrides = self: super: with haskell.lib; { };
@@ -100,36 +98,47 @@
             };
           });
 
-          pyf_98 = pyfBuilder ((haskell.packages.ghc98.override {
+          pyf_98 = pkgs.haskell.lib.dontCheck (pyfBuilder ((haskell.packages.ghc98.override {
             overrides = self: super:
               with haskell.lib; {
                 # Bump hspec (and dependencies)
-                hspec-core = super.callHackage "hspec-core" "2.11.6" {};
-                hspec-meta = super.callHackage "hspec-meta" "2.11.6" {};
-                hspec = super.callHackage "hspec" "2.11.6" {};
-                hspec-discover = super.callHackage "hspec-discover" "2.11.6" {};
-                hspec-expectations = super.callHackage "hspec-expectations" "0.8.4" {};
-                tagged = doJailbreak super.tagged;
+                #hspec-core = super.callHackage "hspec-core" "2.11.6" {};
+                #hspec-meta = super.callHackage "hspec-meta" "2.11.6" {};
+                #hspec = super.callHackage "hspec" "2.11.6" {};
+                #hspec-discover = super.callHackage "hspec-discover" "2.11.6" {};
+                #hspec-expectations = super.callHackage "hspec-expectations" "0.8.4" {};
+                #tagged = doJailbreak super.tagged;
 
-                # Disabling tests breaks the loop with hspec
-                base-orphans = dontCheck super.base-orphans;
-                splitmix = doJailbreak super.splitmix;
+                ## Disabling tests breaks the loop with hspec
+                #base-orphans = dontCheck super.base-orphans;
+                #splitmix = doJailbreak super.splitmix;
 
               };
-          }));
+          })));
+
+          pyf_910 = pyfBuilder (haskell.packages.ghc910.override {
+            overrides = self: super: with haskell.lib; rec {
+              primitive = dontCheck super.primitive_0_9_0_0;
+              HUnit = dontCheck super.HUnit;
+              call-stack = dontCheck super.call-stack;
+              hspec-expectations = dontCheck super.hspec-expectations;
+              QuickCheck = dontCheck super.QuickCheck;
+              hspec-discover = dontCheck super.hspec-discover;
+            };
+          });
 
           pyf_all = linkFarmFromDrvs "all_pyf" [
             pyf_86
-            pyf_88
             pyf_810
             pyf_90
             pyf_92
             pyf_94
             pyf_96
-
-            # Nix build of the different component for testing in 98 are not working
-            # But building with cabal works
-            # pyf_98
+            pyf_98
+            
+            # https://github.com/NixOS/nixpkgs/pull/311912/files
+            # For some reason, nixpkgs does not build correctly with recent cabal
+            pyf_910
           ];
 
           # Only the current build is built with python3 support
