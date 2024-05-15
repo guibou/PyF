@@ -31,8 +31,10 @@ jobs:
       run: sudo apt-get install haskell-stack
 
     # Build stack
+    - name: Stack 9.8
+      run: stack --resolver nightly-2024-05-15 test
     - name: Stack 9.6
-      run: stack --resolver nightly-2023-10-24 test
+      run: stack --resolver lts-22.22 test
     - name: Stack 9.4
       run: stack --resolver lts-21.17 test
     - name: Stack 9.2
