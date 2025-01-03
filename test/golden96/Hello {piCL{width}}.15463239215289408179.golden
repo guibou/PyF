@@ -1,4 +1,3 @@
-
 INITIALPATH:7:33: error:
     • Variable not in scope: width
     • In the quasi-quotation: [fmt|Hello {pi:{width}}|]

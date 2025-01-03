@@ -109,15 +109,21 @@ golden name output = do
         Left _ -> output
   -- Flush lazy IO
   _ <- evaluate (force goldenContent)
-  if output /= goldenContent
+  -- Apparently the whitespaces in GHC 9.10 changed
+  -- By stripping, we just keep the test working as expected, but we are
+  -- compatible with different version of GHC.
+  --
+  -- TODO: use GHC API to build directly the example and gather errors in a
+  -- more reproducible way.
+  if Text.strip (Text.pack output) /= Text.strip (Text.pack goldenContent)
     then do
       writeFile actualFile output
-      (_, diffOutput, _) <- readProcessWithExitCode "diff" [goldenFile, actualFile] ""
+      (_, diffOutput, _) <- readProcessWithExitCode "diff" ["-b", goldenFile, actualFile] ""
       putStrLn diffOutput
       -- Update golden file
-      writeFile goldenFile output
+      writeFile goldenFile (Text.unpack $ Text.strip (Text.pack output))
       assertFailure diffOutput
-    else writeFile goldenFile output
+    else writeFile goldenFile (Text.unpack $ Text.strip (Text.pack output))
 
 failCompile :: HasCallStack => String -> Spec
 failCompile s = failCompileContent s s (makeTemplate s)

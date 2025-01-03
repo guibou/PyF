@@ -1,4 +1,3 @@
-
 INITIALPATH:7:22: error: [GHC-39999]
     • No instance for ‘Real String’ arising from a use of ‘PyF.Internal.QQ.formatAnyFractional’
     • In the first argument of ‘putStrLn’, namely ‘(PyF.Internal.QQ.formatAnyFractional (PyF.Formatters.Upper PyF.Formatters.Generic) PyF.Formatters.Minus (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char)) Nothing (Just 6 :: Maybe Int) hello)’

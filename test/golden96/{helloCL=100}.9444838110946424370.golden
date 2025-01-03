@@ -1,4 +1,3 @@
-
 INITIALPATH:7:22: error: [GHC-64725]
     • String type is incompatible with inside padding (=).
     • In the first argument of ‘putStrLn’, namely ‘(PyF.Internal.QQ.formatAny PyF.Formatters.Minus (PyF.Internal.QQ.PaddingK (100 :: Int) (Just (Nothing, PyF.Formatters.AlignInside))) Nothing (Nothing :: Maybe Int) hello)’

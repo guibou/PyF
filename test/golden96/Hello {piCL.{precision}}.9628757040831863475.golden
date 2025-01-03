@@ -1,4 +1,3 @@
-
 INITIALPATH:7:34: error:
     • Variable not in scope: precision
     • In the quasi-quotation: [fmt|Hello {pi:.{precision}}|]
