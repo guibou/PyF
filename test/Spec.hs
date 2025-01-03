@@ -33,16 +33,8 @@ import GHC.OverloadedLabels
 import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import PyF
 import SpecCustomDelimiters
-import SpecUtils
 import Test.Hspec
 import qualified Data.Text as Text
-
-{-
-   - Normal tests are done using the recommanded API: [fmt|.....|]
-   - Test with $(checkExample formatString result) are checked against the python reference implementation. Result is provided as documentation.
-   - Test with $(checkExampleDiff formatString result) are not checked against the python reference implementation. This is known (and documented) differences.
-   - Test with $(check formatString) are only tested against the python reference implementation.
--}
 
 main :: IO ()
 main = hspec $ parallel spec
@@ -95,159 +87,159 @@ spec = do
     it "string" $ [fmt|{aString}|] `shouldBe` "hello"
   describe "only expression" $ do
     describe "default" $ do
-      it "int" $(checkExample "{123}" "123")
-      it "float" $(checkExample "{0.234}" "0.234")
-      it "string" $(checkExample "{\"hello\"}" "hello")
-      it "float precision" $(checkExample "{0.234:.1}" "0.2")
-      it "string precision" $(checkExample "{\"hello\":.1}" "h")
-      it "sign +" $(checkExample "{0.234:+}" "+0.234")
-      it "sign space" $(checkExample "{0.234: }" " 0.234")
-      it "sign neg" $(checkExample "{-123:+}" "-123")
+      it "int" $ [fmt|{123}|] `shouldBe` "123"
+      it "float" $ [fmt|{0.234}|] `shouldBe` "0.234"
+      it "string" $ [fmt|{"hello"}|] `shouldBe` "hello"
+      it "float precision" $ [fmt|{0.234:.1}|] `shouldBe` "0.2"
+      it "string precision" $ [fmt|{"hello":.1}|] `shouldBe` "h"
+      it "sign +" $ [fmt|{0.234:+}|] `shouldBe` "+0.234"
+      it "sign space" $ [fmt|{0.234: }|] `shouldBe` " 0.234"
+      it "sign neg" $ [fmt|{-123:+}|] `shouldBe` "-123"
     describe "binary" $ do
-      it "simple" $(checkExample "{123:b}" "1111011")
-      it "alt" $(checkExample "{123:#b}" "0b1111011")
-      it "sign" $(checkExample "{123:+#b}" "+0b1111011")
+      it "simple" $ [fmt|{123:b}|] `shouldBe` "1111011"
+      it "alt" $ [fmt|{123:#b}|] `shouldBe` "0b1111011"
+      it "sign" $ [fmt|{123:+#b}|] `shouldBe` "+0b1111011"
     describe "character" $
-      it "simple" $(checkExample "{123:c}" "{")
+      it "simple" $ [fmt|{123:c}|] `shouldBe` "{"
     describe "decimal" $ do
-      it "simple" $(checkExample "{123:d}" "123")
-      it "sign" $(checkExample "{123:+d}" "+123")
+      it "simple" $ [fmt|{123:d}|] `shouldBe` "123"
+      it "sign" $ [fmt|{123:+d}|] `shouldBe` "+123"
     describe "exponentiel" $ do
-      it "simple > 1" $(checkExample "{234.0:e}" "2.340000e+02")
-      it "precision > 1" $(checkExample "{234.0:.1e}" "2.3e+02")
-      it "simple < 1" $(checkExample "{0.234:e}" "2.340000e-01")
-      it "precision < 1 " $(checkExample "{0.234:.1e}" "2.3e-01")
+      it "simple > 1" $ [fmt|{234.0:e}|] `shouldBe` "2.340000e+02"
+      it "precision > 1" $ [fmt|{234.0:.1e}|] `shouldBe` "2.3e+02"
+      it "simple < 1" $ [fmt|{0.234:e}|] `shouldBe` "2.340000e-01"
+      it "precision < 1 " $ [fmt|{0.234:.1e}|] `shouldBe` "2.3e-01"
     describe "exponentiel caps" $ do
-      it "simple > 1" $(checkExample "{234.0:E}" "2.340000E+02")
-      it "precision > 1" $(checkExample "{234.0:.1E}" "2.3E+02")
-      it "simple < 1" $(checkExample "{0.234:E}" "2.340000E-01")
-      it "precision < 1 " $(checkExample "{0.234:.1E}" "2.3E-01")
+      it "simple > 1" $ [fmt|{234.0:E}|] `shouldBe` "2.340000E+02"
+      it "precision > 1" $ [fmt|{234.0:.1E}|] `shouldBe` "2.3E+02"
+      it "simple < 1" $ [fmt|{0.234:E}|] `shouldBe` "2.340000E-01"
+      it "precision < 1 " $ [fmt|{0.234:.1E}|] `shouldBe` "2.3E-01"
     describe "general" $ do
-      it "simple small" $(checkExampleDiff "{123.02:g}" "123.020000")
-      it "precision small" $(checkExampleDiff "{123.02:.1g}" "123.0")
-      it "simple big" $(checkExampleDiff "{1234567890.23:g}" "1.234568e+09")
-      it "precision big" $(checkExampleDiff "{1234567890.23:.1g}" "1.2e+09")
+      it "simple small" $ [fmt|{123.02:g}|] `shouldBe` "123.020000"
+      it "precision small" $ [fmt|{123.02:.1g}|] `shouldBe` "123.0"
+      it "simple big" $ [fmt|{1234567890.23:g}|] `shouldBe` "1.234568e+09"
+      it "precision big" $ [fmt|{1234567890.23:.1g}|] `shouldBe` "1.2e+09"
     describe "general caps" $ do
-      it "simple small" $(checkExampleDiff "{123.02:G}" "123.020000")
-      it "precision small" $(checkExampleDiff "{123.02:.1G}" "123.0")
-      it "simple big" $(checkExampleDiff "{1234567890.23:G}" "1.234568E+09")
-      it "precision big" $(checkExampleDiff "{1234567890.23:.1G}" "1.2E+09")
+      it "simple small" $ [fmt|{123.02:G}|] `shouldBe` "123.020000"
+      it "precision small" $ [fmt|{123.02:.1G}|] `shouldBe` "123.0"
+      it "simple big" $ [fmt|{1234567890.23:G}|] `shouldBe` "1.234568E+09"
+      it "precision big" $ [fmt|{1234567890.23:.1G}|] `shouldBe` "1.2E+09"
     describe "fixed" $ do
-      it "simple" $(checkExample "{0.234:f}" "0.234000")
-      it "precision" $(checkExample "{0.234:.1f}" "0.2")
+      it "simple" $ [fmt|{0.234:f}|] `shouldBe` "0.234000"
+      it "precision" $ [fmt|{0.234:.1f}|] `shouldBe` "0.2"
     describe "fixed caps" $ do
-      it "simple" $(checkExample "{0.234:F}" "0.234000")
-      it "precision" $(checkExample "{0.234:.1F}" "0.2")
+      it "simple" $ [fmt|{0.234:F}|] `shouldBe` "0.234000"
+      it "precision" $ [fmt|{0.234:.1F}|] `shouldBe` "0.2"
     describe "octal" $ do
-      it "simple" $(checkExample "{123:o}" "173")
-      it "alt" $(checkExample "{123:#o}" "0o173")
+      it "simple" $ [fmt|{123:o}|] `shouldBe` "173"
+      it "alt" $ [fmt|{123:#o}|] `shouldBe` "0o173"
     describe "string" $ do
-      it "string" $(checkExample "{\"hello\":s}" "hello")
-      it "precision" $(checkExample "{\"hello\":.2s}" "he")
+      it "string" $ [fmt|{"hello":s}|] `shouldBe` "hello"
+      it "precision" $ [fmt|{"hello":.2s}|] `shouldBe` "he"
     describe "hex" $ do
-      it "simple" $(checkExample "{123:x}" "7b")
-      it "alt" $(checkExample "{123:#x}" "0x7b")
+      it "simple" $ [fmt|{123:x}|] `shouldBe` "7b"
+      it "alt" $ [fmt|{123:#x}|] `shouldBe` "0x7b"
     describe "hex caps" $ do
-      it "simple" $(checkExample "{123:X}" "7B")
-      it "alt" $(checkExample "{123:#X}" "0X7B")
+      it "simple" $ [fmt|{123:X}|] `shouldBe` "7B"
+      it "alt" $ [fmt|{123:#X}|] `shouldBe` "0X7B"
     describe "percent" $ do
-      it "simple" $(checkExample "{0.234:%}" "23.400000%")
-      it "precision" $(checkExample "{0.234:.2%}" "23.40%")
+      it "simple" $ [fmt|{0.234:%}|] `shouldBe` "23.400000%"
+      it "precision" $ [fmt|{0.234:.2%}|] `shouldBe` "23.40%"
     describe "string truncating" $
-      it "works" $(checkExample "{\"hello\":.3}" "hel")
+      it "works" $ [fmt|{"hello":.3}|] `shouldBe` "hel"
     describe "padding" $ do
       describe "default char" $ do
-        it "left" $(checkExample "{\"hello\":<10}" "hello     ")
-        it "right" $(checkExample "{\"hello\":>10}" "     hello")
-        it "center" $(checkExample "{\"hello\":^10}" "  hello   ")
+        it "left" $ [fmt|{"hello":<10}|] `shouldBe` "hello     "
+        it "right" $ [fmt|{"hello":>10}|] `shouldBe` "     hello"
+        it "center" $ [fmt|{"hello":^10}|] `shouldBe` "  hello   "
       describe "a char" $ do
-        it "left" $(checkExample "{\"hello\":-<10}" "hello-----")
-        it "right" $(checkExample "{\"hello\":->10}" "-----hello")
-        it "center" $(checkExample "{\"hello\":-^10}" "--hello---")
+        it "left" $ [fmt|{"hello":-<10}|] `shouldBe` "hello-----"
+        it "right" $ [fmt|{"hello":->10}|] `shouldBe` "-----hello"
+        it "center" $ [fmt|{"hello":-^10}|] `shouldBe` "--hello---"
       describe "inside" $ do
-        it "inside" $(checkExample "{123:=+10}" "+      123")
-        it "inside" $(checkExample "{123:=10}" "       123")
-        it "inside" $(checkExample "{- 123:=10}" "-      123")
-        it "inside" $(checkExample "{- 123:|= 10}" "-||||||123")
-        it "inside" $(checkExample "{123:|= 10}" " ||||||123")
+        it "inside" $ [fmt|{123:=+10}|] `shouldBe` "+      123"
+        it "inside" $ [fmt|{123:=10}|] `shouldBe` "       123"
+        it "inside" $ [fmt|{- 123:=10}|] `shouldBe` "-      123"
+        it "inside" $ [fmt|{- 123:|= 10}|] `shouldBe` "-||||||123"
+        it "inside" $ [fmt|{123:|= 10}|] `shouldBe` " ||||||123"
       describe "default padding" $ do
-        it "floating" $(checkExample "{1:10f}" "  1.000000")
-        it "integral" $(checkExample "{1:10d}" "         1")
-        it "string" $(checkExample "{\"h\":10s}" "h         ")
-        it "default" $(checkExample "{1:10}" "         1")
-        it "default" $(checkExample "{1.0:10}" "       1.0")
-        it "default" $(checkExample "{\"h\":10}" "h         ")
+        it "floating" $ [fmt|{1:10f}|] `shouldBe` "  1.000000"
+        it "integral" $ [fmt|{1:10d}|] `shouldBe` "         1"
+        it "string" $ [fmt|{"h":10s}|] `shouldBe` "h         "
+        it "default" $ [fmt|{1:10}|] `shouldBe` "         1"
+        it "default" $ [fmt|{1.0:10}|] `shouldBe` "       1.0"
+        it "default" $ [fmt|{"h":10}|] `shouldBe` "h         "
     describe "NaN" $ do
       describe "float" $ do
         let nan = 0.0 / 0 :: Float
-        it "nan" $(checkExample "{nan}" "nan")
-        it "nan f" $(checkExample "{nan:f}" "nan")
-        it "nan e" $(checkExample "{nan:e}" "nan")
-        it "nan g" $(checkExample "{nan:g}" "nan")
-        it "nan F" $(checkExample "{nan:F}" "NAN")
-        it "nan G" $(checkExample "{nan:G}" "NAN")
-        it "nan E" $(checkExample "{nan:E}" "NAN")
+        it "nan" $ [fmt|{nan}|] `shouldBe` "nan"
+        it "nan f" $ [fmt|{nan:f}|] `shouldBe` "nan"
+        it "nan e" $ [fmt|{nan:e}|] `shouldBe` "nan"
+        it "nan g" $ [fmt|{nan:g}|] `shouldBe` "nan"
+        it "nan F" $ [fmt|{nan:F}|] `shouldBe` "NAN"
+        it "nan G" $ [fmt|{nan:G}|] `shouldBe` "NAN"
+        it "nan E" $ [fmt|{nan:E}|] `shouldBe` "NAN"
       describe "double" $ do
         let nan = 0.0 / 0 :: Double
-        it "nan" $(checkExample "{nan}" "nan")
-        it "nan f" $(checkExample "{nan:f}" "nan")
-        it "nan e" $(checkExample "{nan:e}" "nan")
-        it "nan g" $(checkExample "{nan:g}" "nan")
-        it "nan F" $(checkExample "{nan:F}" "NAN")
-        it "nan G" $(checkExample "{nan:G}" "NAN")
-        it "nan E" $(checkExample "{nan:E}" "NAN")
+        it "nan" $ [fmt|{nan}|] `shouldBe` "nan"
+        it "nan f" $ [fmt|{nan:f}|] `shouldBe` "nan"
+        it "nan e" $ [fmt|{nan:e}|] `shouldBe` "nan"
+        it "nan g" $ [fmt|{nan:g}|] `shouldBe` "nan"
+        it "nan F" $ [fmt|{nan:F}|] `shouldBe` "NAN"
+        it "nan G" $ [fmt|{nan:G}|] `shouldBe` "NAN"
+        it "nan E" $ [fmt|{nan:E}|] `shouldBe` "NAN"
     describe "Infinite" $ do
       describe "float" $ do
         let inf = 1.0 / 0 :: Float
-        it "infinite" $(checkExample "{inf}" "inf")
-        it "infinite f" $(checkExample "{inf:f}" "inf")
-        it "infinite e" $(checkExample "{inf:e}" "inf")
-        it "infinite g" $(checkExample "{inf:g}" "inf")
-        it "infinite F" $(checkExample "{inf:F}" "INF")
-        it "infinite G" $(checkExample "{inf:G}" "INF")
-        it "infinite E" $(checkExample "{inf:E}" "INF")
+        it "infinite" $ [fmt|{inf}|] `shouldBe` "inf"
+        it "infinite f" $ [fmt|{inf:f}|] `shouldBe` "inf"
+        it "infinite e" $ [fmt|{inf:e}|] `shouldBe` "inf"
+        it "infinite g" $ [fmt|{inf:g}|] `shouldBe` "inf"
+        it "infinite F" $ [fmt|{inf:F}|] `shouldBe` "INF"
+        it "infinite G" $ [fmt|{inf:G}|] `shouldBe` "INF"
+        it "infinite E" $ [fmt|{inf:E}|] `shouldBe` "INF"
       describe "double" $ do
         let inf = 1.0 / 0 :: Double
-        it "infinite" $(checkExample "{inf}" "inf")
-        it "infinite f" $(checkExample "{inf:f}" "inf")
-        it "infinite e" $(checkExample "{inf:e}" "inf")
-        it "infinite g" $(checkExample "{inf:g}" "inf")
-        it "infinite F" $(checkExample "{inf:F}" "INF")
-        it "infinite G" $(checkExample "{inf:G}" "INF")
-        it "infinite E" $(checkExample "{inf:E}" "INF")
+        it "infinite" $ [fmt|{inf}|] `shouldBe` "inf"
+        it "infinite f" $ [fmt|{inf:f}|] `shouldBe` "inf"
+        it "infinite e" $ [fmt|{inf:e}|] `shouldBe` "inf"
+        it "infinite g" $ [fmt|{inf:g}|] `shouldBe` "inf"
+        it "infinite F" $ [fmt|{inf:F}|] `shouldBe` "INF"
+        it "infinite G" $ [fmt|{inf:G}|] `shouldBe` "INF"
+        it "infinite E" $ [fmt|{inf:E}|] `shouldBe` "INF"
     describe "Grouping" $ do
-      it "groups int" $(checkExample "{123456789:,d}" "123,456,789")
-      it "groups int with _" $(checkExample "{123456789:_d}" "123_456_789")
-      it "groups float" $(checkExample "{123456789.234:,f}" "123,456,789.234000")
-      it "groups bin" $(checkExample "{123456789:_b}" "111_0101_1011_1100_1101_0001_0101")
-      it "groups hex" $(checkExample "{123456789:_x}" "75b_cd15")
-      it "groups oct" $(checkExample "{123456789:_o}" "7_2674_6425")
+      it "groups int" $ [fmt|{123456789:,d}|] `shouldBe` "123,456,789"
+      it "groups int with _" $ [fmt|{123456789:_d}|] `shouldBe` "123_456_789"
+      it "groups float" $ [fmt|{123456789.234:,f}|] `shouldBe` "123,456,789.234000"
+      it "groups bin" $ [fmt|{123456789:_b}|] `shouldBe` "111_0101_1011_1100_1101_0001_0101"
+      it "groups hex" $ [fmt|{123456789:_x}|] `shouldBe` "75b_cd15"
+      it "groups oct" $ [fmt|{123456789:_o}|] `shouldBe` "7_2674_6425"
     describe "negative zero" $ do
-      it "f" $(checkExample "{-0.0:f}" "-0.000000")
-      it "e" $(checkExample "{-0.0:e}" "-0.000000e+00")
-      it "g" $(checkExampleDiff "{-0.0:g}" "-0.000000")
-      it "F" $(checkExample "{-0.0:F}" "-0.000000")
-      it "G" $(checkExampleDiff "{-0.0:G}" "-0.000000")
-      it "E" $(checkExample "{-0.0:E}" "-0.000000E+00")
+      it "f" $ [fmt|{-0.0:f}|] `shouldBe` "-0.000000"
+      it "e" $ [fmt|{-0.0:e}|] `shouldBe` "-0.000000e+00"
+      it "g" $ [fmt|{-0.0:g}|] `shouldBe` "-0.000000"
+      it "F" $ [fmt|{-0.0:F}|] `shouldBe` "-0.000000"
+      it "G" $ [fmt|{-0.0:G}|] `shouldBe` "-0.000000"
+      it "E" $ [fmt|{-0.0:E}|] `shouldBe` "-0.000000E+00"
     describe "0" $ do
-      it "works" $(checkExample "{123:010}" "0000000123")
-      it "works with sign" $(checkExample "{-123:010}" "-000000123")
-      it "accept mode override" $(checkExample "{-123:<010}" "-123000000")
-      it "accept mode and char override" $(checkExample "{-123:.<010}" "-123......")
+      it "works" $ [fmt|{123:010}|] `shouldBe` "0000000123"
+      it "works with sign" $ [fmt|{-123:010}|] `shouldBe` "-000000123"
+      it "accept mode override" $ [fmt|{-123:<010}|] `shouldBe` "-123000000"
+      it "accept mode and char override" $ [fmt|{-123:.<010}|] `shouldBe` "-123......"
     describe "no digit no dot" $ do
-      it "f" $(checkExample "{1.0:.0f}" "1")
-      it "e" $(checkExample "{1.0:.0e}" "1e+00")
-      it "g" $(checkExample "{1.0:.0g}" "1")
-      it "E" $(checkExample "{1.0:.0E}" "1E+00")
-      it "G" $(checkExample "{1.0:.0G}" "1")
-      it "percent" $(checkExample "{1.0:.0%}" "100%")
+      it "f" $ [fmt|{1.0:.0f}|] `shouldBe` "1"
+      it "e" $ [fmt|{1.0:.0e}|] `shouldBe` "1e+00"
+      it "g" $ [fmt|{1.0:.0g}|] `shouldBe` "1"
+      it "E" $ [fmt|{1.0:.0E}|] `shouldBe` "1E+00"
+      it "G" $ [fmt|{1.0:.0G}|] `shouldBe` "1"
+      it "percent" $ [fmt|{1.0:.0%}|] `shouldBe` "100%"
     describe "no digit alt -> dot" $ do
-      it "f" $(checkExample "{1.0:#.0f}" "1.")
-      it "e" $(checkExample "{1.0:#.0e}" "1.e+00")
-      it "g" $(checkExample "{1.0:#.0g}" "1.")
-      it "E" $(checkExample "{1.0:#.0E}" "1.E+00")
-      it "G" $(checkExample "{1.0:#.0G}" "1.")
-      it "percent" $(checkExample "{1.0:#.0%}" "100.%")
+      it "f" $ [fmt|{1.0:#.0f}|] `shouldBe` "1."
+      it "e" $ [fmt|{1.0:#.0e}|] `shouldBe` "1.e+00"
+      it "g" $ [fmt|{1.0:#.0g}|] `shouldBe` "1."
+      it "E" $ [fmt|{1.0:#.0E}|] `shouldBe` "1.E+00"
+      it "G" $ [fmt|{1.0:#.0G}|] `shouldBe` "1."
+      it "percent" $ [fmt|{1.0:#.0%}|] `shouldBe` "100.%"
   describe "complex" $
     it "works with many things at once" $
       let name = "Guillaume"

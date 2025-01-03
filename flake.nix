@@ -17,7 +17,7 @@
           let
             shell = pkg.env.overrideAttrs (old: {
               nativeBuildInputs = old.nativeBuildInputs
-                ++ (with pkgs; [ cabal-install python3 ]);
+                ++ (with pkgs; [ cabal-install ]);
             });
 
             # Shell with haskell language server
@@ -65,11 +65,7 @@
           pyf_910 = pyfBuilder haskell.packages.ghc910;
           pyf_912 = pyfBuilder haskell.packages.ghc912;
 
-          # Only the current build is built with python3 support
-          # (i.e. extended tests)
-          default = haskell.lib.enableCabalFlag ((pyfBuilder haskellPackages).overrideAttrs
-            (old: { buildInputs = old.buildInputs ++ [ python3 ]; }))
-            "python_test";
+          default = pyfBuilder haskellPackages;
         };
 
         apps = {

@@ -1,6 +1,10 @@
 # Revision history for PyF
 
 - Support for GHC 9.12
+- No more "python" reference check in the test phase. I'm removing complexity,
+  and if it does not match the python implementation, we can just introduce a
+  new test case. Note that python checking can be reimplemented easilly by
+  parsing the AST.
 
 ## 0.11.3.0 -- 2024-05-15
 

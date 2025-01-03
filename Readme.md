@@ -297,7 +297,7 @@ Have a look at `PyF.mkFormatter` for all the details about customization.
 
 ## Differences with the Python Syntax
 
-The implementation is unit-tested against the reference Python implementation (Python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
+The implementation *was* unit-tested against the reference Python implementation (Python 3.6.4) and should match its result. Since 2025, the standalone test suite is not cross checked with the standard python implementation. However some formatters are not supported or some (minor) differences can be observed.
 
 ### Not supported
 
