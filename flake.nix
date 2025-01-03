@@ -41,7 +41,6 @@
       in with pkgs; rec {
         checks = {
           inherit (packages) 
-            pyf_86
             pyf_810
             pyf_90
             pyf_92
@@ -52,67 +51,23 @@
             pyf_912;
         };
 
-        packages = rec {
-          pyf_86 = (pyfBuilder (haskell.packages.ghc865Binary.override {
-            overrides = self: super: with haskell.lib; { };
-          })).overrideAttrs (old: {
-            passthru.shell = old.passthru.shell.overrideAttrs (old: {
-              # for some reasons, ncurses is not part of the dependencies of ghc...
-              buildInputs = old.buildInputs ++ [ pkgs.ncurses ];
-            });
-          });
-
+        packages = {
+          # GHC 8.6 is tested with stack, I'm stopping the testing with nix.
           # GHC 8.8 is not in nixpkgs anymore.
 
-          pyf_810 = pyfBuilder (haskell.packages.ghc810.override {
-            overrides = self: super: with haskell.lib; { };
-          });
+          pyf_810 = pyfBuilder haskell.packages.ghc810;
+          pyf_90 = pyfBuilder haskell.packages.ghc90;
+          pyf_92 = pyfBuilder haskell.packages.ghc92;
+          pyf_94 = pyfBuilder haskell.packages.ghc94;
+          pyf_96 = pyfBuilder haskell.packages.ghc96;
+          pyf_98 = pkgs.haskell.lib.dontCheck (pyfBuilder haskell.packages.ghc98);
 
-          pyf_90 = pyfBuilder (haskell.packages.ghc90.override {
-            overrides = self: super: with haskell.lib; { };
-          });
-
-          pyf_92 = pyfBuilder (haskell.packages.ghc92.override {
-            overrides = self: super: with haskell.lib; rec { };
-          });
-
-          # The current version for debug
-          pyf_current = pyfBuilder (haskellPackages.override {
-            overrides = self: super: with haskell.lib; rec {
-            };
-          });
-
-          # GHC 9.4
-          pyf_94 = pyfBuilder ((haskell.packages.ghc94.override {
-            overrides = self: super:
-              with haskell.lib; {
-              };
-          }));
-
-          pyf_96 = pyfBuilder (haskell.packages.ghc96.override {
-            overrides = self: super: with haskell.lib; rec {
-            };
-          });
-
-          pyf_98 = pkgs.haskell.lib.dontCheck (pyfBuilder ((haskell.packages.ghc98.override {
-            overrides = self: super:
-              with haskell.lib; {
-              };
-          })));
-
-          pyf_910 = pyfBuilder (haskell.packages.ghc910.override {
-            overrides = self: super: with haskell.lib; rec {
-            };
-          });
-
-          pyf_912 = pyfBuilder (haskell.packages.ghc912.override {
-            overrides = self: super: with haskell.lib; rec {
-            };
-          });
+          pyf_910 = pyfBuilder haskell.packages.ghc910;
+          pyf_912 = pyfBuilder haskell.packages.ghc912;
 
           # Only the current build is built with python3 support
           # (i.e. extended tests)
-          default = haskell.lib.enableCabalFlag (pyf_current.overrideAttrs
+          default = haskell.lib.enableCabalFlag ((pyfBuilder haskellPackages).overrideAttrs
             (old: { buildInputs = old.buildInputs ++ [ python3 ]; }))
             "python_test";
         };

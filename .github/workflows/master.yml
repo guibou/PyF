@@ -10,8 +10,7 @@ jobs:
   nix_matrix:
     strategy:
       matrix:
-        # We are not using nix build .#pyf_all because of github disk limitations
-        ghc: [86, 90, 92, 94, 96, 98, 910, 912]
+        ghc: [90, 92, 94, 96, 98, 910, 912]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
