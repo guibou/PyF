@@ -13,30 +13,11 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages.${system};
-      in with pkgs; rec {
-        inherit pkgs;
-        # Explicit list of used files. Else there is always too much and
-        # cache is invalidated.
-        sources = lib.sourceByRegex ./. [
-          "PyF.cabal$"
-          ".*.hs$"
-          ".*.md$"
-          ".*.golden$"
-          "src"
-          "app"
-          "src/PyF"
-          "src/PyF/Internal"
-          "test"
-          "test/golden"
-          "test/golden96"
-          "LICENSE"
-        ];
-
         pyfBuilder = hPkgs:
           let
             shell = pkg.env.overrideAttrs (old: {
               nativeBuildInputs = old.nativeBuildInputs
-                ++ [ cabal-install python3 ];
+                ++ (with pkgs; [ cabal-install python3 ]);
             });
 
             # Shell with haskell language server
@@ -46,7 +27,7 @@
             });
 
             pkg = (
-              (hPkgs.callCabal2nix "PyF" sources { })).overrideAttrs
+              (hPkgs.callCabal2nix "PyF" ./. { })).overrideAttrs
               (oldAttrs: {
                 buildInputs = oldAttrs.buildInputs;
                 passthru = oldAttrs.passthru // { inherit shell shell_hls; };
@@ -56,6 +37,20 @@
             pname = "PyF-ghc${hPkgs.ghc.version}";
             name = "PyF-ghc${hPkgs.ghc.version}-${old.version}";
           });
+
+      in with pkgs; rec {
+        checks = {
+          inherit (packages) 
+            pyf_86
+            pyf_810
+            pyf_90
+            pyf_92
+            pyf_94
+            pyf_96
+            pyf_98
+            pyf_910
+            pyf_912;
+        };
 
         packages = rec {
           pyf_86 = (pyfBuilder (haskell.packages.ghc865Binary.override {
@@ -115,21 +110,9 @@
             };
           });
 
-          pyf_all = linkFarmFromDrvs "all_pyf" [
-            pyf_86
-            pyf_810
-            pyf_90
-            pyf_92
-            pyf_94
-            pyf_96
-            pyf_98
-            pyf_910
-            pyf_912
-          ];
-
           # Only the current build is built with python3 support
           # (i.e. extended tests)
-          pyf = haskell.lib.enableCabalFlag (pyf_current.overrideAttrs
+          default = haskell.lib.enableCabalFlag (pyf_current.overrideAttrs
             (old: { buildInputs = old.buildInputs ++ [ python3 ]; }))
             "python_test";
         };
@@ -144,10 +127,9 @@
           };
         };
 
-        defaultPackage = packages.pyf;
-        devShell = packages.pyf.shell_hls;
         devShells = (builtins.mapAttrs (name: value: value.shell) packages) // {
           treesitter = pkgs.mkShell { buildInputs = [ pkgs.tree-sitter pkgs.nodejs ]; };
+          default = packages.default.shell_hls;
         };
       });
 }
