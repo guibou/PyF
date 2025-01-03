@@ -10,10 +10,8 @@ jobs:
   nix_matrix:
     strategy:
       matrix:
-        # 88 is not in nixpkgs anymore
-        # 910 does not build yet for unknown reason
         # We are not using nix build .#pyf_all because of github disk limitations
-        ghc: [86, 90, 92, 94, 96, 98]
+        ghc: [86, 90, 92, 94, 96, 98, 910, 912]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -37,7 +35,8 @@ jobs:
                   , lts-20.26 # 9.2
                   , lts-21.17 # 9.4
                   , lts-22.22 # 9.6
-                  , nightly-2024-05-15 # 9.8 nightly
+                  , lts-23.2 # 9.8
+                  , nightly-2025-01-03 # 9.10 nightly
                   ]
 
     runs-on: ubuntu-latest
