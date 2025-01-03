@@ -1,6 +1,8 @@
 # Revision history for PyF
 
-- Support for GHC 9.12
+- Fix indentation in `fmtTrim` when line break was escaped (bug https://github.com/guibou/PyF/issues/141).
+- Support for GHC 9.12.
+- Fix for tests in GHC 9.10.
 - No more "python" reference check in the test phase. I'm removing complexity,
   and if it does not match the python implementation, we can just introduce a
   new test case. Note that python checking can be reimplemented easilly by
