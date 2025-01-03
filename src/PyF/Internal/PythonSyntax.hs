@@ -1,11 +1,11 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE CPP #-}
 
 -- |
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
@@ -28,6 +28,7 @@ import Control.Applicative (some)
 import Control.Monad (replicateM_, void)
 import Control.Monad.Reader (Reader, asks)
 import qualified Data.Char
+import Data.Data (Data)
 import Data.Maybe (fromMaybe)
 import GHC (GhcPs, HsExpr)
 import Language.Haskell.TH.LanguageExtensions (Extension (..))
@@ -36,7 +37,6 @@ import PyF.Formatters
 import PyF.Internal.Meta
 import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
-import Data.Data (Data)
 
 #if MIN_VERSION_ghc(9,7,0)
 
@@ -332,7 +332,7 @@ parsePrecision = do
 
 -- | Similar to 'manyTill' but always parse one element.
 -- Be careful, @someTill p e@ may parse @e@ as first element if @e@ is a subset of @p@.
-someTill :: Stream s m t => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
+someTill :: (Stream s m t) => ParsecT s u m a -> ParsecT s u m end -> ParsecT s u m [a]
 someTill p e = (:) <$> p <*> manyTill p e
 
 evalFlag :: TypeFlag -> Padding -> Maybe Char -> Precision -> AlternateForm -> Maybe SignMode -> Either String TypeFormat

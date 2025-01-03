@@ -1,23 +1,21 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 import Control.DeepSeq
 import Control.Exception
 import Data.Bits (Bits (..))
 import Data.Char (ord)
 import qualified Data.Text as Text
+import PyF
 import System.Exit
 import System.FilePath
-import qualified System.IO as IO
 import System.IO.Temp
 import System.Process (readProcessWithExitCode)
 import Test.HUnit.Lang
 import Test.Hspec
-
-import PyF
 
 -- * Check compilation with external GHC (this is usefull to test compilation failure)
 
@@ -28,24 +26,25 @@ data CompilationStatus
   | Ok String
   deriving (Show, Eq)
 
-
 makeTemplate :: String -> String
-makeTemplate s = [fmt|{{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}}
+makeTemplate s =
+  [fmt|{{-# LANGUAGE QuasiQuotes, ExtendedDefaultRules, TypeApplications #-}}
 import PyF
 truncate' = truncate @Float @Int
 hello = "hello"
 number = 3.14 :: Float
 main :: IO ()
-main = putStrLn [fmt|{s}|] <> "|]\n"
+main = putStrLn [fmt|{s}|]
+    <> "|]\n"
 
 -- | Compile a formatting string
 --
 -- >>> checkCompile fileContent
 -- CompileError "Bla bla bla, Floating cannot be formatted as hexa (`x`)
-checkCompile :: HasCallStack => String -> IO CompilationStatus
-checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
-  IO.hPutStr fd content
-  IO.hFlush fd
+checkCompile :: (HasCallStack) => String -> IO CompilationStatus
+checkCompile content = withSystemTempDirectory "PyF" $ \dirPath -> do
+  let path = dirPath </> "PyFTest.hs"
+  writeFile path content
   (ecode, _stdout, stderr) <-
     readProcessWithExitCode
       "ghc"
@@ -55,6 +54,11 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
         -- Disable the usage of the annoying .ghc environment file
         "-package-env",
         "-",
+        -- Move the ".o" in the temporary dir
+        "-odir",
+        dirPath,
+        "-hidir",
+        dirPath,
         -- Tests use a filename in a temporary directory which may have a long filename which triggers
         -- line wrapping, reducing the reproducibility of error message
         -- By setting the column size to a high value, we ensure reproducible error messages
@@ -92,6 +96,7 @@ sanitize path =
     . Text.replace (Text.pack "[Char]") (Text.pack "String")
     . Text.pack
 
+{- ORMOLU_DISABLE -}
 golden :: HasCallStack => String -> String -> IO ()
 golden name output = do
   let
@@ -109,20 +114,27 @@ golden name output = do
         Left _ -> output
   -- Flush lazy IO
   _ <- evaluate (force goldenContent)
-  if output /= goldenContent
+  -- Apparently the whitespaces in GHC 9.10 changed
+  -- By stripping, we just keep the test working as expected, but we are
+  -- compatible with different version of GHC.
+  --
+  -- TODO: use GHC API to build directly the example and gather errors in a
+  -- more reproducible way.
+  if Text.strip (Text.pack output) /= Text.strip (Text.pack goldenContent)
     then do
       writeFile actualFile output
-      (_, diffOutput, _) <- readProcessWithExitCode "diff" [goldenFile, actualFile] ""
+      (_, diffOutput, _) <- readProcessWithExitCode "diff" ["-b", goldenFile, actualFile] ""
       putStrLn diffOutput
       -- Update golden file
-      writeFile goldenFile output
+      writeFile goldenFile (Text.unpack $ Text.strip (Text.pack output))
       assertFailure diffOutput
-    else writeFile goldenFile output
+    else writeFile goldenFile (Text.unpack $ Text.strip (Text.pack output))
+{- ORMOLU_ENABLE -}
 
-failCompile :: HasCallStack => String -> Spec
+failCompile :: (HasCallStack) => String -> Spec
 failCompile s = failCompileContent s s (makeTemplate s)
 
-failCompileContent :: HasCallStack => String -> String -> String -> Spec
+failCompileContent :: (HasCallStack) => String -> String -> String -> Spec
 failCompileContent h caption fileContent =
   before (checkCompile fileContent) $ do
     let goldenName = concatMap cleanSpecialChars h
@@ -150,7 +162,7 @@ cleanSpecialChars '\n' = "NL"
 cleanSpecialChars e = pure e
 
 main :: IO ()
-main = hspec spec
+main = hspec $ parallel spec
 
 spec :: Spec
 spec =

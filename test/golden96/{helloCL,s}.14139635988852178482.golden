@@ -1,4 +1,3 @@
-
 INITIALPATH:7:30: error:
     • String type is incompatible with grouping (_ or ,).
     • In the quasi-quotation: [fmt|{hello:,s}|]

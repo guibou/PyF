@@ -1,4 +1,3 @@
-
 INITIALPATH:7:41: error:
     • Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G', 'n', 's', '%'} or remove the precision field.
     • In the quasi-quotation: [fmt|{truncate number:.3x}|]

@@ -1,9 +1,7 @@
 resolver: lts-15.4
-
 packages:
-- .
-
+  - .
 nix:
   # Not enabled by default. It will be on nixos, but not on CI
   enable: false
-  packages: [ python3 ]
+  packages: [python3]

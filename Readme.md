@@ -217,7 +217,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 
 Note: error reporting uses the native GHC error infrastructure, so they will correctly appear in your editor (using [HLS](https://github.com/haskell/haskell-language-server)), for example:
 
-  ![Error reported in editor](error_example.png)
+![Error reported in editor](error_example.png)
 
 - Error in variable name are also readable:
 
@@ -297,7 +297,7 @@ Have a look at `PyF.mkFormatter` for all the details about customization.
 
 ## Differences with the Python Syntax
 
-The implementation is unit-tested against the reference Python implementation (Python 3.6.4) and should match its result. However some formatters are not supported or some (minor) differences can be observed.
+The implementation *was* unit-tested against the reference Python implementation (Python 3.6.4) and should match its result. Since 2025, the standalone test suite is not cross checked with the standard python implementation. However some formatters are not supported or some (minor) differences can be observed.
 
 ### Not supported
 
@@ -344,7 +344,7 @@ We also provide a few utility functions:
 
 # GHC compatibility
 
-This library is tested in CI with ghc 8.6 to 9.2.
+This library is tested in CI with ghc 8.6 to 9.12.
 
 # Conclusion
 
@@ -355,7 +355,7 @@ Don't hesitate to make any suggestion, I'll be more than happy to work on it.
 Everything works with nix and flakes. But you can also try with manual cabal / stack if you wish.
 
 - `nix develop` will open a shell with everything you need to work on PyF, including haskell-language-server. It may be a bit too much, so you can instead:
-- `nix develop .#pyf_XY` opens a shell with a specific GHC version and without haskell-language-server. That's mostly to test compatibility with different GHC version or open a shell without HLS if you are in a hurry. Replace `pyf_XY` by `pyf_86`, `pyf_88`, `pyf_810`, `pyf_90` or `pyf_92`.
+- `nix develop .#pyf_XY` opens a shell with a specific GHC version and without haskell-language-server. That's mostly to test compatibility with different GHC version or open a shell without HLS if you are in a hurry. Replace `pyf_XY` by a GHC version, e.g. `pyf_912`.
 
 Once in the shell, use `cabal build`, `cabal test`, `cabal repl`.
 
@@ -363,15 +363,15 @@ There is a cachix available, used by CI, and already configured in flakes. You c
 
 You can locally build and test everything using:
 
-- `nix build .#pyf_all`.
+- `nix flake check`
 
 Don't hesitate to submit a PR not tested on all GHC versions.
 
 ## Formatting
 
-The codebase is formatted with `ormolu`. Please run:
+Please run:
 
-- `nix run .\#run-ormolu`
+- `nix run fmt`
 
 Before submitting.
 

@@ -35,7 +35,6 @@ import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Proxy
 import Data.String (fromString)
 
-
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Utils.Monad (addErrAt)
 import GHC.Tc.Types (TcM)
@@ -62,8 +61,6 @@ import GHC.Driver.Errors.Types
 import GHC.Parser.Errors.Types
 #endif
 #endif
-
-
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.Name.Reader
@@ -170,9 +167,10 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
 
 findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
 findFreeVariablesInFormatMode Nothing = []
-findFreeVariablesInFormatMode (Just (FormatMode padding tf _ )) = findFreeVariables tf <> case padding of
-  PaddingDefault -> []
-  Padding eoi _ -> findFreeVariables eoi
+findFreeVariablesInFormatMode (Just (FormatMode padding tf _)) =
+  findFreeVariables tf <> case padding of
+    PaddingDefault -> []
+    Padding eoi _ -> findFreeVariables eoi
 
 checkOneItem :: Item -> Q (Maybe (SrcSpan, String))
 checkOneItem (Raw _) = pure Nothing
@@ -185,7 +183,7 @@ checkOneItem (Replacement (hsExpr, _) formatMode) = do
     [] -> pure Nothing
     ((err, span) : _) -> pure $ Just (span, err)
 
-
+{- ORMOLU_DISABLE -}
 findFreeVariables :: Data a => a -> [(SrcSpan, RdrName)]
 findFreeVariables item = allNames
   where
@@ -198,17 +196,31 @@ findFreeVariables item = allNames
       Just (HsVar _ l) -> [l]
 #endif
 
-#if MIN_VERSION_ghc(9,10,0)
-      Just (HsLam _ _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
-#elif MIN_VERSION_ghc(9,6,0)
-      Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
-#else
-      Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])) _)) -> filter keepVar subVars
-#endif
+#if MIN_VERSION_ghc(9,12,0)
+      Just (HsLam _ _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (unLoc -> map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
         where
           keepVar (L _ n) = n `notElem` subPats
           subVars = concat $ gmapQ f [e]
           subPats = concat $ gmapQ findPats ps
+#elif MIN_VERSION_ghc(9,10,0)
+      Just (HsLam _ _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
+        where
+          keepVar (L _ n) = n `notElem` subPats
+          subVars = concat $ gmapQ f [e]
+          subPats = concat $ gmapQ findPats ps
+#elif MIN_VERSION_ghc(9,6,0)
+      Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
+        where
+          keepVar (L _ n) = n `notElem` subPats
+          subVars = concat $ gmapQ f [e]
+          subPats = concat $ gmapQ findPats ps
+#else
+      Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])) _)) -> filter keepVar subVars
+        where
+          keepVar (L _ n) = n `notElem` subPats
+          subVars = concat $ gmapQ f [e]
+          subPats = concat $ gmapQ findPats ps
+#endif
       _ -> concat $ gmapQ f e
 
     -- Find all Variables bindings (i.e. patterns) in an HsExpr
@@ -221,6 +233,7 @@ findFreeVariables item = allNames
     -- level expression: gmapQ only checks sub constructors.
     allVars = concat $ gmapQ f [item]
     allNames = map (\(L l e) -> (l, e)) allVars
+{- ORMOLU_ENABLE -}
 
 lookupName :: RdrName -> Q Bool
 lookupName n = case n of
@@ -302,6 +315,7 @@ formatErrorMessages err
     (_sysUnExpect, msgs1) = span (SysUnExpect "" ==) (errorMessages err)
     (_unExpect, msgs2) = span (UnExpect "" ==) msgs1
     (_expect, messages) = span (Expect "" ==) msgs2
+
 {-
 Note: Empty String Lifting
 
@@ -321,7 +335,7 @@ sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormat (Replacement ( _, expr) y) = do
+toFormat (Replacement (_, expr) y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
@@ -395,7 +409,7 @@ paddingKToPadding p = case p of
     Just (Nothing, a) -> Just (i, AnyAlign a, ' ')
     Just (Just c, a) -> Just (i, AnyAlign a, c)
 
-formatAnyIntegral :: forall i paddingWidth t t'. Integral paddingWidth => PyfFormatIntegral i => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (paddingWidth, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
+formatAnyIntegral :: forall i paddingWidth t t'. (Integral paddingWidth) => (PyfFormatIntegral i) => Formatters.Format t t' 'Formatters.Integral -> Formatters.SignMode -> Maybe (paddingWidth, AnyAlign, Char) -> Maybe (Int, Char) -> i -> String
 formatAnyIntegral f s Nothing grouping i = pyfFormatIntegral @i @paddingWidth f s Nothing grouping i
 formatAnyIntegral f s (Just (padSize, AnyAlign alignMode, c)) grouping i = pyfFormatIntegral f s (Just (padSize, alignMode, c)) grouping i
 
@@ -418,7 +432,7 @@ instance (Show t, Integral t) => FormatAny2 'PyFIntegral t k where
 instance (PyfFormatFractional t) => FormatAny2 'PyFFractional t k where
   formatAny2 _ s a = formatAnyFractional Formatters.Generic s (paddingKToPadding a)
 
-newPaddingKForString :: Integral i => PaddingK 'Formatters.AlignAll i -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
+newPaddingKForString :: (Integral i) => PaddingK 'Formatters.AlignAll i -> Maybe (Int, Formatters.AlignMode 'Formatters.AlignAll, Char)
 newPaddingKForString padding = case padding of
   PaddingDefaultK -> Nothing
   PaddingK i Nothing -> Just (fromIntegral i, Formatters.AlignLeft, ' ') -- default align left and fill with space for string
@@ -428,5 +442,5 @@ newPaddingKForString padding = case padding of
 instance (PyFToString t) => FormatAny2 'PyFString t 'Formatters.AlignAll where
   formatAny2 _ _s a _grouping precision t = Formatters.formatString (newPaddingKForString a) precision (pyfToString t)
 
-instance TypeError ('Text "String type is incompatible with inside padding (=).") => FormatAny2 'PyFString t 'Formatters.AlignNumber where
+instance (TypeError ('Text "String type is incompatible with inside padding (=).")) => FormatAny2 'PyFString t 'Formatters.AlignNumber where
   formatAny2 = error "Unreachable"

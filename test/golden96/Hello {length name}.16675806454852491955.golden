@@ -1,4 +1,3 @@
-
 INITIALPATH:7:36: error:
     • Variable not in scope: name
     • In the quasi-quotation: [fmt|Hello {length name}|]

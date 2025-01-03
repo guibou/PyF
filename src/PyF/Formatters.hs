@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveLift #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -9,7 +10,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE DeriveDataTypeable #-}
 
 -- |
 --
@@ -53,10 +53,10 @@ module PyF.Formatters
 where
 
 import Data.Char (chr, toUpper)
+import Data.Data (Data)
 import Data.List (intercalate)
 import Language.Haskell.TH.Syntax
 import qualified Numeric
-import Data.Data (Data)
 
 -- ADT for API
 
@@ -83,7 +83,6 @@ data AlignMode (k :: AlignForString) where
   AlignInside :: AlignMode 'AlignNumber
   -- | Padding will be added around the value
   AlignCenter :: AlignMode 'AlignAll
-
 
 deriving instance Show (AlignMode k)
 
@@ -174,8 +173,8 @@ reprFractional fmt precision f
   | isInfinite f = Infinite sign (upperIt "inf")
   | isNaN f = NaN (upperIt "nan")
   | isNegativeZero f = case reprFractional fmt precision (abs f) of
-       FractionalRepr Positive aa bb cc -> FractionalRepr Negative aa bb cc
-       other -> error $ "reprFractional (isNegativeZero f): The impossible happened : " ++ show other ++ ". Please open an issue at https://github.com/guibou/PyF/issues/"
+      FractionalRepr Positive aa bb cc -> FractionalRepr Negative aa bb cc
+      other -> error $ "reprFractional (isNegativeZero f): The impossible happened : " ++ show other ++ ". Please open an issue at https://github.com/guibou/PyF/issues/"
   | otherwise = FractionalRepr sign decimalPart fractionalPart suffixPart
   where
     upperIt s = case fmt of
@@ -189,8 +188,8 @@ reprFractional fmt precision f
       Exponent -> overrideExponent precision $ splitFractionalExp (Numeric.showEFloat precision iAbs "")
       Generic -> splitFractionalExp (Numeric.showGFloatAlt precision iAbs "")
       Percent -> case splitFractional (Numeric.showFFloatAlt precision (iAbs * 100) "") of
-                  (a, b, "") -> (a, b, "%")
-                  other -> error $ "reprFractional (format): The impossible happened : " ++ show other ++ ". Please open an issue at https://github.com/guibou/PyF/issues/"
+        (a, b, "") -> (a, b, "%")
+        other -> error $ "reprFractional (format): The impossible happened : " ++ show other ++ ". Please open an issue at https://github.com/guibou/PyF/issues/"
       Alternate fmt' -> format fmt'
       Upper fmt' ->
         let (a, b, c) = format fmt'
@@ -229,7 +228,7 @@ group (IntegralRepr s str) (Just (size, c)) = IntegralRepr s (groupIntercalate c
 group (FractionalRepr s a b d) (Just (size, c)) = FractionalRepr s (groupIntercalate c size a) b d
 group i _ = i
 
-padAndSign :: Integral paddingWidth => Format t t' t'' -> String -> SignMode -> Maybe (paddingWidth, AlignMode k, Char) -> Repr -> String
+padAndSign :: (Integral paddingWidth) => Format t t' t'' -> String -> SignMode -> Maybe (paddingWidth, AlignMode k, Char) -> Repr -> String
 padAndSign format prefix sign padding repr = leftAlignMode <> prefixStr <> middleAlignMode <> content <> rightAlignMode
   where
     (signStr, content) = case repr of
@@ -282,8 +281,8 @@ groupIntercalate c i s = intercalate [c] (reverse (pack (reverse s)))
 
 -- | Format an integral number.
 formatIntegral ::
-  Integral paddingWidth =>
-  Integral i =>
+  (Integral paddingWidth) =>
+  (Integral i) =>
   Format t t' 'Integral ->
   SignMode ->
   -- | Padding

@@ -135,7 +135,7 @@ instance PyFToString Data.ByteString.Lazy.ByteString where pyfToString = pyfToSt
 instance PyFToString Char where pyfToString c = [c]
 
 -- | Default instance. Convert any type with a 'Show instance.
-instance {-# OVERLAPPABLE #-} Show t => PyFToString t where pyfToString = show
+instance {-# OVERLAPPABLE #-} (Show t) => PyFToString t where pyfToString = show
 
 -- * Real formatting (with optional fractional part)
 
@@ -163,7 +163,7 @@ class PyfFormatFractional a where
     String
 
 -- | Default instance working for any 'Real'. Internally it converts the type to 'Double'.
-instance {-# OVERLAPPABLE #-} Real t => PyfFormatFractional t where
+instance {-# OVERLAPPABLE #-} (Real t) => PyfFormatFractional t where
   pyfFormatFractional f s p g prec v = formatFractional f s p g prec (realToFrac @t @Double v)
 
 -- | This instance does not do any conversion.
@@ -183,7 +183,7 @@ instance PyfFormatFractional Float where pyfFormatFractional = formatFractional
 -- 'Integral' constraint.
 class PyfFormatIntegral i where
   pyfFormatIntegral ::
-    Integral paddingWidth =>
+    (Integral paddingWidth) =>
     Format t t' 'Integral ->
     -- | Sign formatting
     SignMode ->
@@ -195,7 +195,7 @@ class PyfFormatIntegral i where
     String
 
 -- | Default instance for any 'Integral'.
-instance {-# OVERLAPPABLE #-} Integral t => PyfFormatIntegral t where
+instance {-# OVERLAPPABLE #-} (Integral t) => PyfFormatIntegral t where
   pyfFormatIntegral f s p g v = formatIntegral f s p g v
 
 -- | Returns the numerical value of a 'Char'

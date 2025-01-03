@@ -1,4 +1,3 @@
-
 INITIALPATH:7:28: error:
     • parse error on input `/' in haskell expression
     • In the quasi-quotation: [fmt|{pi:.{/}}|]
