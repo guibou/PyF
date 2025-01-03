@@ -107,6 +107,11 @@
             };
           });
 
+          pyf_912 = pyfBuilder (haskell.packages.ghc912.override {
+            overrides = self: super: with haskell.lib; rec {
+            };
+          });
+
           pyf_all = linkFarmFromDrvs "all_pyf" [
             pyf_86
             pyf_810
@@ -116,6 +121,7 @@
             pyf_96
             pyf_98
             pyf_910
+            pyf_912
           ];
 
           # Only the current build is built with python3 support

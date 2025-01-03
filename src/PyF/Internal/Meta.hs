@@ -180,7 +180,9 @@ toExp d (Expr.ExprWithTySig HsWC{hswc_body=HsIB{hsib_body}} e) = TH.SigE (toExp 
 toExp d (Expr.OpApp _ e1 o e2) = TH.UInfixE (toExp d . unLoc $ e1) (toExp d . unLoc $ o) (toExp d . unLoc $ e2)
 toExp d (Expr.NegApp _ e _) = TH.AppE (TH.VarE 'negate) (toExp d . unLoc $ e)
 -- NOTE: for lambda, there is only one match
-#if MIN_VERSION_ghc(9,10,0)
+#if MIN_VERSION_ghc(9,12,0)
+toExp d (Expr.HsLam _ _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (unLoc -> map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
+#elif MIN_VERSION_ghc(9,10,0)
 toExp d (Expr.HsLam _ _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
 #elif MIN_VERSION_ghc(9,6,0)
 toExp d (Expr.HsLam _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
@@ -246,7 +248,9 @@ toExp d (Expr.ArithSeq _ _ e) = TH.ArithSeqE $ case e of
   (FromThen a b) -> TH.FromThenR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromTo a b) -> TH.FromToR (toExp d $ unLoc a) (toExp d $ unLoc b)
   (FromThenTo a b c) -> TH.FromThenToR (toExp d $ unLoc a) (toExp d $ unLoc b) (toExp d $ unLoc c)
-#if MIN_VERSION_ghc(9,7,0)
+#if MIN_VERSION_ghc(9,12,0)
+toExp _ (HsOverLabel _ fs) = TH.LabelE (unpackFS fs)
+#elif MIN_VERSION_ghc(9,7,0)
 toExp _ (HsOverLabel _ lbl _) = TH.LabelE (fromSourceText lbl)
    where
      fromSourceText :: SourceText -> String
@@ -265,7 +269,10 @@ toExp _ (HsOverLabel _ lbl) = TH.LabelE (unpackFS lbl)
 -- enabled thus match on Nothing
 toExp _ (HsOverLabel _ Nothing lbl) = TH.LabelE (unpackFS lbl)
 #endif
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9,12,0)
+toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . field_label . unLoc . dfoLabel . unLoc $ field)
+toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . fmap field_label . dfoLabel) fields)
+#elif MIN_VERSION_ghc(9,6,0)
 toExp dynFlags (HsGetField _ expr field) = TH.GetFieldE (toExp dynFlags (unLoc expr)) (unpackFS . field_label . unLoc . dfoLabel . unLoc $ field)
 toExp _ (HsProjection _ fields) = TH.ProjectionE (fmap (unpackFS . unLoc . fmap field_label . dfoLabel . unLoc) fields)
 #elif MIN_VERSION_ghc(9, 4, 0)

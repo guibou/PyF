@@ -198,7 +198,9 @@ findFreeVariables item = allNames
       Just (HsVar _ l) -> [l]
 #endif
 
-#if MIN_VERSION_ghc(9,10,0)
+#if MIN_VERSION_ghc(9,12,0)
+      Just (HsLam _ _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (unLoc -> map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
+#elif MIN_VERSION_ghc(9,10,0)
       Just (HsLam _ _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
 #elif MIN_VERSION_ghc(9,6,0)
       Just (HsLam _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
