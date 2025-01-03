@@ -11,7 +11,6 @@ import Data.Char (ord)
 import qualified Data.Text as Text
 import System.Exit
 import System.FilePath
-import qualified System.IO as IO
 import System.IO.Temp
 import System.Process (readProcessWithExitCode)
 import Test.HUnit.Lang
@@ -43,9 +42,9 @@ main = putStrLn [fmt|{s}|] <> "|]\n"
 -- >>> checkCompile fileContent
 -- CompileError "Bla bla bla, Floating cannot be formatted as hexa (`x`)
 checkCompile :: HasCallStack => String -> IO CompilationStatus
-checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
-  IO.hPutStr fd content
-  IO.hFlush fd
+checkCompile content = withSystemTempDirectory "PyF" $ \dirPath -> do
+  let path = dirPath </> "PyFTest.hs"
+  writeFile path content
   (ecode, _stdout, stderr) <-
     readProcessWithExitCode
       "ghc"
@@ -55,6 +54,11 @@ checkCompile content = withSystemTempFile "PyFTest.hs" $ \path fd -> do
         -- Disable the usage of the annoying .ghc environment file
         "-package-env",
         "-",
+        -- Move the ".o" in the temporary dir
+        "-odir",
+        dirPath,
+        "-hidir",
+        dirPath,
         -- Tests use a filename in a temporary directory which may have a long filename which triggers
         -- line wrapping, reducing the reproducibility of error message
         -- By setting the column size to a high value, we ensure reproducible error messages
@@ -156,7 +160,7 @@ cleanSpecialChars '\n' = "NL"
 cleanSpecialChars e = pure e
 
 main :: IO ()
-main = hspec spec
+main = hspec $ parallel spec
 
 spec :: Spec
 spec =

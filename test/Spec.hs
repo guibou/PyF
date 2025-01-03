@@ -45,7 +45,7 @@ import qualified Data.Text as Text
 -}
 
 main :: IO ()
-main = hspec spec
+main = hspec $ parallel spec
 
 newtype FooFloating t = FooFloating t
   deriving newtype (Show, RealFloat, RealFrac, Floating, Fractional, Real, Enum, Num, Ord, Eq, PyfFormatFractional)
