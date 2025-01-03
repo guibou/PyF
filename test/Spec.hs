@@ -27,6 +27,7 @@ import qualified Data.List as List
 import Data.Proxy (Proxy (..))
 import qualified Data.Ratio
 import qualified Data.Text
+import qualified Data.Text as Text
 import qualified Data.Text.Lazy
 import qualified Data.Time
 import GHC.OverloadedLabels
@@ -34,7 +35,6 @@ import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
 import PyF
 import SpecCustomDelimiters
 import Test.Hspec
-import qualified Data.Text as Text
 
 main :: IO ()
 main = hspec $ parallel spec
@@ -64,13 +64,13 @@ type instance PyFClassify FooDefault = 'PyFString
 -- Data type to test overloaded labels
 data V (a :: Symbol) = V
 
-instance KnownSymbol a => Show (V a) where
+instance (KnownSymbol a) => Show (V a) where
   show V = "V=" ++ symbolVal (Proxy @a)
 
 instance (a ~ a') => IsLabel a (V a') where
   fromLabel = V
 
-showV :: KnownSymbol a => V a -> String
+showV :: (KnownSymbol a) => V a -> String
 showV = show
 
 globalName :: String
@@ -100,7 +100,8 @@ spec = do
       it "alt" $ [fmt|{123:#b}|] `shouldBe` "0b1111011"
       it "sign" $ [fmt|{123:+#b}|] `shouldBe` "+0b1111011"
     describe "character" $
-      it "simple" $ [fmt|{123:c}|] `shouldBe` "{"
+      it "simple" $
+        [fmt|{123:c}|] `shouldBe` "{"
     describe "decimal" $ do
       it "simple" $ [fmt|{123:d}|] `shouldBe` "123"
       it "sign" $ [fmt|{123:+d}|] `shouldBe` "+123"
@@ -146,7 +147,8 @@ spec = do
       it "simple" $ [fmt|{0.234:%}|] `shouldBe` "23.400000%"
       it "precision" $ [fmt|{0.234:.2%}|] `shouldBe` "23.40%"
     describe "string truncating" $
-      it "works" $ [fmt|{"hello":.3}|] `shouldBe` "hel"
+      it "works" $
+        [fmt|{"hello":.3}|] `shouldBe` "hel"
     describe "padding" $ do
       describe "default char" $ do
         it "left" $ [fmt|{"hello":<10}|] `shouldBe` "hello     "

@@ -3,44 +3,56 @@
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
+  inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
 
-  # Broken: see https://github.com/NixOS/nix/issues/5621
-  #nixConfig.allow-import-from-derivation = true;
   nixConfig.extra-substituters = [ "https://guibou.cachix.org" ];
-  nixConfig.extra-trusted-public-keys =
-    [ "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM=" ];
+  nixConfig.extra-trusted-public-keys = [
+    "guibou.cachix.org-1:GcGQvWEyTx8t0KfQac05E1mrlPNHqs5fGMExiN9/pbM="
+  ];
 
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let pkgs = nixpkgs.legacyPackages.${system};
-        pyfBuilder = hPkgs:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+      treefmt-nix,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        treefmtEval = treefmt-nix.lib.evalModule pkgs ./treefmt.nix;
+        pyfBuilder =
+          hPkgs:
           let
             shell = pkg.env.overrideAttrs (old: {
-              nativeBuildInputs = old.nativeBuildInputs
-                ++ (with pkgs; [ cabal-install ]);
+              nativeBuildInputs = old.nativeBuildInputs ++ (with pkgs; [ cabal-install ]);
             });
 
             # Shell with haskell language server
             shell_hls = shell.overrideAttrs (old: {
-              nativeBuildInputs = old.nativeBuildInputs
-                ++ [ hPkgs.haskell-language-server ];
+              nativeBuildInputs = old.nativeBuildInputs ++ [ hPkgs.haskell-language-server ];
             });
 
-            pkg = (
-              (hPkgs.callCabal2nix "PyF" ./. { })).overrideAttrs
-              (oldAttrs: {
-                buildInputs = oldAttrs.buildInputs;
-                passthru = oldAttrs.passthru // { inherit shell shell_hls; };
-              });
-            # Add the GHC version in the package name
-          in pkg.overrideAttrs (old: {
+            pkg = ((hPkgs.callCabal2nix "PyF" ./. { })).overrideAttrs (oldAttrs: {
+              buildInputs = oldAttrs.buildInputs;
+              passthru = oldAttrs.passthru // {
+                inherit shell shell_hls;
+              };
+            });
+          in
+          # Add the GHC version in the package name
+          pkg.overrideAttrs (old: {
             pname = "PyF-ghc${hPkgs.ghc.version}";
             name = "PyF-ghc${hPkgs.ghc.version}-${old.version}";
           });
 
-      in with pkgs; rec {
+      in
+      with pkgs;
+      rec {
         checks = {
-          inherit (packages) 
+          inherit (packages)
             pyf_810
             pyf_90
             pyf_92
@@ -48,7 +60,10 @@
             pyf_96
             pyf_98
             pyf_910
-            pyf_912;
+            pyf_912
+            ;
+
+          formatting = treefmtEval.config.build.check self;
         };
 
         packages = {
@@ -68,19 +83,17 @@
           default = pyfBuilder haskellPackages;
         };
 
-        apps = {
-          run-ormolu = {
-            type = "app";
-            program = "${writeScript "pyf-ormolu" ''
-              ${ormolu}/bin/ormolu --mode inplace $(git ls-files | grep '\.hs$')
-              exit 0
-            ''}";
-          };
-        };
+        formatter = treefmtEval.config.build.wrapper;
 
         devShells = (builtins.mapAttrs (name: value: value.shell) packages) // {
-          treesitter = pkgs.mkShell { buildInputs = [ pkgs.tree-sitter pkgs.nodejs ]; };
+          treesitter = pkgs.mkShell {
+            buildInputs = [
+              pkgs.tree-sitter
+              pkgs.nodejs
+            ];
+          };
           default = packages.default.shell_hls;
         };
-      });
+      }
+    );
 }

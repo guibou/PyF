@@ -217,7 +217,7 @@ Type incompatible with precision (.3), use any of {'e', 'E', 'f', 'F', 'g', 'G',
 
 Note: error reporting uses the native GHC error infrastructure, so they will correctly appear in your editor (using [HLS](https://github.com/haskell/haskell-language-server)), for example:
 
-  ![Error reported in editor](error_example.png)
+![Error reported in editor](error_example.png)
 
 - Error in variable name are also readable:
 
@@ -369,9 +369,9 @@ Don't hesitate to submit a PR not tested on all GHC versions.
 
 ## Formatting
 
-The codebase is formatted with `ormolu`. Please run:
+Please run:
 
-- `nix run .\#run-ormolu`
+- `nix run fmt`
 
 Before submitting.
 

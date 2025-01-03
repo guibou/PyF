@@ -33,8 +33,8 @@
 
 - Support for GHC 9.4. (Written with a pre-release of GHC 9.4, hopefully it won't change too much before the release).
 - Error reporting now uses the native GHC API. In summary, it means that
- haskell-language-server will point to the correct location of the error, not
- the beginning of the quasi quotes.
+  haskell-language-server will point to the correct location of the error, not
+  the beginning of the quasi quotes.
 - PyF will now correctly locate the error for variable not found in expression, even if the expression is complicated. The support for complex expression is limited, and PyF may return a false positive if you try to format a complex lambda / case expression. Please open a ticket if you need that.
 - Add support for literal `[]` and `()` in haskell expression.
 - Add support for overloaded labels, thank you Shimuuar.
@@ -54,21 +54,30 @@
 ## 0.10.0.1 -- 2021-10-30
 
 - Due to the dependencies refactor, `PyF` no have no dependencies other than the one packaged with GHC. The direct result is that `PyF` build time is reduced to 6s versus 4 minutes and 20s before.
+
 - Remove the dependency to `megaparsec` and replaces it by `parsec`. This should have minor impact on the error messages.
+
 - *Huge Change*. The parsing of embeded expression does not depend anymore on `haskell-src-ext` and `haskell-src-meta` and instead depends on the built-in `ghc` lib.
+
 - Added instances for `(Lazy)ByteString` to `PyFClassify` and `PyFToString`. `ByteString` can now be integrated into format string, and will be decoded as ascii.
+
 - Relax the constraint for floating point formatting from `RealFrac` to `Real`. As a result, a few new type can be formatted as floating point number. One drawback is that some `Integral` are `Real` too and hence it is not an error anymore to format an integral as floating point, but you still need to explicitly select a floating point formatter.
+
 - Added instance for `(Nominal)DiffTime` to `PyFClassify`, so you can now format them without conversion.
+
 - Introducing of the new typeclass `PyfFormatIntegral` and `PyfFormatFractional` in order to customize the formatting for numbers. An instance is derived for respectively any `Integral` and `Real` types.
+
 - Support for `Char` formatting, as string (showing the `Char` value) or as integral, showing the `ord`.
+
 - `Data.Ratio`.
 
 - Introducing `fmtTrim` module. It offers the same behavior as `fmt`, but trims common indentation. Se `PyF.trimIndent` for documentation.
+
 - Introducing `raw` for convenience. It is a multiline string without any escaping, formatting neither leading whitespace handling.
+
 - Introducing `str` and `strTrim`. They are similar to `fmt` and `fmtTrim` but without formatting. You can see them as multiline haskell string, with special character escaping, but without formatting. For convenience, the `strTrim` version also removes indentation.
 
-
-- `fmtWithDelimiters` is gone and replaced by `mkFormatter` in `PyF` which is "more" generic. 
+- `fmtWithDelimiters` is gone and replaced by `mkFormatter` in `PyF` which is "more" generic.
 
 ## 0.9.0.3 -- 2021-02-06
 
@@ -121,7 +130,6 @@
 - Template haskell splices are simpler. This leads to more efficient / small generated code and in the event of this code appears in a GHC error message, it is more readable.
 - PyF now longer emit unnecessary default typing.
 
-
 ## 0.7.3.0 -- 2019-02-28
 
 - Tests: fix non reproducible tests
@@ -133,7 +141,7 @@
 ## 0.7.1.0 -- 2019-02-11
 
 - Fixed: PyF was wrongly ignoring everything located after a non-doubled closing delimiter.
-- New Feature: line break can be escaped with \, thus allowing string to start on a new line ignoring the initial backspace
+- New Feature: line break can be escaped with , thus allowing string to start on a new line ignoring the initial backspace
 
 ## 0.7.0.0 -- 2019-02-04
 
@@ -175,15 +183,14 @@
 - Introduce `PyF.Formatters`, type safe generic number formatter solution
 - Remove dependency to `scientific`
 
-
 ## 0.3.0.0 -- 2018-04-01
 
-* Support for haskell subexpression
+- Support for haskell subexpression
 
 ## 0.1.1.0  -- 2018-01-07
 
-* Add support for the `sign` field.
+- Add support for the `sign` field.
 
 ## 0.1.0.0  -- 2018-01-03
 
-* First version. Released on an unsuspecting world.
+- First version. Released on an unsuspecting world.

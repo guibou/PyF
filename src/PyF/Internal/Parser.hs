@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- | This module is here to parse Haskell expression using the GHC Api
 module PyF.Internal.Parser (parseExpression) where

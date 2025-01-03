@@ -302,4 +302,3 @@ baseDynFlags exts = foldl xopt_set dynFlags enable
 #else
     dynFlags = defaultDynFlags fakeSettings fakeLlvmConfig
 #endif
-
