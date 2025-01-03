@@ -52,7 +52,10 @@
                 passthru = oldAttrs.passthru // { inherit shell shell_hls; };
               });
             # Add the GHC version in the package name
-          in pkg.overrideAttrs (old: { name = "PyF-ghc${hPkgs.ghc.version}"; });
+          in pkg.overrideAttrs (old: {
+            pname = "PyF-ghc${hPkgs.ghc.version}";
+            name = "PyF-ghc${hPkgs.ghc.version}-${old.version}";
+          });
 
         packages = rec {
           pyf_86 = (pyfBuilder (haskell.packages.ghc865Binary.override {
