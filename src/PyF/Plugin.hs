@@ -37,7 +37,10 @@ import PyF.Internal.PythonSyntax
   )
 import PyF.Internal.QQ (Config (..))
 import Text.Parsec (runParserT)
+import qualified PyF.Internal.Parser as ParseExp
 
+-- | A plugin which replaces all [fmt|...] from PyF by a pure haskell code
+-- without template haskell.
 plugin :: Plugin
 plugin =
   defaultPlugin
@@ -50,15 +53,15 @@ plugin =
 action :: HsParsedModule -> Hsc HsParsedModule
 action parsed@HsParsedModule {hpm_module = m} =
   (\m' -> parsed {hpm_module = m'})
-    <$> gmapM (everywhereM (mkM sayYes)) m
+    <$> gmapM (everywhereM (mkM replaceSplice)) m
 
-sayYes :: HsExpr GhcPs -> Hsc (HsExpr GhcPs)
-sayYes e = do
+-- | Replace a splice entry
+replaceSplice :: HsExpr GhcPs -> Hsc (HsExpr GhcPs)
+replaceSplice e = do
   case e of
     HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) s)
       | mkVarOcc "fmt" == name -> do
-          liftIO $ print $ (showPprUnsafe name)
-          let items = map toString $ pyf (unpackFS $ unLoc s)
+          items <- mapM toString $ pyf (unpackFS $ unLoc s)
           pure $
             HsApp
               noExtField'
@@ -75,11 +78,12 @@ sayYes e = do
     _ -> do
       pure e
 
-toString :: Item -> HsExpr GhcPs
-toString (Raw s) = HsLit noExtField' $ HsString NoSourceText (mkFastString s)
-toString (Replacement (expr, _unusedThExp) formatMode) = do
+toString :: Item -> Hsc (HsExpr GhcPs)
+toString (Raw s) = pure $ HsLit noExtField' $ HsString NoSourceText (mkFastString s)
+toString (Replacement s formatMode) = do
+  expr <- toHsExpr s
   let formatExpr = padAndFormat (fromMaybe DefaultFormatMode formatMode)
-  app formatExpr expr
+  pure $ app formatExpr expr
 
 pyf :: String -> [Item]
 pyf s = case runReader (runParserT (parseGenericFormatString) () filename s) context of
@@ -88,7 +92,7 @@ pyf s = case runReader (runParserT (parseGenericFormatString) () filename s) con
   where
     filename = "TODO"
     Config {..} = fmtConfig
-    context = ParsingContext {enabledExtensions = [], ..}
+    context = ParsingContext {..}
 
 -- TODO:
 -- - missing fileposition for correct error reporting
@@ -174,7 +178,18 @@ mkPrecision _ (Precision p) = ctor "Just" `app` exprToInt p
 
 exprToInt :: ExprOrValue Int -> HsExpr GhcPs
 exprToInt (Value i) = HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
-exprToInt (HaskellExpr (expr, _)) = expr
+-- exprToInt (HaskellExpr s) = toHsExpr s
+
+toHsExpr :: String -> Hsc (HsExpr GhcPs)
+toHsExpr s = do
+  dynFlags <- getDynFlags
+  -- TODO
+  let initLoc = mkRealSrcLoc (mkFastString "file") 10 10
+
+  case ParseExp.parseExpression initLoc s dynFlags of
+    Right res -> pure res
+    Left e -> error $ show e
+
 
 #if MIN_VERSION_ghc(9,10,0)
 noExtField' :: NoExtField
