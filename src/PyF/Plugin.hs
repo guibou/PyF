@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module PyF.Plugin (plugin) where
 
@@ -21,8 +22,9 @@ import Data.Generics
 import Data.Maybe (fromMaybe)
 import qualified GHC.Types.Name.Occurrence as GHC.Types.Name.Occurence
 import GHC.Types.SourceText (SourceText (..), mkIntegralLit)
-import PyF (Format (..), defaultFloatPrecision, fmtConfig)
-import PyF.Formatters (SignMode (..), AnyAlign (..))
+import PyF (Format (..), defaultFloatPrecision, fmtConfig, trimIndent)
+import PyF.Formatters (AnyAlign (..), SignMode (..))
+import qualified PyF.Internal.Parser as ParseExp
 import PyF.Internal.PythonSyntax
   ( AlternateForm (..),
     ExprOrValue (..),
@@ -37,7 +39,6 @@ import PyF.Internal.PythonSyntax
   )
 import PyF.Internal.QQ (Config (..))
 import Text.Parsec (runParserT)
-import qualified PyF.Internal.Parser as ParseExp
 
 -- | A plugin which replaces all [fmt|...] from PyF by a pure haskell code
 -- without template haskell.
@@ -59,24 +60,31 @@ action parsed@HsParsedModule {hpm_module = m} =
 replaceSplice :: HsExpr GhcPs -> Hsc (HsExpr GhcPs)
 replaceSplice e = do
   case e of
-    HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) s)
-      | mkVarOcc "fmt" == name -> do
-          items <- mapM toString $ pyf (unpackFS $ unLoc s)
-          pure $
-            HsApp
-              noExtField'
-              ( L
-                  noSrcSpanA
-                  ( HsVar
-                      NoExtField
-                      ( L noSrcSpanA $
-                          mkUnqual GHC.Types.Name.Occurence.varName (mkFastString "mconcat")
-                      )
-                  )
-              )
-              (L noSrcSpanA $ ExplicitList emptyAnnList $ map (L noSrcSpanA) items)
+    HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) (unLoc -> s))
+      | mkVarOcc "fmt" == name -> applyPyf $ unpackFS s
+      | mkVarOcc "fmtTrim" == name -> applyPyf (trimIndent $ unpackFS s)
+      | mkVarOcc "str" == name -> pure $ HsLit noExtField' (HsString NoSourceText s)
+      | mkVarOcc "strTrim" == name -> pure $ HsLit noExtField' (HsString NoSourceText (mkFastString $ trimIndent $ unpackFS s))
+
     _ -> do
       pure e
+
+applyPyf :: String -> Hsc (HsExpr GhcPs)
+applyPyf s = do
+  items <- mapM toString $ pyf s
+  pure $
+    HsApp
+      noExtField'
+      ( L
+          noSrcSpanA
+          ( HsVar
+              NoExtField
+              ( L noSrcSpanA $
+                  mkUnqual GHC.Types.Name.Occurence.varName (mkFastString "mconcat")
+              )
+          )
+      )
+      (L noSrcSpanA $ ExplicitList emptyAnnList $ map (L noSrcSpanA) items)
 
 toString :: Item -> Hsc (HsExpr GhcPs)
 toString (Raw s) = pure $ HsLit noExtField' $ HsString NoSourceText (mkFastString s)
@@ -150,7 +158,6 @@ mkPaddingToPaddingK p = case p of
   Padding i Nothing -> ctor "PaddingK" `app` exprToInt i `app` ctor "Nothing"
   Padding i (Just (c, AnyAlign a)) -> ctor "PaddingK" `app` exprToInt i `app` (ctor "Just" `app` (error "tuple (c, a)"))
 
-
 newPaddingKForString :: Padding -> HsExpr GhcPs
 newPaddingKForString padding = case padding of
   PaddingDefault -> ctor "Nothing"
@@ -182,6 +189,7 @@ mkPrecision _ (Precision p) = ctor "Just" `app` exprToInt p
 
 exprToInt :: ExprOrValue Int -> HsExpr GhcPs
 exprToInt (Value i) = HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
+
 -- exprToInt (HaskellExpr s) = toHsExpr s
 
 toHsExpr :: String -> Hsc (HsExpr GhcPs)
@@ -193,7 +201,6 @@ toHsExpr s = do
   case ParseExp.parseExpression initLoc s dynFlags of
     Right res -> pure res
     Left e -> error $ show e
-
 
 #if MIN_VERSION_ghc(9,10,0)
 noExtField' :: NoExtField
