@@ -22,7 +22,7 @@ import Data.Maybe (fromMaybe)
 import qualified GHC.Types.Name.Occurrence as GHC.Types.Name.Occurence
 import GHC.Types.SourceText (SourceText (..), mkIntegralLit)
 import PyF (Format (..), defaultFloatPrecision, fmtConfig)
-import PyF.Formatters (SignMode (..))
+import PyF.Formatters (SignMode (..), AnyAlign (..))
 import PyF.Internal.PythonSyntax
   ( AlternateForm (..),
     ExprOrValue (..),
@@ -131,27 +131,31 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
   DecimalF s -> var "formatAnyIntegral" `app` ctor "Decimal" `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3
   HexF alt s -> var "formatAnyIntegral" `app` withAlt alt Hexa `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
   OctalF alt s -> var "formatAnyIntegral" `app` withAlt alt Octal `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
-  {-
-  HexCapsF alt s -> [|formatAnyIntegral (Formatters.Upper $(withAlt alt Formatters.Hexa)) s $(newPaddingQ padding) $(toGrp grouping 4)|]
-  -}
+  HexCapsF alt s -> var "formatAnyIntegral" `app` (ctor "Upper" `app` (withAlt alt Hexa)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
   -- Floating
-  GeneralF prec alt s -> var "formatAnyFractional" `app` withAlt alt Exponent `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-  {-
-  ExponentialCapsF prec alt s -> [|formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Exponent)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
-  -}
   GeneralF prec alt s -> var "formatAnyFractional" `app` withAlt alt Generic `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-  {-
-  GeneralCapsF prec alt s -> [|formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Generic)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
-  -}
+  GeneralCapsF prec alt s -> var "formatAnyFractional" `app` (ctor "Upper" `app` (withAlt alt Generic)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+  ExponentialF prec alt s -> var "formatAnyFractional" `app` withAlt alt Exponent `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+  ExponentialCapsF prec alt s -> var "formatAnyFractional" `app` (ctor "Upper" `app` (withAlt alt Exponent)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
   FixedF prec alt s -> var "formatAnyFractional" `app` withAlt alt Fixed `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-  {-
-  FixedCapsF prec alt s -> [|formatAnyFractional (Formatters.Upper $(withAlt alt Formatters.Fixed)) s $(newPaddingQ padding) $(toGrp grouping 3) $(splicePrecision defaultFloatPrecision prec)|]
-  -}
+  FixedCapsF prec alt s -> var "formatAnyFractional" `app` (ctor "Upper" `app` (withAlt alt Fixed)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
   PercentF prec alt s -> var "formatAnyFractional" `app` withAlt alt Percent `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
   -- Default / String
-  DefaultF prec s -> var "formatAny" `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision Nothing prec
-  StringF prec -> (var ".") `app` (var "formatString" `app` mkPadding padding `app` mkPrecision Nothing prec) `app` (var "pyfToString")
-  e -> error $ "Not handled: " Prelude.<> show e
+  DefaultF prec s -> var "formatAny" `app` toSignMode s `app` mkPaddingToPaddingK padding `app` toGrp grouping 3 `app` mkPrecision Nothing prec
+  StringF prec -> (var ".") `app` (var "formatString" `app` (newPaddingKForString padding) `app` mkPrecision Nothing prec) `app` (var "pyfToString")
+
+mkPaddingToPaddingK :: Padding -> HsExpr GhcPs
+mkPaddingToPaddingK p = case p of
+  PaddingDefault -> ctor "PaddingDefaultK"
+  Padding i Nothing -> ctor "PaddingK" `app` exprToInt i `app` ctor "Nothing"
+  Padding i (Just (c, AnyAlign a)) -> ctor "PaddingK" `app` exprToInt i `app` (ctor "Just" `app` (error "tuple (c, a)"))
+
+
+newPaddingKForString :: Padding -> HsExpr GhcPs
+newPaddingKForString padding = case padding of
+  PaddingDefault -> ctor "Nothing"
+  Padding i Nothing -> ctor "Just" `app` (error "(fromIntegral i, Formatters.AlignLeft, ' ')") -- default align left and fill with space for string
+  Padding i (Just (c, AnyAlign a)) -> ctor "Just" `app` (error "(fromIntegral i, a, fromMaybe ' ' mc)")
 
 toSignMode :: SignMode -> HsExpr GhcPs
 toSignMode Plus = ctor "Plus"
