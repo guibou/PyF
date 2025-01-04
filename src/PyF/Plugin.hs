@@ -66,6 +66,11 @@ replaceSplice e = do
       | mkVarOcc "str" == name -> pure $ HsLit noExtField' (HsString NoSourceText s)
       | mkVarOcc "strTrim" == name -> pure $ HsLit noExtField' (HsString NoSourceText (mkFastString $ trimIndent $ unpackFS s))
 
+      -- Hack for novainsilico
+      | mkVarOcc "aesonQQ" == name -> pure $ var "undefined"
+      | mkVarOcc "re" == name -> pure $ var "undefined"
+      | mkVarOcc "duration" == name -> pure $ var "undefined"
+
     _ -> do
       pure e
 
