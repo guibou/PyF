@@ -28,6 +28,8 @@ import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Proxy
 import Data.String (fromString)
+import PyF.Internal.PythonSyntax
+import qualified PyF.Internal.Meta
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Utils.Monad (addErrAt)
@@ -89,8 +91,7 @@ import Language.Haskell.TH.Syntax (Q (Q))
 import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
-import PyF.Internal.Meta (toName)
-import PyF.Internal.PythonSyntax
+import PyF.Internal.Meta (toName, baseDynFlags)
 import Text.Parsec
 import Text.Parsec.Error
   ( errorMessages,
@@ -100,6 +101,8 @@ import Text.Parsec.Error
 import Text.Parsec.Pos (initialPos)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
+import GHC.Data.FastString (mkFastString)
+import qualified PyF.Internal.Parser as ParseExp
 
 -- | Configuration for the quasiquoter
 data Config = Config
@@ -138,8 +141,7 @@ wrapFromString e = do
 toExp :: Config -> String -> Q Exp
 toExp Config {delimiters = expressionDelimiters, postProcess} s = do
   loc <- location
-  exts <- extsEnabled
-  let context = ParsingContext expressionDelimiters exts
+  let context = ParsingContext expressionDelimiters
 
   -- Setup the parser so it matchs the real original position in the source
   -- code.
@@ -166,9 +168,27 @@ findFreeVariablesInFormatMode (Just (FormatMode padding tf _)) =
     PaddingDefault -> []
     Padding eoi _ -> findFreeVariables eoi
 
+toHsExpr :: String -> Q (HsExpr GhcPs)
+toHsExpr s = do
+  exts <- extsEnabled
+  let dynFlags = baseDynFlags exts
+  -- TODO
+  let initLoc = mkRealSrcLoc (mkFastString "file") 10 10
+
+  case ParseExp.parseExpression initLoc s dynFlags of
+    Right res -> pure res
+    Left e -> error $ show e
+
+hsExprToTh :: HsExpr GhcPs -> Q Exp
+hsExprToTh e = do
+  exts <- extsEnabled
+  let dynFlags = baseDynFlags exts
+  pure $ PyF.Internal.Meta.toExp  dynFlags e
+
 checkOneItem :: Item -> Q (Maybe (SrcSpan, String))
 checkOneItem (Raw _) = pure Nothing
-checkOneItem (Replacement (hsExpr, _) formatMode) = do
+checkOneItem (Replacement s formatMode) = do
+  hsExpr <- toHsExpr s
   let allNames = findFreeVariables hsExpr <> findFreeVariablesInFormatMode formatMode
   res <- mapM doesExists allNames
   let resFinal = catMaybes res
@@ -329,7 +349,8 @@ sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 toFormat :: Item -> Q Exp
 toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormat (Replacement (_, expr) y) = do
+toFormat (Replacement s y) = do
+  expr <- toHsExpr s >>= hsExprToTh
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
 
@@ -383,7 +404,7 @@ newPaddingQ padding = case padding of
 exprToInt :: ExprOrValue Int -> Q Exp
 -- Note: this is a literal provided integral. We use explicit case to ::Int so it won't warn about defaulting
 exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
-exprToInt (HaskellExpr (_, e)) = [|$(pure e)|]
+exprToInt (HaskellExpr e) = toHsExpr e >>= hsExprToTh
 
 data PaddingK k i where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll Int

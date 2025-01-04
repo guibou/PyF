@@ -42,14 +42,11 @@ import Text.Parsec
 
 #elif MIN_VERSION_ghc(9,6,0)
 -- For some reasons, theses function are not exported anymore by some others
-import Data.Functor (void)
-import Control.Monad (replicateM_)
 #endif
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.SrcLoc
 import GHC.Data.FastString
-import GHC.Utils.Outputable (Outputable)
 #else
 import SrcLoc
 import FastString
@@ -58,8 +55,7 @@ import FastString
 type Parser t = ParsecT String () (Reader ParsingContext) t
 
 data ParsingContext = ParsingContext
-  { delimiters :: Maybe (Char, Char),
-    enabledExtensions :: [Extension]
+  { delimiters :: Maybe (Char, Char)
   }
   deriving (Show)
 
@@ -88,7 +84,7 @@ data Item
   = -- | A raw string
     Raw String
   | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
-    Replacement (HsExpr GhcPs, Exp) (Maybe FormatMode)
+    Replacement String (Maybe FormatMode)
 
 -- |
 -- Parse a string, returns a list of raw string or replacement fields
@@ -165,10 +161,9 @@ parseExpressionString = do
 
 replacementField :: Parser Item
 replacementField = do
-  exts <- asks enabledExtensions
   Just (charOpening, charClosing) <- asks delimiters
   _ <- char charOpening
-  expr <- evalExpr exts (parseExpressionString <?> "an haskell expression")
+  expr <- parseExpressionString <?> "an haskell expression"
   fmt <- optionMaybe $ do
     _ <- char ':'
     formatSpec
@@ -190,12 +185,8 @@ data Padding
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
 data ExprOrValue t
   = Value t
-  | HaskellExpr (HsExpr GhcPs, Exp)
-  deriving (Data)
-
-instance Show t => Show (ExprOrValue t) where
-  show (Value v) = "Value " <> show v
-  show (HaskellExpr (eh, e)) = "HaskellExpr " <> show e
+  | HaskellExpr String
+  deriving (Data, Show)
 
 -- | Floating point precision
 data Precision
@@ -318,21 +309,19 @@ formatSpec = do
 
 parseWidth :: Parser (ExprOrValue Int)
 parseWidth = do
-  exts <- asks enabledExtensions
   Just (charOpening, charClosing) <- asks delimiters
   choice
     [ Value <$> width,
-      char charOpening *> (HaskellExpr <$> evalExpr exts (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
+      char charOpening *> (HaskellExpr <$> (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
     ]
 
 parsePrecision :: Parser Precision
 parsePrecision = do
-  exts <- asks enabledExtensions
   Just (charOpening, charClosing) <- asks delimiters
   _ <- char '.'
   choice
     [ Precision . Value <$> precision,
-      char charOpening *> (Precision . HaskellExpr <$> evalExpr exts (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
+      char charOpening *> (Precision . HaskellExpr <$> (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
     ]
 
 -- | Similar to 'manyTill' but always parse one element.
@@ -378,7 +367,7 @@ failIfPrec (Precision e) _ = Left ("Type incompatible with precision (." ++ show
   where
     showExpr = case e of
       Value v -> show v
-      HaskellExpr (_, expr) -> show expr
+      HaskellExpr s -> s
 
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i
