@@ -22,6 +22,12 @@ module PyF
     strConfig,
     addTrim,
     addFormatting,
+
+    -- This is reexported so plugin can use them once PyF is imported.
+    -- TODO: find a way to HIDE this. Maybe the source plugin can explicitly
+    -- qualified the symbols.
+    module PyF.Formatters,
+    module PyF.Internal.QQ
   )
 where
 
@@ -29,7 +35,8 @@ import Data.Char (isSpace)
 import Data.List (intercalate)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
-import PyF.Internal.QQ (Config (..), expQQ, toExp, wrapFromString)
+import PyF.Formatters
+import PyF.Internal.QQ
 
 -- | Generic formatter, can format an expression to any @t@ as long as
 --   @t@ is an instance of 'IsString'.

@@ -19,13 +19,7 @@
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
 -- representing a formatted string.
-module PyF.Internal.QQ
-  ( toExp,
-    Config (..),
-    wrapFromString,
-    expQQ,
-  )
-where
+module PyF.Internal.QQ where
 
 import Control.Monad.Reader
 import Data.Data (Data (gmapQ), Typeable, cast)

@@ -49,6 +49,7 @@ import Control.Monad (replicateM_)
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Types.SrcLoc
 import GHC.Data.FastString
+import GHC.Utils.Outputable (Outputable)
 #else
 import SrcLoc
 import FastString
@@ -192,11 +193,15 @@ data ExprOrValue t
   | HaskellExpr (HsExpr GhcPs, Exp)
   deriving (Data)
 
+instance Show t => Show (ExprOrValue t) where
+  show (Value v) = "Value " <> show v
+  show (HaskellExpr (eh, e)) = "HaskellExpr " <> show e
+
 -- | Floating point precision
 data Precision
   = PrecisionDefault
   | Precision (ExprOrValue Int)
-  deriving (Data)
+  deriving (Data, Show)
 
 {-
 
@@ -247,7 +252,7 @@ data TypeFormat
     HexCapsF AlternateForm SignMode
   | -- | Percent representation
     PercentF Precision AlternateForm SignMode
-  deriving (Data)
+  deriving (Data, Show)
 
 -- | If the formatter use its alternate form
 data AlternateForm = AlternateForm | NormalForm
