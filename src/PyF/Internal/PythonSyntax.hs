@@ -25,17 +25,12 @@ module PyF.Internal.PythonSyntax
 where
 
 import Control.Applicative (some)
-import Control.Monad (replicateM_, void)
+import Control.Monad (void)
 import Control.Monad.Reader (Reader, asks)
 import qualified Data.Char
 import Data.Data (Data)
 import Data.Maybe (fromMaybe)
-import GHC (GhcPs, HsExpr)
-import Language.Haskell.TH.LanguageExtensions (Extension (..))
-import Language.Haskell.TH.Syntax (Exp)
 import PyF.Formatters
-import PyF.Internal.Meta
-import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
 
 #if MIN_VERSION_ghc(9,7,0)
@@ -45,8 +40,6 @@ import Text.Parsec
 #endif
 
 #if MIN_VERSION_ghc(9,0,0)
-import GHC.Types.SrcLoc
-import GHC.Data.FastString
 #else
 import SrcLoc
 import FastString
@@ -84,7 +77,7 @@ data Item
   = -- | A raw string
     Raw String
   | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
-    Replacement String (Maybe FormatMode)
+    Replacement SourcePos String (Maybe FormatMode)
 
 -- |
 -- Parse a string, returns a list of raw string or replacement fields
@@ -163,12 +156,13 @@ replacementField :: Parser Item
 replacementField = do
   Just (charOpening, charClosing) <- asks delimiters
   _ <- char charOpening
+  exprPos <- getPosition
   expr <- parseExpressionString <?> "an haskell expression"
   fmt <- optionMaybe $ do
     _ <- char ':'
     formatSpec
   _ <- char charClosing
-  pure (Replacement expr fmt)
+  pure (Replacement exprPos expr fmt)
 
 -- | Default formatting mode, no padding, default precision, no grouping, no sign handling
 pattern DefaultFormatMode :: FormatMode
@@ -183,9 +177,10 @@ data Padding
   | Padding (ExprOrValue Int) (Maybe (Maybe Char, AnyAlign))
 
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
+-- TODO: why the `t`?
 data ExprOrValue t
   = Value t
-  | HaskellExpr String
+  | HaskellExpr SourcePos String
   deriving (Data, Show)
 
 -- | Floating point precision
@@ -249,34 +244,6 @@ data TypeFormat
 data AlternateForm = AlternateForm | NormalForm
   deriving (Show, Data)
 
-evalExpr :: [Extension] -> Parser String -> Parser (HsExpr GhcPs, Exp)
-evalExpr exts exprParser = do
-  exprPos <- getPosition
-  -- Inject the correct source location in the GHC parser, so it already match
-  -- the input source file.
-  let initLoc = mkRealSrcLoc (mkFastString (sourceName exprPos)) (sourceLine exprPos) (sourceColumn exprPos)
-  s <- lookAhead exprParser
-  -- Setup the dyn flags using the provided list of extensions
-  let dynFlags = baseDynFlags exts
-  case ParseExp.parseExpression initLoc s dynFlags of
-    Right expr -> do
-      -- Consume the expression
-      void exprParser
-      pure (expr, toExp dynFlags expr)
-    Left (lineError, colError, err) -> do
-      -- In case of error, we just advance the parser to the error location.
-      -- Note: we have to remove what was introduced in `initLoc`
-      -- Skip lines
-      replicateM_ (lineError - sourceLine exprPos) (manyTill anyChar newline)
-      -- Skip columns
-      -- This is a bit more counter intuitive. If we have skipped not lines, we
-      -- must remove the introduced column offset, otherwise no.
-      let columnSkip
-            | lineError - sourceLine exprPos == 0 = colError - 1 - sourceColumn exprPos
-            | otherwise = colError - 2
-      void $ count columnSkip anyChar
-      fail $ err <> " in haskell expression"
-
 overrideAlignmentIfZero :: Bool -> Maybe (Maybe Char, AnyAlign) -> Maybe (Maybe Char, AnyAlign)
 overrideAlignmentIfZero True Nothing = Just (Just '0', AnyAlign AlignInside)
 overrideAlignmentIfZero True (Just (Nothing, al)) = Just (Just '0', al)
@@ -312,7 +279,11 @@ parseWidth = do
   Just (charOpening, charClosing) <- asks delimiters
   choice
     [ Value <$> width,
-      char charOpening *> (HaskellExpr <$> (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
+      char charOpening
+        *> ( do
+               pos <- getPosition
+               HaskellExpr pos <$> (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression")
+           )
     ]
 
 parsePrecision :: Parser Precision
@@ -321,7 +292,13 @@ parsePrecision = do
   _ <- char '.'
   choice
     [ Precision . Value <$> precision,
-      char charOpening *> (Precision . HaskellExpr <$> (someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"))
+      char charOpening
+        *> ( Precision
+               <$> ( do
+                       pos <- getPosition
+                       HaskellExpr pos <$> someTill (satisfy (/= charClosing)) (char charClosing) <?> "an haskell expression"
+                   )
+           )
     ]
 
 -- | Similar to 'manyTill' but always parse one element.
@@ -367,7 +344,7 @@ failIfPrec (Precision e) _ = Left ("Type incompatible with precision (." ++ show
   where
     showExpr = case e of
       Value v -> show v
-      HaskellExpr s -> s
+      HaskellExpr _ s -> s
 
 failIfAlt :: AlternateForm -> TypeFormat -> Either String TypeFormat
 failIfAlt NormalForm i = Right i

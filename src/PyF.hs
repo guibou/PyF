@@ -22,12 +22,11 @@ module PyF
     strConfig,
     addTrim,
     addFormatting,
-
     -- This is reexported so plugin can use them once PyF is imported.
     -- TODO: find a way to HIDE this. Maybe the source plugin can explicitly
     -- qualified the symbols.
     module PyF.Formatters,
-    module PyF.Internal.QQ
+    module PyF.Internal.QQ,
   )
 where
 
@@ -45,9 +44,9 @@ fmt = mkFormatter "fmt" fmtConfig
 
 -- | Format with whitespace trimming.
 fmtTrim :: QuasiQuoter
-fmtTrim = let
-  qq = mkFormatter "fmtTrim" fmtConfig
-  in qq { quoteExp = \s -> quoteExp qq (trimIndent  s) }
+fmtTrim =
+  let qq = mkFormatter "fmtTrim" fmtConfig
+   in qq {quoteExp = \s -> quoteExp qq (trimIndent s)}
 
 -- | Multiline string, no interpolation.
 str :: QuasiQuoter
@@ -55,8 +54,9 @@ str = mkFormatter "str" strConfig
 
 -- | Multiline string, no interpolation, but does indentation trimming.
 strTrim :: QuasiQuoter
-strTrim = let qq = mkFormatter "strTrim" strConfig
-  in qq { quoteExp = \s -> quoteExp qq (trimIndent  s) }
+strTrim =
+  let qq = mkFormatter "strTrim" strConfig
+   in qq {quoteExp = \s -> quoteExp qq (trimIndent s)}
 
 -- | Raw string, neither interpolation nor escaping is performed.
 raw :: QuasiQuoter

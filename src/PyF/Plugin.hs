@@ -38,7 +38,9 @@ import PyF.Internal.PythonSyntax
     pattern DefaultFormatMode,
   )
 import PyF.Internal.QQ (Config (..))
-import Text.Parsec (runParserT)
+import Text.Parsec (SourcePos, runParserT, setSourceLine)
+import Text.Parsec.Pos
+import Text.Parsec.Prim (setPosition)
 
 -- | A plugin which replaces all [fmt|...] from PyF by a pure haskell code
 -- without template haskell.
@@ -60,23 +62,17 @@ action parsed@HsParsedModule {hpm_module = m} =
 replaceSplice :: HsExpr GhcPs -> Hsc (HsExpr GhcPs)
 replaceSplice e = do
   case e of
-    HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) (unLoc -> s))
-      | mkVarOcc "fmt" == name -> applyPyf $ unpackFS s
-      | mkVarOcc "fmtTrim" == name -> applyPyf (trimIndent $ unpackFS s)
+    HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) (L loc s))
+      | mkVarOcc "fmt" == name -> applyPyf loc $ unpackFS s
+      | mkVarOcc "fmtTrim" == name -> applyPyf loc (trimIndent $ unpackFS s)
       | mkVarOcc "str" == name -> pure $ HsLit noExtField' (HsString NoSourceText s)
       | mkVarOcc "strTrim" == name -> pure $ HsLit noExtField' (HsString NoSourceText (mkFastString $ trimIndent $ unpackFS s))
-
-      -- Hack for novainsilico
-      | mkVarOcc "aesonQQ" == name -> pure $ var "undefined"
-      | mkVarOcc "re" == name -> pure $ var "undefined"
-      | mkVarOcc "duration" == name -> pure $ var "undefined"
-
     _ -> do
       pure e
 
-applyPyf :: String -> Hsc (HsExpr GhcPs)
-applyPyf s = do
-  items <- mapM toString $ pyf s
+applyPyf :: SrcAnn NoEpAnns -> String -> Hsc (HsExpr GhcPs)
+applyPyf loc s = do
+  items <- mapM toString $ pyf loc s
   pure $
     HsApp
       noExtField'
@@ -93,27 +89,22 @@ applyPyf s = do
 
 toString :: Item -> Hsc (HsExpr GhcPs)
 toString (Raw s) = pure $ HsLit noExtField' $ HsString NoSourceText (mkFastString s)
-toString (Replacement s formatMode) = do
-  expr <- toHsExpr s
+toString (Replacement loc s formatMode) = do
+  expr <- toHsExpr loc s
   let formatExpr = padAndFormat (fromMaybe DefaultFormatMode formatMode)
   pure $ app formatExpr expr
 
-pyf :: String -> [Item]
-pyf s = case runReader (runParserT (parseGenericFormatString) () filename s) context of
+pyf :: SrcAnn NoEpAnns -> String -> [Item]
+pyf (SrcSpanAnn _ srcSpan) s = case runReader (runParserT (setPosition initPos >> parseGenericFormatString) () filename s) context of
   Right r -> r
   Left e -> error $ show e
   where
-    filename = "TODO"
+    filename = unpackFS $ srcLocFile start
     Config {..} = fmtConfig
     context = ParsingContext {..}
 
--- TODO:
--- - missing fileposition for correct error reporting
--- - Maybe we can leverage the current "Hsc" in order to parser the internal values?
--- - correct filename during parsing
--- - todo: list the extensions (maybe not useful, if we leverage the
--- current Hsc for parsing)
---
+    initPos = setSourceColumn (setSourceLine (initialPos filename) (srcLocLine start)) (srcLocCol start)
+    RealSrcLoc start _ = srcSpanStart srcSpan
 
 app :: HsExpr GhcPs -> HsExpr GhcPs -> HsExpr GhcPs
 app a b = HsApp noExtField' (L noSrcSpanA a) (L noSrcSpanA b)
@@ -197,8 +188,8 @@ exprToInt (Value i) = HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
 
 -- exprToInt (HaskellExpr s) = toHsExpr s
 
-toHsExpr :: String -> Hsc (HsExpr GhcPs)
-toHsExpr s = do
+toHsExpr :: SourcePos -> String -> Hsc (HsExpr GhcPs)
+toHsExpr loc s = do
   dynFlags <- getDynFlags
   -- TODO
   let initLoc = mkRealSrcLoc (mkFastString "file") 10 10

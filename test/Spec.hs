@@ -493,7 +493,7 @@ yeah\
       [fmtTrim|
           Cannot convert formula 2.0 * exponent(unit=s, value=1.0) which has unit dimensionless to\
            unit dimensionless for they have different dimensions|]
-          `shouldBe` "Cannot convert formula 2.0 * exponent(unit=s, value=1.0) which has unit dimensionless to unit dimensionless for they have different dimensions"
+        `shouldBe` "Cannot convert formula 2.0 * exponent(unit=s, value=1.0) which has unit dimensionless to unit dimensionless for they have different dimensions"
   describe "raw" $ do
     it "does not escape anything" $
       [raw|hello

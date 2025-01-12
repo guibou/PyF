@@ -28,8 +28,8 @@ import Data.List (intercalate)
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Proxy
 import Data.String (fromString)
-import PyF.Internal.PythonSyntax
 import qualified PyF.Internal.Meta
+import PyF.Internal.PythonSyntax
 
 #if MIN_VERSION_ghc(9,0,0)
 import GHC.Tc.Utils.Monad (addErrAt)
@@ -84,6 +84,8 @@ import SrcLoc
 import GHC.Hs
 #endif
 
+import GHC.Data.FastString (mkFastString)
+import qualified GHC.Data.Strict
 import GHC.TypeLits
 import Language.Haskell.TH hiding (Type)
 import Language.Haskell.TH.Quote
@@ -91,7 +93,8 @@ import Language.Haskell.TH.Syntax (Q (Q))
 import PyF.Class
 import PyF.Formatters (AnyAlign (..))
 import qualified PyF.Formatters as Formatters
-import PyF.Internal.Meta (toName, baseDynFlags)
+import PyF.Internal.Meta (baseDynFlags, toName)
+import qualified PyF.Internal.Parser as ParseExp
 import Text.Parsec
 import Text.Parsec.Error
   ( errorMessages,
@@ -101,8 +104,6 @@ import Text.Parsec.Error
 import Text.Parsec.Pos (initialPos)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
-import GHC.Data.FastString (mkFastString)
-import qualified PyF.Internal.Parser as ParseExp
 
 -- | Configuration for the quasiquoter
 data Config = Config
@@ -154,48 +155,48 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
       -- executed anyway, there is an error
       [|()|]
     Right items -> do
-      checkResult <- checkVariables items
-      case checkResult of
-        Nothing -> postProcess (goFormat items)
-        Just (srcSpan, msg) -> do
-          reportErrorAt srcSpan msg
+      result <- goFormat items
+      case result of
+        Just exp -> postProcess (pure exp)
+        Nothing -> do
+          -- goFormat took care of emiting the error messages
           [|()|]
 
-findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
-findFreeVariablesInFormatMode Nothing = []
-findFreeVariablesInFormatMode (Just (FormatMode padding tf _)) =
-  findFreeVariables tf <> case padding of
-    PaddingDefault -> []
-    Padding eoi _ -> findFreeVariables eoi
-
-toHsExpr :: String -> Q (HsExpr GhcPs)
-toHsExpr s = do
+toHsExpr :: SourcePos -> String -> Q (Maybe (HsExpr GhcPs))
+toHsExpr sourcePos s = do
   exts <- extsEnabled
   let dynFlags = baseDynFlags exts
-  -- TODO
-  let initLoc = mkRealSrcLoc (mkFastString "file") 10 10
 
-  case ParseExp.parseExpression initLoc s dynFlags of
-    Right res -> pure res
-    Left e -> error $ show e
+  let srcLoc = mkRealSrcLoc (mkFastString (sourceName sourcePos)) (sourceLine sourcePos) (sourceColumn sourcePos)
+  case ParseExp.parseExpression srcLoc s dynFlags of
+    Right hsExpr -> do
+      check <- checkVariables hsExpr
+      case check of
+        Right hsExpr' -> pure $ Just hsExpr'
+        Left (span, err) -> do
+          reportErrorAt span err
+          pure Nothing
+    Left (srcLocError', msg) -> do
+      -- I have no idea what is happening here, but the srcLocError is off by 1 column
+      let srcLocError = mkRealSrcLoc (mkFastString (sourceName sourcePos)) (srcLocLine srcLocError' + 0) (srcLocCol srcLocError' - 1)
+      reportErrorAt (srcLocSpan (RealSrcLoc srcLocError GHC.Data.Strict.Nothing)) (msg ++ " in haskell expression")
+      pure Nothing
 
 hsExprToTh :: HsExpr GhcPs -> Q Exp
 hsExprToTh e = do
   exts <- extsEnabled
   let dynFlags = baseDynFlags exts
-  pure $ PyF.Internal.Meta.toExp  dynFlags e
+  pure $ PyF.Internal.Meta.toExp dynFlags e
 
-checkOneItem :: Item -> Q (Maybe (SrcSpan, String))
-checkOneItem (Raw _) = pure Nothing
-checkOneItem (Replacement s formatMode) = do
-  hsExpr <- toHsExpr s
-  let allNames = findFreeVariables hsExpr <> findFreeVariablesInFormatMode formatMode
+checkVariables :: HsExpr GhcPs -> Q (Either (SrcSpan, String) (HsExpr GhcPs))
+checkVariables hsExpr = do
+  let allNames = findFreeVariables hsExpr
   res <- mapM doesExists allNames
   let resFinal = catMaybes res
 
   case resFinal of
-    [] -> pure Nothing
-    ((err, span) : _) -> pure $ Just (span, err)
+    [] -> pure $ Right hsExpr
+    ((err, span) : _) -> pure $ Left (span, err)
 
 {- ORMOLU_DISABLE -}
 findFreeVariables :: Data a => a -> [(SrcSpan, RdrName)]
@@ -264,15 +265,6 @@ doesExists (loc, name) = do
     then pure Nothing
     else pure (Just ("Variable not in scope: " <> show (toName name), loc))
 
--- | Check that all variables used in 'Item' exists, otherwise, fail.
-checkVariables :: [Item] -> Q (Maybe (SrcSpan, String))
-checkVariables [] = pure Nothing
-checkVariables (x : xs) = do
-  r <- checkOneItem x
-  case r of
-    Nothing -> checkVariables xs
-    Just err -> pure $ Just err
-
 -- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
 -- This allows to hack inside the the GHC api and use function not exported by template haskell.
 -- This may not be always safe, see https://github.com/guibou/PyF/issues/115,
@@ -336,10 +328,12 @@ Note: Empty String Lifting
 Empty string are lifted as [] instead of "", so I'm using LitE (String L) instead
 -}
 
-goFormat :: [Item] -> Q Exp
+goFormat :: [Item] -> Q (Maybe Exp)
 -- We special case on empty list in order to generate an empty string
-goFormat [] = pure $ LitE (StringL "") -- see [Empty String Lifting]
-goFormat items = foldl1 sappendQ <$> mapM toFormat items
+goFormat [] = pure $ Just $ LitE (StringL "") -- see [Empty String Lifting]
+goFormat items = do
+  exprs <- mapM toFormat items
+  pure $ (foldl1 sappendQ <$> (sequenceA exprs))
 
 -- | call `<>` between two 'Exp'
 sappendQ :: Exp -> Exp -> Exp
@@ -347,12 +341,16 @@ sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
 
 -- Real formatting is here
 
-toFormat :: Item -> Q Exp
-toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormat (Replacement s y) = do
-  expr <- toHsExpr s >>= hsExprToTh
-  formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
-  pure (formatExpr `AppE` expr)
+toFormat :: Item -> Q (Maybe Exp)
+toFormat (Raw x) = pure $ Just $ LitE (StringL x) -- see [Empty String Lifting]
+toFormat (Replacement loc s y) = do
+  exprM <- toHsExpr loc s
+  case exprM of
+    Nothing -> pure Nothing
+    Just expr -> do
+      thExpr <- hsExprToTh expr
+      formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
+      pure (Just $ formatExpr `AppE` thExpr)
 
 -- | Default precision for floating point
 defaultFloatPrecision :: Maybe Int
@@ -404,7 +402,11 @@ newPaddingQ padding = case padding of
 exprToInt :: ExprOrValue Int -> Q Exp
 -- Note: this is a literal provided integral. We use explicit case to ::Int so it won't warn about defaulting
 exprToInt (Value i) = [|$(pure $ LitE (IntegerL (fromIntegral i))) :: Int|]
-exprToInt (HaskellExpr e) = toHsExpr e >>= hsExprToTh
+exprToInt (HaskellExpr srcLoc e) = do
+  exprM <- toHsExpr srcLoc e
+  case exprM of
+    Nothing -> [|()|]
+    Just e -> hsExprToTh e
 
 data PaddingK k i where
   PaddingDefaultK :: PaddingK 'Formatters.AlignAll Int
