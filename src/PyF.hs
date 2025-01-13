@@ -27,11 +27,13 @@ module PyF
     -- qualified the symbols.
     module PyF.Formatters,
     module PyF.Internal.QQ,
+    fromString,
   )
 where
 
 import Data.Char (isSpace)
 import Data.List (intercalate)
+import Data.String (fromString)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
 import PyF.Formatters
