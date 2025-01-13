@@ -1,11 +1,15 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module PyF.Plugin (plugin) where
 
 import Data.Data
+import qualified GHC.LanguageExtensions as LangExt
 
 -- import Data.Generics
 
@@ -22,8 +26,8 @@ import Data.Generics
 import Data.Maybe (fromMaybe)
 import qualified GHC.Types.Name.Occurrence as GHC.Types.Name.Occurence
 import GHC.Types.SourceText (SourceText (..), mkIntegralLit)
-import PyF (Format (..), defaultFloatPrecision, fmtConfig, trimIndent)
-import PyF.Formatters (AnyAlign (..), SignMode (..))
+import PyF (defaultFloatPrecision, fmtConfig, trimIndent)
+import PyF.Formatters
 import qualified PyF.Internal.Parser as ParseExp
 import PyF.Internal.PythonSyntax
   ( AlternateForm (..),
@@ -38,7 +42,7 @@ import PyF.Internal.PythonSyntax
     pattern DefaultFormatMode,
   )
 import PyF.Internal.QQ (Config (..))
-import Text.Parsec (SourcePos, runParserT, setSourceLine)
+import Text.Parsec (runParserT)
 import Text.Parsec.Pos
 import Text.Parsec.Prim (setPosition)
 
@@ -73,19 +77,24 @@ replaceSplice e = do
 applyPyf :: SrcAnn NoEpAnns -> String -> Hsc (HsExpr GhcPs)
 applyPyf loc s = do
   items <- mapM toString $ pyf loc s
+  dynFlags <- getDynFlags
+  let toOverloaded
+        | xopt LangExt.OverloadedStrings dynFlags = app (var "fromString")
+        | otherwise = id
   pure $
-    HsApp
-      noExtField'
-      ( L
-          noSrcSpanA
-          ( HsVar
-              NoExtField
-              ( L noSrcSpanA $
-                  mkUnqual GHC.Types.Name.Occurence.varName (mkFastString "mconcat")
-              )
-          )
-      )
-      (L noSrcSpanA $ ExplicitList emptyAnnList $ map (L noSrcSpanA) items)
+    toOverloaded $
+      HsApp
+        noExtField'
+        ( L
+            noSrcSpanA
+            ( HsVar
+                NoExtField
+                ( L noSrcSpanA $
+                    mkUnqual GHC.Types.Name.Occurence.varName (mkFastString "mconcat")
+                )
+            )
+        )
+        (L noSrcSpanA $ ExplicitList emptyAnnList $ map (L noSrcSpanA) items)
 
 toString :: Item -> Hsc (HsExpr GhcPs)
 toString (Raw s) = pure $ HsLit noExtField' $ HsString NoSourceText (mkFastString s)
@@ -105,6 +114,12 @@ pyf (SrcSpanAnn _ srcSpan) s = case runReader (runParserT (setPosition initPos >
 
     initPos = setSourceColumn (setSourceLine (initialPos filename) (srcLocLine start)) (srcLocCol start)
     RealSrcLoc start _ = srcSpanStart srcSpan
+
+appType :: HsExpr GhcPs -> String -> HsExpr GhcPs
+appType a name = HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (HsWC NoExtField (L noSrcSpanA (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual dataName (mkFastString name))))))
+
+appType' :: HsExpr GhcPs -> String -> HsExpr GhcPs
+appType' a name = HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (HsWC NoExtField (L noSrcSpanA (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual tcName (mkFastString name))))))
 
 app :: HsExpr GhcPs -> HsExpr GhcPs -> HsExpr GhcPs
 app a b = HsApp noExtField' (L noSrcSpanA a) (L noSrcSpanA b)
@@ -151,14 +166,54 @@ padAndFormat (FormatMode padding tf grouping) = case tf of
 mkPaddingToPaddingK :: Padding -> HsExpr GhcPs
 mkPaddingToPaddingK p = case p of
   PaddingDefault -> ctor "PaddingDefaultK"
-  Padding i Nothing -> ctor "PaddingK" `app` exprToInt i `app` ctor "Nothing"
-  Padding i (Just (c, AnyAlign a)) -> ctor "PaddingK" `app` exprToInt i `app` (ctor "Just" `app` (error "tuple (c, a)"))
+  Padding i Nothing -> appType (appType' (ctor "PaddingK") "Int") "AlignAll" `app` exprToInt i `app` ctor "Nothing"
+  Padding i (Just (c, AnyAlign a)) -> ctor "PaddingK" `app` exprToInt i `app` (liftHsExpr (Just (c, a)))
+
+class LiftHsExpr a where
+  liftHsExpr :: a -> HsExpr GhcPs
+
+instance (LiftHsExpr a, LiftHsExpr b) => LiftHsExpr (a, b) where
+  liftHsExpr (a, b) = mkTup [liftHsExpr a, liftHsExpr b]
+
+instance (LiftHsExpr a, LiftHsExpr b, LiftHsExpr c) => LiftHsExpr (a, b, c) where
+  liftHsExpr (a, b, c) = mkTup [liftHsExpr a, liftHsExpr b, liftHsExpr c]
+
+instance (LiftHsExpr a) => LiftHsExpr (Maybe a) where
+  liftHsExpr Nothing = ctor "Nothing"
+  liftHsExpr (Just v) = ctor "Just" `app` liftHsExpr v
+
+instance LiftHsExpr (AlignMode k) where
+  liftHsExpr v = ctor (show v)
+
+instance LiftHsExpr Char where
+  liftHsExpr c = HsLit noExtField' (HsChar NoSourceText c)
+
+instance LiftHsExpr Int where
+  liftHsExpr i = HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
+
+instance LiftHsExpr (Format k k' k'') where
+  liftHsExpr (Alternate v) = ctor "Alternate" `app` liftHsExpr v
+  liftHsExpr (Upper v) = ctor "Upper" `app` liftHsExpr v
+  liftHsExpr v = ctor (show v)
+
+instance LiftHsExpr AnyAlign where
+  liftHsExpr (AnyAlign v) = ctor "AnyAlign" `app` liftHsExpr v
+
+mkTup :: [HsExpr GhcPs] -> HsExpr GhcPs
+mkTup l =
+  ExplicitTuple
+    noExtField'
+    ( map
+        (\x -> Present noExtField' (L noSrcSpanA x))
+        l
+    )
+    Boxed
 
 newPaddingKForString :: Padding -> HsExpr GhcPs
 newPaddingKForString padding = case padding of
   PaddingDefault -> ctor "Nothing"
-  Padding i Nothing -> ctor "Just" `app` (error "(fromIntegral i, Formatters.AlignLeft, ' ')") -- default align left and fill with space for string
-  Padding i (Just (c, AnyAlign a)) -> ctor "Just" `app` (error "(fromIntegral i, a, fromMaybe ' ' mc)")
+  Padding i Nothing -> ctor "Just" `app` (mkTup [exprToInt i, liftHsExpr AlignLeft, liftHsExpr ' ']) -- default align left and fill with space for string
+  Padding i (Just (mc, AnyAlign a)) -> ctor "Just" `app` mkTup [exprToInt i, liftHsExpr a, liftHsExpr $ fromMaybe ' ' mc]
 
 toSignMode :: SignMode -> HsExpr GhcPs
 toSignMode Plus = ctor "Plus"
@@ -167,16 +222,21 @@ toSignMode Space = ctor "Space"
 
 toGrp :: Maybe Char -> Int -> HsExpr GhcPs
 toGrp Nothing _ = ctor "Nothing"
+toGrp (Just v) a = liftHsExpr $ Just grp
+  where
+    grp = (a, v)
 
-withAlt :: AlternateForm -> Format a b c -> HsExpr GhcPs
-withAlt NormalForm formatter = var $ show formatter
-
--- toGrp (Just v) a = ctor "Just" `app` (error "not done to grp")
---   where
---     grp = (a,v)
+withAlt :: AlternateForm -> Format 'CanAlt b c -> HsExpr GhcPs
+withAlt NormalForm e = liftHsExpr e
+withAlt AlternateForm e = liftHsExpr (Alternate e)
 
 mkPadding :: Padding -> HsExpr GhcPs
-mkPadding PaddingDefault = ctor "Nothing"
+mkPadding padding = case padding of
+  PaddingDefault -> ctor "Nothing" -- :: Maybe (Int, AnyAlign, Char)|]
+  (Padding i al) -> case al of
+    Nothing -> ctor "Just" `app` mkTup [exprToInt i, liftHsExpr $ AnyAlign AlignRight, liftHsExpr ' '] -- Right align and space is default for any object, except string
+    Just (Nothing, a) -> ctor "Just" `app` mkTup [exprToInt i, liftHsExpr a, liftHsExpr ' ']
+    Just (Just c, a) -> ctor "Just" `app` mkTup [exprToInt i, liftHsExpr a, liftHsExpr c]
 
 mkPrecision :: Maybe Int -> Precision -> HsExpr GhcPs
 mkPrecision Nothing PrecisionDefault = ctor "Nothing"
@@ -185,6 +245,7 @@ mkPrecision _ (Precision p) = ctor "Just" `app` exprToInt p
 
 exprToInt :: ExprOrValue Int -> HsExpr GhcPs
 exprToInt (Value i) = HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
+exprToInt e = HsLit noExtField' $ HsInt NoExtField (mkIntegralLit 123)
 
 -- exprToInt (HaskellExpr s) = toHsExpr s
 

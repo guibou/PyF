@@ -17,7 +17,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 -- This warning is disabled because any expression with literal leads to it.
-{-# OPTIONS -Wno-type-defaults #-}
+{-# OPTIONS -Wno-type-defaults -fplugin=PyF.Plugin#-}
 
 import qualified Data.ByteString
 import qualified Data.ByteString.Char8
@@ -26,6 +26,7 @@ import qualified Data.ByteString.Lazy.Char8
 import qualified Data.List as List
 import Data.Proxy (Proxy (..))
 import qualified Data.Ratio
+import Data.String
 import qualified Data.Text
 import qualified Data.Text as Text
 import qualified Data.Text.Lazy
