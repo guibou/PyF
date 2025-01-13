@@ -7,6 +7,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -29,10 +30,12 @@ import Control.Monad (join)
 import Control.Monad.Reader (runReader)
 import Data.Generics
 import Data.Maybe (fromMaybe)
+import Data.String
+import GHC.ThToHs (thRdrNameGuesses)
 import GHC.TypeLits
 import qualified GHC.Types.Name.Occurrence as GHC.Types.Name.Occurence
 import GHC.Types.SourceText (SourceText (..), mkIntegralLit)
-import PyF (defaultFloatPrecision, fmtConfig, trimIndent)
+import PyF (PyFToString (..), fmtConfig, trimIndent)
 import PyF.Formatters
 import qualified PyF.Internal.Parser as ParseExp
 import PyF.Internal.PythonSyntax
@@ -47,7 +50,7 @@ import PyF.Internal.PythonSyntax
     parseGenericFormatString,
     pattern DefaultFormatMode,
   )
-import PyF.Internal.QQ (Config (..), parseErrorToLocAndMessage)
+import PyF.Internal.QQ (Config (..), PaddingK (..), defaultFloatPrecision, formatAny, formatAnyFractional, formatAnyIntegral, parseErrorToLocAndMessage)
 import Text.Parsec (runParserT)
 import Text.Parsec.Pos
 import Text.Parsec.Prim (setPosition)
@@ -114,14 +117,14 @@ applyPyf loc s = do
   case itemsM of
     Left (theLoc, theMsg) -> do
 #if MIN_VERSION_ghc(9,10,0)
-      pure $ HsPar (NoEpTok, NoEpTok) (L ((EpAnn (EpaSpan $ RealSrcSpan (realSrcLocSpan theLoc) mempty) (AnnListItem []) emptyComments)) $ var "forceError" `app` (ctor "Proxy" `appTypeSymbol` theMsg))
+      pure $ HsPar (NoEpTok, NoEpTok) (L ((EpAnn (EpaSpan $ RealSrcSpan (realSrcLocSpan theLoc) mempty) (AnnListItem []) emptyComments)) $ var 'forceError `app` (ctor 'Proxy `appTypeSymbol` theMsg))
 #else
-      pure $ HsPar noExtField' noHsTok (L ((SrcSpanAnn noExtField' (RealSrcSpan (realSrcLocSpan theLoc) mempty))) $ var "forceError" `app` (ctor "Proxy" `appTypeSymbol` theMsg)) noHsTok
+      pure $ HsPar noExtField' noHsTok (L ((SrcSpanAnn noExtField' (RealSrcSpan (realSrcLocSpan theLoc) mempty))) $ var 'forceError `app` (ctor 'Proxy `appTypeSymbol` theMsg)) noHsTok
 #endif
     Right items -> do
       dynFlags <- getDynFlags
       let toOverloaded
-            | xopt LangExt.OverloadedStrings dynFlags = app (var "fromString")
+            | xopt LangExt.OverloadedStrings dynFlags = app (var 'fromString)
             | otherwise = id
       pure $
         toOverloaded $
@@ -179,21 +182,21 @@ appTypeSymbol a name =
     (HsTyLit NoExtField (HsStrTy NoSourceText (mkFastString name)))
 
 -- Foo @Bar
-appType :: HsExpr GhcPs -> String -> HsExpr GhcPs
+appType :: HsExpr GhcPs -> RdrName -> HsExpr GhcPs
 appType a name = appTypeAny a
 #if MIN_VERSION_ghc(9,10,0)
-  (HsTyVar [] NotPromoted (noLocA (mkUnqual dataName (mkFastString name))))
+  (HsTyVar [] NotPromoted (noLocA name))
 #else
-  (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual dataName (mkFastString name))))
+  (HsTyVar noExtField' NotPromoted (L noSrcSpanA name))
 #endif
 
 -- Foo @Int
-appType' :: HsExpr GhcPs -> String -> HsExpr GhcPs
+appType' :: HsExpr GhcPs -> _ -> HsExpr GhcPs
 appType' a name = appTypeAny a
 #if MIN_VERSION_ghc(9,10,0)
-  (HsTyVar [] NotPromoted (noLocA $ mkUnqual tcName (mkFastString name)))
+  (HsTyVar [] NotPromoted (noLocA $ pyfName name))
 #else
-  (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual tcName (mkFastString name))))
+  (HsTyVar noExtField' NotPromoted (L noSrcSpanA (pyfName name)))
 #endif
 
 {- ORMOLU_DISABLE -}
@@ -212,22 +215,18 @@ app a b = HsApp noExtField' (L noSrcSpanA a) (L noSrcSpanA b)
 app' :: HsExpr GhcPs -> (GenLocated SrcSpanAnnA (HsExpr GhcPs)) -> HsExpr GhcPs
 app' a b = HsApp noExtField' (L noSrcSpanA a) b
 
-var :: String -> HsExpr GhcPs
+var :: _ -> HsExpr GhcPs
 var name =
   ( HsVar
       NoExtField
-      ( L noSrcSpanA $
-          mkUnqual GHC.Types.Name.Occurence.varName (mkFastString name)
-      )
+      (L noSrcSpanA $ pyfName name)
   )
 
-ctor :: String -> HsExpr GhcPs
+ctor :: _ -> HsExpr GhcPs
 ctor name =
   ( HsVar
       NoExtField
-      ( L noSrcSpanA $
-          mkUnqual GHC.Types.Name.Occurence.dataName (mkFastString name)
-      )
+      (L noSrcSpanA $ pyfName name)
   )
 
 padAndFormat :: FormatModeT (ExprOrValue Int) -> Hsc (Either (RealSrcLoc, String) (HsExpr GhcPs))
@@ -237,23 +236,23 @@ padAndFormat formatMode' = do
     FormatMode padding tf grouping <- formatModeM
     pure $ case tf of
       -- Integrals
-      BinaryF alt s -> var "formatAnyIntegral" `app` withAlt alt Binary `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
-      CharacterF -> var "formatAnyIntegral" `app` ctor "Character" `app` ctor "Minus" `app` mkPadding padding `app` ctor "Nothing"
-      DecimalF s -> var "formatAnyIntegral" `app` ctor "Decimal" `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3
-      HexF alt s -> var "formatAnyIntegral" `app` withAlt alt Hexa `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
-      OctalF alt s -> var "formatAnyIntegral" `app` withAlt alt Octal `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
-      HexCapsF alt s -> var "formatAnyIntegral" `app` (ctor "Upper" `app` (withAlt alt Hexa)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
+      BinaryF alt s -> var 'formatAnyIntegral `app` withAlt alt Binary `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
+      CharacterF -> var 'formatAnyIntegral `app` ctor 'Character `app` ctor 'Minus `app` mkPadding padding `app` ctor 'Nothing
+      DecimalF s -> var 'formatAnyIntegral `app` ctor 'Decimal `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3
+      HexF alt s -> var 'formatAnyIntegral `app` withAlt alt Hexa `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
+      OctalF alt s -> var 'formatAnyIntegral `app` withAlt alt Octal `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
+      HexCapsF alt s -> var 'formatAnyIntegral `app` (ctor 'Upper `app` (withAlt alt Hexa)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 4
       -- Floating
-      GeneralF prec alt s -> var "formatAnyFractional" `app` withAlt alt Generic `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-      GeneralCapsF prec alt s -> var "formatAnyFractional" `app` (ctor "Upper" `app` (withAlt alt Generic)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-      ExponentialF prec alt s -> var "formatAnyFractional" `app` withAlt alt Exponent `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-      ExponentialCapsF prec alt s -> var "formatAnyFractional" `app` (ctor "Upper" `app` (withAlt alt Exponent)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-      FixedF prec alt s -> var "formatAnyFractional" `app` withAlt alt Fixed `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-      FixedCapsF prec alt s -> var "formatAnyFractional" `app` (ctor "Upper" `app` (withAlt alt Fixed)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
-      PercentF prec alt s -> var "formatAnyFractional" `app` withAlt alt Percent `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+      GeneralF prec alt s -> var 'formatAnyFractional `app` withAlt alt Generic `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+      GeneralCapsF prec alt s -> var 'formatAnyFractional `app` (ctor 'Upper `app` (withAlt alt Generic)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+      ExponentialF prec alt s -> var 'formatAnyFractional `app` withAlt alt Exponent `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+      ExponentialCapsF prec alt s -> var 'formatAnyFractional `app` (ctor 'Upper `app` (withAlt alt Exponent)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+      FixedF prec alt s -> var 'formatAnyFractional `app` withAlt alt Fixed `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+      FixedCapsF prec alt s -> var 'formatAnyFractional `app` (ctor 'Upper `app` (withAlt alt Fixed)) `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
+      PercentF prec alt s -> var 'formatAnyFractional `app` withAlt alt Percent `app` toSignMode s `app` mkPadding padding `app` toGrp grouping 3 `app` mkPrecision defaultFloatPrecision prec
       -- Default / String
-      DefaultF prec s -> var "formatAny" `app` toSignMode s `app` mkPaddingToPaddingK padding `app` toGrp grouping 3 `app` mkPrecision Nothing prec
-      StringF prec -> (var ".") `app` (var "formatString" `app` (newPaddingKForString padding) `app` mkPrecision Nothing prec) `app` (var "pyfToString")
+      DefaultF prec s -> var 'formatAny `app` toSignMode s `app` mkPaddingToPaddingK padding `app` toGrp grouping 3 `app` mkPrecision Nothing prec
+      StringF prec -> (var '(.)) `app` (var 'formatString `app` (newPaddingKForString padding) `app` mkPrecision Nothing prec) `app` (var 'pyfToString)
 
 evalSubExpression :: FormatModeT (ExprOrValue Int) -> Hsc (Either (RealSrcLoc, String) (FormatModeT (LocatedA (HsExpr GhcPs))))
 evalSubExpression (FormatMode padding tf grouping) = do
@@ -311,15 +310,22 @@ evalPadding p = case p of
     i' <- exprToInt i
     pure $ Padding <$> i' <*> pure v
 
+pyfName n = head $ thRdrNameGuesses n
+
 mkPaddingToPaddingK :: PaddingT (GenLocated SrcSpanAnnA (HsExpr GhcPs)) -> HsExpr GhcPs
 mkPaddingToPaddingK p = case p of
-  PaddingDefault -> ctor "PaddingDefaultK"
-  Padding i Nothing -> appType (appType' (ctor "PaddingK") "Int") "AlignAll" `app'` i `app` (liftHsExpr $ (Nothing :: Maybe (Int, AnyAlign, Char)))
-  Padding i (Just (c, AnyAlign a)) -> ctor "PaddingK" `app'` i `app` liftHsExpr (Just (c, a))
+  PaddingDefault -> ctor 'PaddingDefaultK
+  Padding i Nothing ->
+    appType
+      (appType' (ctor 'PaddingK) ''Int)
+      (pyfName 'PyF.Formatters.AlignAll)
+      `app'` i
+      `app` (liftHsExpr $ (Nothing :: Maybe (Int, AnyAlign, Char)))
+  Padding i (Just (c, AnyAlign a)) -> ctor 'PaddingK `app'` i `app` liftHsExpr (Just (c, a))
 
 newPaddingKForString :: PaddingT (LocatedA (HsExpr GhcPs)) -> HsExpr GhcPs
 newPaddingKForString padding = case padding of
-  PaddingDefault -> ctor "Nothing"
+  PaddingDefault -> ctor 'Nothing
   Padding i Nothing -> liftHsExpr (Just (i, AlignLeft, ' ')) -- default align left and fill with space for string
   Padding i (Just (mc, AnyAlign a)) -> liftHsExpr (Just (i, a, fromMaybe ' ' mc))
 
@@ -341,11 +347,14 @@ instance (LiftHsExpr a, LiftHsExpr b, LiftHsExpr c) => LiftHsExpr (a, b, c) wher
   liftHsExpr (a, b, c) = mkTup [liftHsExpr a, liftHsExpr b, liftHsExpr c]
 
 instance (LiftHsExpr a) => LiftHsExpr (Maybe a) where
-  liftHsExpr Nothing = ctor "Nothing"
-  liftHsExpr (Just v) = ctor "Just" `app` liftHsExpr v
+  liftHsExpr Nothing = ctor 'Nothing
+  liftHsExpr (Just v) = ctor 'Just `app` liftHsExpr v
 
 instance LiftHsExpr (AlignMode k) where
-  liftHsExpr v = ctor (show v)
+  liftHsExpr AlignLeft = ctor 'AlignLeft
+  liftHsExpr AlignRight = ctor 'AlignRight
+  liftHsExpr AlignInside = ctor 'AlignInside
+  liftHsExpr AlignCenter = ctor 'AlignCenter
 
 instance LiftHsExpr Char where
   liftHsExpr c = HsLit noExtField' (HsChar NoSourceText c)
@@ -354,12 +363,20 @@ instance LiftHsExpr Int where
   liftHsExpr i = HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
 
 instance LiftHsExpr (Format k k' k'') where
-  liftHsExpr (Alternate v) = ctor "Alternate" `app` liftHsExpr v
-  liftHsExpr (Upper v) = ctor "Upper" `app` liftHsExpr v
-  liftHsExpr v = ctor (show v)
+  liftHsExpr (Alternate v) = ctor 'Alternate `app` liftHsExpr v
+  liftHsExpr (Upper v) = ctor 'Upper `app` liftHsExpr v
+  liftHsExpr Decimal = ctor 'Decimal
+  liftHsExpr Character = ctor 'Character
+  liftHsExpr Binary = ctor 'Binary
+  liftHsExpr Hexa = ctor 'Hexa
+  liftHsExpr Octal = ctor 'Octal
+  liftHsExpr Fixed = ctor 'Fixed
+  liftHsExpr Exponent = ctor 'Exponent
+  liftHsExpr Generic = ctor 'Generic
+  liftHsExpr Percent = ctor 'Percent
 
 instance LiftHsExpr AnyAlign where
-  liftHsExpr (AnyAlign v) = ctor "AnyAlign" `app` liftHsExpr v
+  liftHsExpr (AnyAlign v) = ctor 'AnyAlign `app` liftHsExpr v
 
 instance LiftHsExpr (HsExpr GhcPs) where
   liftHsExpr x = x
@@ -389,12 +406,12 @@ mkTup l =
 {- ORMOLU_ENABLE -}
 
 toSignMode :: SignMode -> HsExpr GhcPs
-toSignMode Plus = ctor "Plus"
-toSignMode Minus = ctor "Minus"
-toSignMode Space = ctor "Space"
+toSignMode Plus = ctor 'Plus
+toSignMode Minus = ctor 'Minus
+toSignMode Space = ctor 'Space
 
 toGrp :: Maybe Char -> Int -> HsExpr GhcPs
-toGrp Nothing _ = ctor "Nothing"
+toGrp Nothing _ = ctor 'Nothing
 toGrp (Just v) a = liftHsExpr $ Just grp
   where
     grp = (a, v)
@@ -404,8 +421,8 @@ withAlt NormalForm e = liftHsExpr e
 withAlt AlternateForm e = liftHsExpr (Alternate e)
 
 mkPrecision :: Maybe Int -> PrecisionT (LocatedA (HsExpr GhcPs)) -> HsExpr GhcPs
-mkPrecision Nothing PrecisionDefault = ctor "Nothing"
-mkPrecision (Just v) PrecisionDefault = ctor "Just" `app` (HsLit noExtField' $ HsInt NoExtField (mkIntegralLit v))
+mkPrecision Nothing PrecisionDefault = ctor 'Nothing
+mkPrecision (Just v) PrecisionDefault = ctor 'Just `app` (HsLit noExtField' $ HsInt NoExtField (mkIntegralLit v))
 mkPrecision _ (Precision p) = liftHsExpr (Just p)
 
 exprToInt :: ExprOrValue Int -> Hsc (Either (RealSrcLoc, String) (LocatedA (HsExpr GhcPs)))
