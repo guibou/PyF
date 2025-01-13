@@ -50,15 +50,13 @@ import HsExtension as Ext
 import Outputable (showSDoc)
 #endif
 
+import GHC.Parser.Annotation (LocatedA)
 import qualified PyF.Internal.ParserEx as ParseExp
 
-parseExpression :: RealSrcLoc -> String -> DynFlags -> Either (RealSrcLoc, String) (HsExpr GhcPs)
+parseExpression :: RealSrcLoc -> String -> DynFlags -> Either (RealSrcLoc, String) (LocatedA (HsExpr GhcPs))
 parseExpression initLoc s dynFlags =
   case ParseExp.parseExpression initLoc s dynFlags of
-    POk _ locatedExpr ->
-      let expr = SrcLoc.unLoc locatedExpr
-       in Right
-            expr
+    POk _ locatedExpr -> Right locatedExpr
 
 {- ORMOLU_DISABLE #-}
 #if MIN_VERSION_ghc(9,2,0)

@@ -170,7 +170,7 @@ toHsExpr sourcePos s = do
   let srcLoc = mkRealSrcLoc (mkFastString (sourceName sourcePos)) (sourceLine sourcePos) (sourceColumn sourcePos)
   case ParseExp.parseExpression srcLoc s dynFlags of
     Right hsExpr -> do
-      check <- checkVariables hsExpr
+      check <- checkVariables (unLoc hsExpr)
       case check of
         Right hsExpr' -> pure $ Just hsExpr'
         Left (span, err) -> do

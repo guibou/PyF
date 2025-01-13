@@ -104,7 +104,7 @@ toString (Raw s) = pure $ HsLit noExtField' $ HsString NoSourceText (mkFastStrin
 toString (Replacement loc s formatMode) = do
   expr <- toHsExpr loc s
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode formatMode)
-  pure $ app formatExpr expr
+  pure $ formatExpr `app'` expr
 
 pyf :: SrcAnn NoEpAnns -> String -> [Item]
 pyf (SrcSpanAnn _ srcSpan) s = case runReader (runParserT (setPosition initPos >> parseGenericFormatString) () filename s) context of
@@ -126,6 +126,9 @@ appType' a name = HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (
 
 app :: HsExpr GhcPs -> HsExpr GhcPs -> HsExpr GhcPs
 app a b = HsApp noExtField' (L noSrcSpanA a) (L noSrcSpanA b)
+
+app' :: HsExpr GhcPs -> (GenLocated SrcSpanAnnA (HsExpr GhcPs)) -> HsExpr GhcPs
+app' a b = HsApp noExtField' (L noSrcSpanA a) b
 
 var :: String -> HsExpr GhcPs
 var name =
@@ -168,13 +171,13 @@ padAndFormat formatMode' = do
     DefaultF prec s -> var "formatAny" `app` toSignMode s `app` mkPaddingToPaddingK padding `app` toGrp grouping 3 `app` mkPrecision Nothing prec
     StringF prec -> (var ".") `app` (var "formatString" `app` (newPaddingKForString padding) `app` mkPrecision Nothing prec) `app` (var "pyfToString")
 
-evalSubExpression :: FormatModeT (ExprOrValue Int) -> Hsc (FormatModeT (HsExpr GhcPs))
+evalSubExpression :: FormatModeT (ExprOrValue Int) -> Hsc (FormatModeT (LocatedA (HsExpr GhcPs)))
 evalSubExpression (FormatMode padding tf grouping) = do
   padding' <- evalPadding padding
   tf' <- evalTf tf
   pure $ FormatMode padding' tf' grouping
 
-evalTf :: TypeFormatT (ExprOrValue Int) -> Hsc (TypeFormatT (HsExpr GhcPs))
+evalTf :: TypeFormatT (ExprOrValue Int) -> Hsc (TypeFormatT (LocatedA (HsExpr GhcPs)))
 evalTf tf = case tf of
   -- Integrals
   BinaryF alt s -> pure $ BinaryF alt s
@@ -213,30 +216,30 @@ evalTf tf = case tf of
     prec' <- evalPrecision prec
     pure $ StringF prec'
 
-evalPrecision :: PrecisionT (ExprOrValue Int) -> Hsc (PrecisionT (HsExpr GhcPs))
+evalPrecision :: PrecisionT (ExprOrValue Int) -> Hsc (PrecisionT (LocatedA (HsExpr GhcPs)))
 evalPrecision (PrecisionDefault) = pure PrecisionDefault
 evalPrecision (Precision e) = Precision <$> exprToInt e
 
-evalPadding :: PaddingT (ExprOrValue Int) -> Hsc (PaddingT (HsExpr GhcPs))
+evalPadding :: PaddingT (ExprOrValue Int) -> Hsc (PaddingT (LocatedA (HsExpr GhcPs)))
 evalPadding p = case p of
   PaddingDefault -> pure PaddingDefault
   Padding i v -> do
     i' <- exprToInt i
     pure $ Padding i' v
 
-mkPaddingToPaddingK :: PaddingT (HsExpr GhcPs) -> HsExpr GhcPs
+mkPaddingToPaddingK :: PaddingT _ -> HsExpr GhcPs
 mkPaddingToPaddingK p = case p of
   PaddingDefault -> ctor "PaddingDefaultK"
-  Padding i Nothing -> appType (appType' (ctor "PaddingK") "Int") "AlignAll" `app` i `app` (liftHsExpr $ (Nothing :: Maybe (Int, AnyAlign, Char)))
-  Padding i (Just (c, AnyAlign a)) -> ctor "PaddingK" `app` i `app` liftHsExpr (Just (c, a))
+  Padding i Nothing -> appType (appType' (ctor "PaddingK") "Int") "AlignAll" `app'` i `app` (liftHsExpr $ (Nothing :: Maybe (Int, AnyAlign, Char)))
+  Padding i (Just (c, AnyAlign a)) -> ctor "PaddingK" `app'` i `app` liftHsExpr (Just (c, a))
 
-newPaddingKForString :: PaddingT (HsExpr GhcPs) -> HsExpr GhcPs
+newPaddingKForString :: PaddingT (LocatedA (HsExpr GhcPs)) -> HsExpr GhcPs
 newPaddingKForString padding = case padding of
   PaddingDefault -> ctor "Nothing"
   Padding i Nothing -> liftHsExpr (Just (i, AlignLeft, ' ')) -- default align left and fill with space for string
   Padding i (Just (mc, AnyAlign a)) -> liftHsExpr (Just (i, a, fromMaybe ' ' mc))
 
-mkPadding :: PaddingT (HsExpr GhcPs) -> HsExpr GhcPs
+mkPadding :: PaddingT (LocatedA (HsExpr GhcPs)) -> HsExpr GhcPs
 mkPadding padding = case padding of
   PaddingDefault -> liftHsExpr (Nothing :: Maybe (Int, AnyAlign, Char))
   (Padding i al) -> case al of
@@ -277,6 +280,9 @@ instance LiftHsExpr AnyAlign where
 instance LiftHsExpr (HsExpr GhcPs) where
   liftHsExpr x = x
 
+instance LiftHsExpr (GenLocated SrcSpanAnnA (HsExpr GhcPs)) where
+  liftHsExpr x = HsPar noExtField' noHsTok x noHsTok
+
 mkTup :: [HsExpr GhcPs] -> HsExpr GhcPs
 mkTup l =
   ExplicitTuple
@@ -302,23 +308,22 @@ withAlt :: AlternateForm -> Format 'CanAlt b c -> HsExpr GhcPs
 withAlt NormalForm e = liftHsExpr e
 withAlt AlternateForm e = liftHsExpr (Alternate e)
 
-mkPrecision :: Maybe Int -> PrecisionT (HsExpr GhcPs) -> HsExpr GhcPs
+mkPrecision :: Maybe Int -> PrecisionT (LocatedA (HsExpr GhcPs)) -> HsExpr GhcPs
 mkPrecision Nothing PrecisionDefault = ctor "Nothing"
 mkPrecision (Just v) PrecisionDefault = ctor "Just" `app` (HsLit noExtField' $ HsInt NoExtField (mkIntegralLit v))
 mkPrecision _ (Precision p) = liftHsExpr (Just p)
 
-exprToInt :: ExprOrValue Int -> Hsc (HsExpr GhcPs)
-exprToInt (Value i) = pure $ HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
-exprToInt (HaskellExpr loc s) = do
-  toHsExpr loc s
+exprToInt :: ExprOrValue Int -> Hsc (LocatedA (HsExpr GhcPs))
+exprToInt (Value i) = pure $ noLocA $ HsLit noExtField' $ HsInt NoExtField (mkIntegralLit i)
+exprToInt (HaskellExpr loc s) = toHsExpr loc s
 
-toHsExpr :: SourcePos -> String -> Hsc (HsExpr GhcPs)
-toHsExpr loc s = do
+toHsExpr :: SourcePos -> String -> Hsc (LocatedA (HsExpr GhcPs))
+toHsExpr sourcePos s = do
   dynFlags <- getDynFlags
   -- TODO
-  let initLoc = mkRealSrcLoc (mkFastString "file") 10 10
+  let srcLoc = mkRealSrcLoc (mkFastString (sourceName sourcePos)) (sourceLine sourcePos) (sourceColumn sourcePos)
 
-  case ParseExp.parseExpression initLoc s dynFlags of
+  case ParseExp.parseExpression srcLoc s dynFlags of
     Right res -> pure res
     Left e -> error $ show e
 

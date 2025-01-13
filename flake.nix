@@ -11,12 +11,11 @@
   ];
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-      treefmt-nix,
-      ...
+    { self
+    , nixpkgs
+    , flake-utils
+    , treefmt-nix
+    , ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -92,6 +91,8 @@
               pkgs.nodejs
             ];
           };
+
+          work_with_pyf = pkgs.mkShell { buildInputs = [ (pkgs.haskellPackages.ghcWithPackages (_: [ (pkgs.haskell.lib.dontCheck packages.default) ])) ]; };
           default = packages.default.shell_hls;
         };
       }
