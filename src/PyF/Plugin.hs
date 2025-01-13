@@ -68,6 +68,7 @@ action parsed@HsParsedModule {hpm_module = m} =
   (\m' -> parsed {hpm_module = m'})
     <$> gmapM (everywhereM (mkM replaceSplice)) m
 
+{- ORMOLU_DISABLE -}
 -- | Replace a splice entry
 replaceSplice :: HsExpr GhcPs -> Hsc (HsExpr GhcPs)
 replaceSplice e = do
@@ -83,6 +84,7 @@ replaceSplice e = do
       | mkVarOcc "strTrim" == name -> pure $ HsLit noExtField' (HsString NoSourceText (mkFastString $ trimIndent $ unpackFS s))
     _ -> do
       pure e
+{- ORMOLU_ENABLE -}
 
 {-
  - This is not used, the idea was to report the error during the plugin, but it
@@ -104,6 +106,7 @@ reportError theLoc theMsg = do
       )
 -}
 
+{- ORMOLU_DISABLE -}
 applyPyf :: SrcSpan -> String -> Hsc (HsExpr GhcPs)
 applyPyf loc s = do
   let pyfItems = pyf loc s
@@ -134,7 +137,7 @@ applyPyf loc s = do
                 )
             )
             (L noSrcSpanA $ ExplicitList emptyAnnList $ items)
-
+{- ORMOLU_ENABLE -}
 
 -- TODO: a lot of the Either could be "Validation" and generate MULTIPLES
 -- errors messages, but for now GHC is not able to handle multiples errors
@@ -170,8 +173,10 @@ pyf srcSpan s = case runReader (runParserT (setPosition initPos >> parseGenericF
 
 -- Foo @"symbol"
 appTypeSymbol :: HsExpr GhcPs -> String -> HsExpr GhcPs
-appTypeSymbol a name = appTypeAny a 
-   (HsTyLit NoExtField (HsStrTy NoSourceText (mkFastString name)))
+appTypeSymbol a name =
+  appTypeAny
+    a
+    (HsTyLit NoExtField (HsStrTy NoSourceText (mkFastString name)))
 
 -- Foo @Bar
 appType :: HsExpr GhcPs -> String -> HsExpr GhcPs
@@ -191,6 +196,7 @@ appType' a name = appTypeAny a
   (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual tcName (mkFastString name))))
 #endif
 
+{- ORMOLU_DISABLE -}
 appTypeAny :: HsExpr GhcPs -> HsType GhcPs -> HsExpr GhcPs
 appTypeAny a b =
 #if MIN_VERSION_ghc(9,10,0)
@@ -198,7 +204,7 @@ appTypeAny a b =
 #else
   HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (HsWC NoExtField (L noSrcSpanA b))
 #endif
-
+{- ORMOLU_ENABLE -}
 
 app :: HsExpr GhcPs -> HsExpr GhcPs -> HsExpr GhcPs
 app a b = HsApp noExtField' (L noSrcSpanA a) (L noSrcSpanA b)
@@ -358,13 +364,15 @@ instance LiftHsExpr AnyAlign where
 instance LiftHsExpr (HsExpr GhcPs) where
   liftHsExpr x = x
 
-instance LiftHsExpr (GenLocated SrcSpanAnnA (HsExpr GhcPs)) where
 #if MIN_VERSION_ghc(9,10,0)
+instance LiftHsExpr (GenLocated SrcSpanAnnA (HsExpr GhcPs)) where
   liftHsExpr x = HsPar (NoEpTok, NoEpTok) x
 #else
+instance LiftHsExpr (GenLocated SrcSpanAnnA (HsExpr GhcPs)) where
   liftHsExpr x = HsPar noExtField' noHsTok x noHsTok
 #endif
 
+{- ORMOLU_DISABLE -}
 mkTup :: [HsExpr GhcPs] -> HsExpr GhcPs
 mkTup l =
   ExplicitTuple
@@ -378,6 +386,7 @@ mkTup l =
         l
     )
     Boxed
+{- ORMOLU_ENABLE -}
 
 toSignMode :: SignMode -> HsExpr GhcPs
 toSignMode Plus = ctor "Plus"

@@ -17,7 +17,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 -- This warning is disabled because any expression with literal leads to it.
-{-# OPTIONS -Wno-type-defaults -fplugin=PyF.Plugin#-}
+{-# OPTIONS -Wno-type-defaults #-}
 
 import qualified Data.ByteString
 import qualified Data.ByteString.Char8
