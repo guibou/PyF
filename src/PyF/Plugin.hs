@@ -72,7 +72,11 @@ action parsed@HsParsedModule {hpm_module = m} =
 replaceSplice :: HsExpr GhcPs -> Hsc (HsExpr GhcPs)
 replaceSplice e = do
   case e of
-    HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) (L loc s))
+#if MIN_VERSION_ghc(9,10,0)
+    HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) (L (getHasLoc -> loc) s))
+#else
+    HsUntypedSplice _xsplit (HsQuasiQuote _xquasi (Unqual name) (L (SrcSpanAnn _ loc) s))
+#endif
       | mkVarOcc "fmt" == name -> applyPyf loc $ unpackFS s
       | mkVarOcc "fmtTrim" == name -> applyPyf loc (trimIndent $ unpackFS s)
       | mkVarOcc "str" == name -> pure $ HsLit noExtField' (HsString NoSourceText s)
@@ -100,13 +104,17 @@ reportError theLoc theMsg = do
       )
 -}
 
-applyPyf :: SrcAnn NoEpAnns -> String -> Hsc (HsExpr GhcPs)
+applyPyf :: SrcSpan -> String -> Hsc (HsExpr GhcPs)
 applyPyf loc s = do
   let pyfItems = pyf loc s
   (join . fmap sequenceA -> itemsM) <- sequenceA (mapM toString <$> pyfItems)
   case itemsM of
     Left (theLoc, theMsg) -> do
+#if MIN_VERSION_ghc(9,10,0)
+      pure $ HsPar (NoEpTok, NoEpTok) (L ((EpAnn (EpaSpan $ RealSrcSpan (realSrcLocSpan theLoc) mempty) (AnnListItem []) emptyComments)) $ var "forceError" `app` (ctor "Proxy" `appTypeSymbol` theMsg))
+#else
       pure $ HsPar noExtField' noHsTok (L ((SrcSpanAnn noExtField' (RealSrcSpan (realSrcLocSpan theLoc) mempty))) $ var "forceError" `app` (ctor "Proxy" `appTypeSymbol` theMsg)) noHsTok
+#endif
     Right items -> do
       dynFlags <- getDynFlags
       let toOverloaded
@@ -127,12 +135,10 @@ applyPyf loc s = do
             )
             (L noSrcSpanA $ ExplicitList emptyAnnList $ items)
 
-appTypeSymbol :: HsExpr GhcPs -> String -> HsExpr GhcPs
-appTypeSymbol a name = HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (HsWC NoExtField (L noSrcSpanA (HsTyLit NoExtField (HsStrTy NoSourceText (mkFastString name)))))
 
 -- TODO: a lot of the Either could be "Validation" and generate MULTIPLES
 -- errors messages, but for now GHC is not able to handle multiples errors
-toString :: Item -> Hsc (Either (RealSrcLoc, String) (GenLocated (SrcAnn AnnListItem) (HsExpr GhcPs)))
+toString :: Item -> Hsc (Either (RealSrcLoc, String) (GenLocated _ (HsExpr GhcPs)))
 toString (Raw s) = pure $ pure $ L noSrcSpanA (HsLit noExtField' $ HsString NoSourceText (mkFastString s)) -- TODO: restore the correct location for the "raw" string
 toString (Replacement loc s formatMode) = do
   exprM <- toHsExpr loc s
@@ -146,8 +152,8 @@ toString (Replacement loc s formatMode) = do
     let loc' = getLoc expr
     pure $ L loc' (formatExpr `app'` expr)
 
-pyf :: SrcAnn NoEpAnns -> String -> Either (RealSrcLoc, String) [Item]
-pyf (SrcSpanAnn _ srcSpan) s = case runReader (runParserT (setPosition initPos >> parseGenericFormatString) () filename s) context of
+pyf :: SrcSpan -> String -> Either (RealSrcLoc, String) [Item]
+pyf srcSpan s = case runReader (runParserT (setPosition initPos >> parseGenericFormatString) () filename s) context of
   Right r -> Right r
   Left e -> Left (loc, msg)
     where
@@ -162,11 +168,37 @@ pyf (SrcSpanAnn _ srcSpan) s = case runReader (runParserT (setPosition initPos >
       RealSrcLoc startLoc _ -> startLoc
       _ -> error "Plugin API does not know it's RealSrcLoc"
 
-appType :: HsExpr GhcPs -> String -> HsExpr GhcPs
-appType a name = HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (HsWC NoExtField (L noSrcSpanA (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual dataName (mkFastString name))))))
+-- Foo @"symbol"
+appTypeSymbol :: HsExpr GhcPs -> String -> HsExpr GhcPs
+appTypeSymbol a name = appTypeAny a 
+   (HsTyLit NoExtField (HsStrTy NoSourceText (mkFastString name)))
 
+-- Foo @Bar
+appType :: HsExpr GhcPs -> String -> HsExpr GhcPs
+appType a name = appTypeAny a
+#if MIN_VERSION_ghc(9,10,0)
+  (HsTyVar [] NotPromoted (noLocA (mkUnqual dataName (mkFastString name))))
+#else
+  (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual dataName (mkFastString name))))
+#endif
+
+-- Foo @Int
 appType' :: HsExpr GhcPs -> String -> HsExpr GhcPs
-appType' a name = HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (HsWC NoExtField (L noSrcSpanA (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual tcName (mkFastString name))))))
+appType' a name = appTypeAny a
+#if MIN_VERSION_ghc(9,10,0)
+  (HsTyVar [] NotPromoted (noLocA $ mkUnqual tcName (mkFastString name)))
+#else
+  (HsTyVar noExtField' NotPromoted (L noSrcSpanA (mkUnqual tcName (mkFastString name))))
+#endif
+
+appTypeAny :: HsExpr GhcPs -> HsType GhcPs -> HsExpr GhcPs
+appTypeAny a b =
+#if MIN_VERSION_ghc(9,10,0)
+  HsAppType NoEpTok (L noSrcSpanA a) (HsWC NoExtField (L noSrcSpanA b))
+#else
+  HsAppType NoExtField (L noSrcSpanA a) (L NoTokenLoc (HsTok)) (HsWC NoExtField (L noSrcSpanA b))
+#endif
+
 
 app :: HsExpr GhcPs -> HsExpr GhcPs -> HsExpr GhcPs
 app a b = HsApp noExtField' (L noSrcSpanA a) (L noSrcSpanA b)
@@ -327,12 +359,20 @@ instance LiftHsExpr (HsExpr GhcPs) where
   liftHsExpr x = x
 
 instance LiftHsExpr (GenLocated SrcSpanAnnA (HsExpr GhcPs)) where
+#if MIN_VERSION_ghc(9,10,0)
+  liftHsExpr x = HsPar (NoEpTok, NoEpTok) x
+#else
   liftHsExpr x = HsPar noExtField' noHsTok x noHsTok
+#endif
 
 mkTup :: [HsExpr GhcPs] -> HsExpr GhcPs
 mkTup l =
   ExplicitTuple
+#if MIN_VERSION_ghc(9,10,0)
+    []
+#else
     noExtField'
+#endif
     ( map
         (\x -> Present noExtField' (L noSrcSpanA x))
         l
@@ -385,9 +425,12 @@ noExtField' = NoExtField
 emptyAnnList :: AnnList
 emptyAnnList = AnnList Nothing Nothing Nothing [] []
 #else
+-- Tested with 9.6
 noExtField' :: EpAnn ann
 noExtField' = EpAnnNotUsed
 
 emptyAnnList :: EpAnn ann
 emptyAnnList = EpAnnNotUsed
 #endif
+
+-- TODO: maybe we can use convertToHsExpr in order to generate the source code we want
