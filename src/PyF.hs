@@ -38,9 +38,9 @@ fmt = mkFormatter "fmt" fmtConfig
 
 -- | Format with whitespace trimming.
 fmtTrim :: QuasiQuoter
-fmtTrim = let
-  qq = mkFormatter "fmtTrim" fmtConfig
-  in qq { quoteExp = \s -> quoteExp qq (trimIndent  s) }
+fmtTrim =
+  let qq = mkFormatter "fmtTrim" fmtConfig
+   in qq {quoteExp = \s -> quoteExp qq (trimIndent s)}
 
 -- | Multiline string, no interpolation.
 str :: QuasiQuoter
@@ -48,8 +48,9 @@ str = mkFormatter "str" strConfig
 
 -- | Multiline string, no interpolation, but does indentation trimming.
 strTrim :: QuasiQuoter
-strTrim = let qq = mkFormatter "strTrim" strConfig
-  in qq { quoteExp = \s -> quoteExp qq (trimIndent  s) }
+strTrim =
+  let qq = mkFormatter "strTrim" strConfig
+   in qq {quoteExp = \s -> quoteExp qq (trimIndent s)}
 
 -- | Raw string, neither interpolation nor escaping is performed.
 raw :: QuasiQuoter

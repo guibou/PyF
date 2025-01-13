@@ -1,8 +1,8 @@
 INITIALPATH:7:22: error: [GHC-39999]
-    • No instance for ‘Integral Float’ arising from a use of ‘PyF.Internal.QQ.formatAnyIntegral’
-    • In the first argument of ‘putStrLn’, namely ‘(PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary PyF.Formatters.Minus (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char)) Nothing number)’
-      In the expression: putStrLn (PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary PyF.Formatters.Minus (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char)) Nothing number)
-      In an equation for ‘main’: main = putStrLn (PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Binary PyF.Formatters.Minus (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char)) Nothing number)
+    • No instance for ‘Integral Float’ arising from a use of ‘formatAnyIntegral’
+    • In the first argument of ‘putStrLn’, namely ‘(formatAnyIntegral Binary Minus (Nothing :: Maybe (Int, AnyAlign, Char)) Nothing number)’
+      In the expression: putStrLn (formatAnyIntegral Binary Minus (Nothing :: Maybe (Int, AnyAlign, Char)) Nothing number)
+      In an equation for ‘main’: main = putStrLn (formatAnyIntegral Binary Minus (Nothing :: Maybe (Int, AnyAlign, Char)) Nothing number)
   |
 7 | main = putStrLn [fmt|{number:b}|]
   |                      ^^^^^^^^^^^^

@@ -1,8 +1,8 @@
 INITIALPATH:7:22: error: [GHC-39999]
-    • No instance for ‘Integral String’ arising from a use of ‘PyF.Internal.QQ.formatAnyIntegral’
-    • In the first argument of ‘putStrLn’, namely ‘(PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Octal PyF.Formatters.Minus (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char)) Nothing hello)’
-      In the expression: putStrLn (PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Octal PyF.Formatters.Minus (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char)) Nothing hello)
-      In an equation for ‘main’: main = putStrLn (PyF.Internal.QQ.formatAnyIntegral PyF.Formatters.Octal PyF.Formatters.Minus (Nothing :: Maybe (Int, PyF.Formatters.AnyAlign, Char)) Nothing hello)
+    • No instance for ‘Integral String’ arising from a use of ‘formatAnyIntegral’
+    • In the first argument of ‘putStrLn’, namely ‘(formatAnyIntegral Octal Minus (Nothing :: Maybe (Int, AnyAlign, Char)) Nothing hello)’
+      In the expression: putStrLn (formatAnyIntegral Octal Minus (Nothing :: Maybe (Int, AnyAlign, Char)) Nothing hello)
+      In an equation for ‘main’: main = putStrLn (formatAnyIntegral Octal Minus (Nothing :: Maybe (Int, AnyAlign, Char)) Nothing hello)
   |
 7 | main = putStrLn [fmt|{hello:o}|]
   |                      ^^^^^^^^^^^

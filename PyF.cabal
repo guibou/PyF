@@ -29,13 +29,16 @@ library
     PyF.Internal.ParserEx
     PyF.Internal.PythonSyntax
     PyF.Internal.QQ
+    PyF.Plugin
 
   build-depends:
     , base              >=4.12   && <4.22
     , bytestring        >=0.10.8 && <0.13
-    , ghc               >=8.6.1
+    , ghc               >=8.6.1  && <9.14
+    , ghc-boot          >=8.6.1  && <9.14
     , mtl               >=2.2.2  && <2.4
     , parsec            >=3.1.13 && <3.2
+    , syb
     , template-haskell  >=2.14.0 && <2.24
     , text              >=1.2.3  && <2.2
     , time              >=1.8.0  && <1.15
@@ -53,6 +56,24 @@ test-suite pyf-test
   hs-source-dirs:   test
   main-is:          Spec.hs
   other-modules:    SpecCustomDelimiters
+  build-depends:
+    , base
+    , bytestring
+    , hspec
+    , PyF
+    , template-haskell
+    , text
+    , time
+
+  ghc-options:
+    -Wall -threaded -rtsopts -with-rtsopts=-N -Wunused-packages
+
+  default-language: Haskell2010
+
+test-suite pyf-test-plugin
+  type:             exitcode-stdio-1.0
+  hs-source-dirs:   test
+  main-is:          SpecPlugin.hs
   build-depends:
     , base
     , bytestring

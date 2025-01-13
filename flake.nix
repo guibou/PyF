@@ -92,6 +92,12 @@
               pkgs.nodejs
             ];
           };
+
+          work_with_pyf = pkgs.mkShell {
+            buildInputs = [
+              (pkgs.haskellPackages.ghcWithPackages (_: [ (pkgs.haskell.lib.dontCheck packages.default) ]))
+            ];
+          };
           default = packages.default.shell_hls;
         };
       }

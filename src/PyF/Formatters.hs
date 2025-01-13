@@ -131,6 +131,8 @@ data Format (k :: AltStatus) (k' :: UpperStatus) (k'' :: FormatType) where
   -- Upper should come AFTER Alt, so this disallow any future alt
   Upper :: Format alt 'CanUpper f -> Format 'NoAlt 'NoUpper f
 
+deriving instance Show (Format k k' k'')
+
 newtype ShowIntegral i = ShowIntegral i
   deriving (Real, Enum, Ord, Eq, Num, Integral)
 

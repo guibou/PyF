@@ -50,15 +50,13 @@ import HsExtension as Ext
 import Outputable (showSDoc)
 #endif
 
+import GHC.Parser.Annotation (LocatedA)
 import qualified PyF.Internal.ParserEx as ParseExp
 
-parseExpression :: RealSrcLoc -> String -> DynFlags -> Either (Int, Int, String) (HsExpr GhcPs)
+parseExpression :: RealSrcLoc -> String -> DynFlags -> Either (RealSrcLoc, String) (LocatedA (HsExpr GhcPs))
 parseExpression initLoc s dynFlags =
   case ParseExp.parseExpression initLoc s dynFlags of
-    POk _ locatedExpr ->
-      let expr = SrcLoc.unLoc locatedExpr
-       in Right
-            expr
+    POk _ locatedExpr -> Right locatedExpr
 
 {- ORMOLU_DISABLE #-}
 #if MIN_VERSION_ghc(9,2,0)
@@ -81,9 +79,7 @@ parseExpression initLoc s dynFlags =
                     $ map errMsgDiagnostic
                     $ sortMsgBag Nothing
                     $ getMessages $ errorMessages
-                line' = SrcLoc.srcLocLine srcLoc
-                col = SrcLoc.srcLocCol srcLoc
-            in Left (line', col, err)
+            in Left (srcLoc, err)
 #elif MIN_VERSION_ghc(9,6,0)
             let
                 err = renderWithContext defaultSDocContext
@@ -93,9 +89,7 @@ parseExpression initLoc s dynFlags =
                     $ map errMsgDiagnostic
                     $ sortMsgBag Nothing
                     $ getMessages $ errorMessages
-                line' = SrcLoc.srcLocLine srcLoc
-                col = SrcLoc.srcLocCol srcLoc
-            in Left (line', col, err)
+            in Left (srcLoc, err)
 #elif MIN_VERSION_ghc(9,3,0)
             let
                 err = renderWithContext defaultSDocContext
@@ -105,29 +99,21 @@ parseExpression initLoc s dynFlags =
                     $ map errMsgDiagnostic
                     $ sortMsgBag Nothing
                     $ getMessages $ errorMessages
-                line = SrcLoc.srcLocLine srcLoc
-                col = SrcLoc.srcLocCol srcLoc
-            in Left (line, col, err)
+            in Left (srcLoc, err)
 #elif MIN_VERSION_ghc(9,2,0)
             let
                 psErrToString e = show $ ParserErrorPpr.pprError e
                 err = concatMap psErrToString errorMessages
-                line = SrcLoc.srcLocLine srcLoc
-                col = SrcLoc.srcLocCol srcLoc
-            in Left (line, col, err)
+            in Left (srcLoc, err)
 #elif MIN_VERSION_ghc(8,10,0)
             let -- TODO: do not ignore "warnMessages"
                 -- I have no idea what they can be
                 (_warnMessages, errorMessages) = msgs dynFlags
                 err = concatMap show errorMessages
-                line = SrcLoc.srcLocLine srcLoc
-                col = SrcLoc.srcLocCol srcLoc
-            in Left (line, col, err)
+            in Left (srcLoc, err)
 #else
             let err = showSDoc dynFlags doc
-                line = SrcLoc.srcLocLine srcLoc
-                col = SrcLoc.srcLocCol srcLoc
-            in Left (line, col, err)
+            in Left (srcLoc, err)
 #endif
 
 #if MIN_VERSION_ghc(8,10,0)
