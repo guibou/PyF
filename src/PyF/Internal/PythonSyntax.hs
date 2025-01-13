@@ -12,10 +12,14 @@
 module PyF.Internal.PythonSyntax
   ( parseGenericFormatString,
     Item (..),
-    FormatMode (..),
-    Padding (..),
-    Precision (..),
-    TypeFormat (..),
+    FormatMode,
+    FormatModeT (..),
+    Padding,
+    PaddingT (..),
+    Precision,
+    PrecisionT (..),
+    TypeFormat,
+    TypeFormatT (..),
     AlternateForm (..),
     pattern DefaultFormatMode,
     Parser,
@@ -169,12 +173,16 @@ pattern DefaultFormatMode :: FormatMode
 pattern DefaultFormatMode = FormatMode PaddingDefault (DefaultF PrecisionDefault Minus) Nothing
 
 -- | A Formatter, listing padding, format and and grouping char
-data FormatMode = FormatMode Padding TypeFormat (Maybe Char)
+data FormatModeT t = FormatMode (PaddingT t) (TypeFormatT t) (Maybe Char)
+
+type FormatMode = FormatModeT (ExprOrValue Int)
 
 -- | Padding, containing the padding width, the padding char and the alignement mode
-data Padding
+data PaddingT t
   = PaddingDefault
-  | Padding (ExprOrValue Int) (Maybe (Maybe Char, AnyAlign))
+  | Padding t (Maybe (Maybe Char, AnyAlign))
+
+type Padding = PaddingT (ExprOrValue Int)
 
 -- | Represents a value of type @t@ or an Haskell expression supposed to represents that value
 -- TODO: why the `t`?
@@ -184,10 +192,12 @@ data ExprOrValue t
   deriving (Data, Show)
 
 -- | Floating point precision
-data Precision
+data PrecisionT t
   = PrecisionDefault
-  | Precision (ExprOrValue Int)
+  | Precision t
   deriving (Data, Show)
+
+type Precision = PrecisionT (ExprOrValue Int)
 
 {-
 
@@ -206,10 +216,12 @@ type            ::=  "b" | "c" | "d" | "e" | "E" | "f" | "F" | "g" | "G" | "n" |
 data TypeFlag = Flagb | Flagc | Flagd | Flage | FlagE | Flagf | FlagF | Flagg | FlagG | Flagn | Flago | Flags | Flagx | FlagX | FlagPercent
   deriving (Show)
 
+type TypeFormat = TypeFormatT (ExprOrValue Int)
+
 -- | All formatting type
-data TypeFormat
+data TypeFormatT t
   = -- | Default, depends on the infered type of the expression
-    DefaultF Precision SignMode
+    DefaultF (PrecisionT t) SignMode
   | -- | Binary, such as `0b0121`
     BinaryF AlternateForm SignMode
   | -- | Character, will convert an integer to its character representation
@@ -217,27 +229,27 @@ data TypeFormat
   | -- | Decimal, base 10 integer formatting
     DecimalF SignMode
   | -- | Exponential notation for floatting points
-    ExponentialF Precision AlternateForm SignMode
+    ExponentialF (PrecisionT t) AlternateForm SignMode
   | -- | Exponential notation with capitalised @e@
-    ExponentialCapsF Precision AlternateForm SignMode
+    ExponentialCapsF (PrecisionT t) AlternateForm SignMode
   | -- | Fixed number of digits floating point
-    FixedF Precision AlternateForm SignMode
+    FixedF (PrecisionT t) AlternateForm SignMode
   | -- | Capitalized version of the previous
-    FixedCapsF Precision AlternateForm SignMode
+    FixedCapsF (PrecisionT t) AlternateForm SignMode
   | -- | General formatting: `FixedF` or `ExponentialF` depending on the number magnitude
-    GeneralF Precision AlternateForm SignMode
+    GeneralF (PrecisionT t) AlternateForm SignMode
   | -- | Same as `GeneralF` but with upper case @E@ and infinite / NaN
-    GeneralCapsF Precision AlternateForm SignMode
+    GeneralCapsF (PrecisionT t) AlternateForm SignMode
   | -- | Octal, such as 00245
     OctalF AlternateForm SignMode
   | -- | Simple string
-    StringF Precision
+    StringF (PrecisionT t)
   | -- | Hexadecimal, such as 0xaf3e
     HexF AlternateForm SignMode
   | -- | Hexadecimal with capitalized letters, such as 0XAF3E
     HexCapsF AlternateForm SignMode
   | -- | Percent representation
-    PercentF Precision AlternateForm SignMode
+    PercentF (PrecisionT t) AlternateForm SignMode
   deriving (Data, Show)
 
 -- | If the formatter use its alternate form
