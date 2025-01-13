@@ -292,24 +292,27 @@ reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
 #endif
 
 reportParserErrorAt :: ParseError -> Q ()
-reportParserErrorAt err = reportErrorAt span msg
+reportParserErrorAt err = reportErrorAt (RealSrcSpan span mempty) msg
   where
-    msg = intercalate "\n" $ formatErrorMessages err
+    (loc, msg) = parseErrorToLocAndMessage err
+    span = mkRealSrcSpan loc loc'
 
-    span :: SrcSpan
-    span = mkSrcSpan loc loc'
-
-    loc = srcLocFromParserError (errorPos err)
     loc' = srcLocFromParserError (incSourceColumn (errorPos err) 1)
 
-srcLocFromParserError :: SourcePos -> SrcLoc
+parseErrorToLocAndMessage :: ParseError -> (RealSrcLoc, [Char])
+parseErrorToLocAndMessage err = (loc, msg)
+  where
+    msg = intercalate "\n" $ formatErrorMessages err
+    loc = srcLocFromParserError (errorPos err)
+
+srcLocFromParserError :: SourcePos -> RealSrcLoc
 srcLocFromParserError sourceLoc = srcLoc
   where
     line = sourceLine sourceLoc
     column = sourceColumn sourceLoc
     name = sourceName sourceLoc
 
-    srcLoc = mkSrcLoc (fromString name) line column
+    srcLoc = mkRealSrcLoc (fromString name) line column
 
 formatErrorMessages :: ParseError -> [String]
 formatErrorMessages err
