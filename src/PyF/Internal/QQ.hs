@@ -15,17 +15,21 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# LANGUAGE LambdaCase #-}
 
 -- | This module uses the python mini language detailed in
 -- 'PyF.Internal.PythonSyntax' to build an template haskell expression
 -- representing a formatted string.
 module PyF.Internal.QQ
-  ( toExp,
-    toExpPlain,
-    Config (..),
-    wrapFromString,
-    expQQ,
-  )
+  -- ( toExp,
+  --   toExpPlain,
+  --   toExpPlain',
+  --   toFormatPlain,
+  --   ItemPlain(..),
+  --   Config (..),
+  --   wrapFromString,
+  --   expQQ,
+  -- )
 where
 
 import Control.Monad.Reader
@@ -107,6 +111,9 @@ import Text.Parsec.Error
 import Text.Parsec.Pos (initialPos)
 import Text.ParserCombinators.Parsec.Error (Message (..))
 import Unsafe.Coerce (unsafeCoerce)
+import qualified Data.Text as Text
+import Data.List.NonEmpty (NonEmpty((:|)), nonEmpty)
+import Data.Semigroup (Semigroup(sconcat))
 
 -- | Configuration for the quasiquoter
 data Config = Config
@@ -168,28 +175,31 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
 
 -- | Parse a string and return a formatter for it
 toExpPlain :: Config -> String -> Q Exp
-toExpPlain Config {delimiters = expressionDelimiters, postProcess} s = do
+toExpPlain config s = do
   loc <- location
   exts <- extsEnabled
-  let context = ParsingContext expressionDelimiters exts
+  toExpPlain' loc s exts config
 
+toExpPlain' :: Loc -> String -> [Extension] -> Config -> Q Exp
+toExpPlain' loc s exts Config {delimiters = expressionDelimiters, postProcess}  = do
   -- Setup the parser so it matchs the real original position in the source
   -- code.
   let filename = loc_filename loc
   let initPos = setSourceColumn (setSourceLine (initialPos filename) (fst $ loc_start loc)) (snd $ loc_start loc)
+  let context = ParsingContext expressionDelimiters exts
   case runReader (runParserT (setPosition initPos >> parseGenericFormatStringPlain) () filename s) context of
     Left err -> do
       reportParserErrorAt err
       -- returns a dummy exp, so TH continues its life. This TH code won't be
       -- executed anyway, there is an error
-      [|()|]
+      [|interpolateInto Text.empty|]
     Right items -> do
       checkResult <- checkVariablesPlain items
       case checkResult of
-        Nothing -> postProcess (goFormatPlain items)
+        Nothing -> goFormatPlain items
         Just (srcSpan, msg) -> do
           reportErrorAt srcSpan msg
-          [|()|]
+          [|interpolateInto Text.empty|]
 
 
 findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
@@ -377,9 +387,14 @@ goFormat items = foldl1 sappendQ <$> mapM toFormat items
 
 goFormatPlain :: [ItemPlain] -> Q Exp
 -- We special case on empty list in order to generate an empty string
-goFormatPlain [] = pure $ LitE (StringL "") -- see [Empty String Lifting]
-goFormatPlain items = [|mconcat $(ListE <$> mapM toFormatPlain items)|]
+goFormatPlain items = case nonEmpty items of
+  Nothing -> [|interpolateInto Text.empty|] -- see [Empty String Lifting]
+  Just items -> do
+    let items' = fmap toFormatPlain items
+    [|$(nonEmptyE items')|]
 
+nonEmptyE :: NonEmpty (Q Exp) -> Q Exp
+nonEmptyE (x :| xs) = [|sconcat ($(x) :| $(listE xs))|]
 
 -- | call `<>` between two 'Exp'
 sappendQ :: Exp -> Exp -> Exp
@@ -395,11 +410,13 @@ toFormat (Replacement (_, expr) y) = do
 
 
 toFormatPlain :: ItemPlain -> Q Exp
-toFormatPlain (RawPlain x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
-toFormatPlain (ReplacementPlain (_, expr)) = do
-  f <- [|pyfToString|]
-  pure $ f `AppE` expr
-
+toFormatPlain item = do
+  let tyProxy = SigE (ConE 'Proxy) (AppT (ConT ''Proxy) (ConT ''Text.Text))
+  case item of
+    (RawPlain x) -> [|interpolateInto $[|Text.pack x|]|]
+    (ReplacementPlain (_, expr)) -> do
+      exprTyped <- [|$(pure expr)|]
+      [|interpolateInto $(pure exprTyped)|]
 
 -- | Default precision for floating point
 defaultFloatPrecision :: Maybe Int

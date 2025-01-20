@@ -5,6 +5,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 -- | You want to add formatting support for your custom type. This is the right module.
 --
@@ -48,6 +49,7 @@ import qualified Data.Time
 import Data.Word
 import Numeric.Natural
 import PyF.Formatters
+import Data.Data (Proxy (Proxy))
 
 -- * Default formatting classification
 
@@ -203,3 +205,16 @@ instance {-# OVERLAPPABLE #-} (Integral t) => PyfFormatIntegral t where
 -- 97
 instance PyfFormatIntegral Char where
   pyfFormatIntegral f s p g v = formatIntegral f s p g (ord v)
+
+
+
+class Interpolate a into where
+  interpolateInto :: a -> into
+
+instance Interpolate a a where
+  interpolateInto = id
+
+data Interpolatable into = forall a. (Interpolate a into) => Interpolatable (Proxy into) a
+
+instance Interpolate (Interpolatable into) into where
+  interpolateInto (Interpolatable Proxy a) = interpolateInto a

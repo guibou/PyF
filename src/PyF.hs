@@ -2,6 +2,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs #-}
 
 -- | A lot of quasiquoters to format and interpolate string expressions.
 module PyF
@@ -30,7 +32,13 @@ import Data.Char (isSpace)
 import Data.List (intercalate)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
-import PyF.Internal.QQ (Config (..), expQQ, toExp, toExpPlain, wrapFromString)
+import PyF.Internal.QQ (Config (..), expQQ, toExp, toExpPlain, wrapFromString, toExpPlain')
+import Language.Haskell.TH (pprint, runQ, extsEnabled, Loc (..))
+import Language.Haskell.TH.Syntax (location)
+import qualified Language.Haskell.TH.Syntax as TH
+import Language.Haskell.TH (Code(..))
+import Language.Haskell.TH (liftCode)
+import Language.Haskell.TH (listE)
 
 -- | Generic formatter, can format an expression to any @t@ as long as
 --   @t@ is an instance of 'IsString'.
@@ -135,3 +143,4 @@ mkFormatter name config = expQQ name (toExp config)
 -- 'fmtConfig' and 'strConfig' for examples.
 mkFormatterPlain :: String -> Config -> QuasiQuoter
 mkFormatterPlain name config = expQQ name (toExpPlain config)
+
