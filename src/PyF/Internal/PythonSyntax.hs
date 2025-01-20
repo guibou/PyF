@@ -11,7 +11,9 @@
 -- This module provides a parser for <https://docs.python.org/3.4/library/string.html#formatspec python format string mini language>.
 module PyF.Internal.PythonSyntax
   ( parseGenericFormatString,
+    parseGenericFormatStringPlain,
     Item (..),
+    ItemPlain (..),
     FormatMode (..),
     Padding (..),
     Precision (..),
@@ -89,6 +91,14 @@ data Item
   | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
     Replacement (HsExpr GhcPs, Exp) (Maybe FormatMode)
 
+-- | A plain format string is composed of many chunks of raw string or replacement, but no replacement fields
+data ItemPlain
+  = -- | A raw string
+    RawPlain String
+  | -- | A replacement string, composed of an arbitrary Haskell expression followed by an optional formatter
+    ReplacementPlain (HsExpr GhcPs, Exp)
+
+
 -- |
 -- Parse a string, returns a list of raw string or replacement fields
 --
@@ -107,10 +117,10 @@ parseGenericFormatString = do
   delimitersM <- asks delimiters
 
   case delimitersM of
-    Nothing -> many (rawString Nothing)
-    Just _ -> many (rawString delimitersM <|> escapedParenthesis <|> replacementField) <* eof
+    Nothing -> many (Raw <$> rawString Nothing)
+    Just _ -> many ((Raw <$> rawString delimitersM) <|> (Raw <$> escapedParenthesis) <|> replacementField) <* eof
 
-rawString :: Maybe (Char, Char) -> Parser Item
+rawString :: Maybe (Char, Char) -> Parser [Char]
 rawString delimsM = do
   let delims = case delimsM of
         Nothing -> []
@@ -128,12 +138,21 @@ rawString delimsM = do
     Right escaped -> do
       -- Consumne everything
       void p
-      return (Raw escaped)
+      return (escaped)
 
-escapedParenthesis :: Parser Item
+parseGenericFormatStringPlain :: Parser [ItemPlain]
+parseGenericFormatStringPlain = do
+  delimitersM <- asks delimiters
+
+  case delimitersM of
+    Nothing -> many (RawPlain <$> rawString Nothing)
+    Just _ -> many ((RawPlain <$> rawString delimitersM) <|> (RawPlain <$> escapedParenthesis) <|> replacementFieldPlain) <* eof
+
+
+escapedParenthesis :: Parser [Char]
 escapedParenthesis = do
   Just (openingChar, closingChar) <- asks delimiters
-  Raw <$> (parseRaw openingChar <|> parseRaw closingChar)
+  (parseRaw openingChar <|> parseRaw closingChar)
   where
     parseRaw c = [c] <$ try (string (replicate 2 c))
 
@@ -173,6 +192,16 @@ replacementField = do
     formatSpec
   _ <- char charClosing
   pure (Replacement expr fmt)
+
+
+replacementFieldPlain :: Parser ItemPlain
+replacementFieldPlain = do
+  exts <- asks enabledExtensions
+  Just (charOpening, charClosing) <- asks delimiters
+  _ <- char charOpening
+  expr <- evalExpr exts (parseExpressionString <?> "an haskell expression")
+  _ <- char charClosing
+  pure (ReplacementPlain expr)
 
 -- | Default formatting mode, no padding, default precision, no grouping, no sign handling
 pattern DefaultFormatMode :: FormatMode

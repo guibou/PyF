@@ -21,6 +21,7 @@
 -- representing a formatted string.
 module PyF.Internal.QQ
   ( toExp,
+    toExpPlain,
     Config (..),
     wrapFromString,
     expQQ,
@@ -165,6 +166,32 @@ toExp Config {delimiters = expressionDelimiters, postProcess} s = do
           reportErrorAt srcSpan msg
           [|()|]
 
+-- | Parse a string and return a formatter for it
+toExpPlain :: Config -> String -> Q Exp
+toExpPlain Config {delimiters = expressionDelimiters, postProcess} s = do
+  loc <- location
+  exts <- extsEnabled
+  let context = ParsingContext expressionDelimiters exts
+
+  -- Setup the parser so it matchs the real original position in the source
+  -- code.
+  let filename = loc_filename loc
+  let initPos = setSourceColumn (setSourceLine (initialPos filename) (fst $ loc_start loc)) (snd $ loc_start loc)
+  case runReader (runParserT (setPosition initPos >> parseGenericFormatStringPlain) () filename s) context of
+    Left err -> do
+      reportParserErrorAt err
+      -- returns a dummy exp, so TH continues its life. This TH code won't be
+      -- executed anyway, there is an error
+      [|()|]
+    Right items -> do
+      checkResult <- checkVariablesPlain items
+      case checkResult of
+        Nothing -> postProcess (goFormatPlain items)
+        Just (srcSpan, msg) -> do
+          reportErrorAt srcSpan msg
+          [|()|]
+
+
 findFreeVariablesInFormatMode :: Maybe FormatMode -> [(SrcSpan, RdrName)]
 findFreeVariablesInFormatMode Nothing = []
 findFreeVariablesInFormatMode (Just (FormatMode padding tf _)) =
@@ -176,6 +203,18 @@ checkOneItem :: Item -> Q (Maybe (SrcSpan, String))
 checkOneItem (Raw _) = pure Nothing
 checkOneItem (Replacement (hsExpr, _) formatMode) = do
   let allNames = findFreeVariables hsExpr <> findFreeVariablesInFormatMode formatMode
+  res <- mapM doesExists allNames
+  let resFinal = catMaybes res
+
+  case resFinal of
+    [] -> pure Nothing
+    ((err, span) : _) -> pure $ Just (span, err)
+
+
+checkOneItemPlain :: ItemPlain -> Q (Maybe (SrcSpan, String))
+checkOneItemPlain (RawPlain _) = pure Nothing
+checkOneItemPlain (ReplacementPlain (hsExpr, _)) = do
+  let allNames = findFreeVariables hsExpr <> findFreeVariablesInFormatMode Nothing
   res <- mapM doesExists allNames
   let resFinal = catMaybes res
 
@@ -259,6 +298,15 @@ checkVariables (x : xs) = do
     Nothing -> checkVariables xs
     Just err -> pure $ Just err
 
+-- | Check that all variables used in 'Item' exists, otherwise, fail.
+checkVariablesPlain :: [ItemPlain] -> Q (Maybe (SrcSpan, String))
+checkVariablesPlain [] = pure Nothing
+checkVariablesPlain (x : xs) = do
+  r <- checkOneItemPlain x
+  case r of
+    Nothing -> checkVariablesPlain xs
+    Just err -> pure $ Just err
+
 -- Stolen from: https://www.tweag.io/blog/2021-01-07-haskell-dark-arts-part-i/
 -- This allows to hack inside the the GHC api and use function not exported by template haskell.
 -- This may not be always safe, see https://github.com/guibou/PyF/issues/115,
@@ -327,6 +375,12 @@ goFormat :: [Item] -> Q Exp
 goFormat [] = pure $ LitE (StringL "") -- see [Empty String Lifting]
 goFormat items = foldl1 sappendQ <$> mapM toFormat items
 
+goFormatPlain :: [ItemPlain] -> Q Exp
+-- We special case on empty list in order to generate an empty string
+goFormatPlain [] = pure $ LitE (StringL "") -- see [Empty String Lifting]
+goFormatPlain items = [|mconcat $(ListE <$> mapM toFormatPlain items)|]
+
+
 -- | call `<>` between two 'Exp'
 sappendQ :: Exp -> Exp -> Exp
 sappendQ s0 s1 = InfixE (Just s0) (VarE '(<>)) (Just s1)
@@ -338,6 +392,14 @@ toFormat (Raw x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
 toFormat (Replacement (_, expr) y) = do
   formatExpr <- padAndFormat (fromMaybe DefaultFormatMode y)
   pure (formatExpr `AppE` expr)
+
+
+toFormatPlain :: ItemPlain -> Q Exp
+toFormatPlain (RawPlain x) = pure $ LitE (StringL x) -- see [Empty String Lifting]
+toFormatPlain (ReplacementPlain (_, expr)) = do
+  f <- [|pyfToString|]
+  pure $ f `AppE` expr
+
 
 -- | Default precision for floating point
 defaultFloatPrecision :: Maybe Int
