@@ -2,7 +2,7 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
+  inputs.nixpkgs.url = "github:guibou/nixpkgs/ghc-914";
   inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
 
   nixConfig.extra-substituters = [ "https://guibou.cachix.org" ];
@@ -79,6 +79,7 @@
 
           pyf_910 = pyfBuilder haskell.packages.ghc910;
           pyf_912 = pyfBuilder haskell.packages.ghc912;
+          pyf_914 = pyfBuilder haskell.packages.ghc914;
 
           default = pyfBuilder haskellPackages;
         };

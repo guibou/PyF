@@ -96,16 +96,28 @@ import OccName
 import GHC.Driver.Config.Parser (initParserOpts)
 #endif
 
+#if MIN_VERSION_ghc(9,13,0)
+import GHC.Unit.Types (UnitId(..))
+#endif
+
 import Data.Maybe
 
 fakeSettings :: Settings
 fakeSettings = Settings
-#if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9, 13, 0)
   { sGhcNameVersion=ghcNameVersion
   , sFileSettings=fileSettings
   , sTargetPlatform=platform
-  , sPlatformMisc=platformMisc
   , sToolSettings=toolSettings
+  , sPlatformMisc=platformMisc
+  , sUnitSettings = UnitSettings (UnitId $ fsLit "pyf-preprocessor")
+  }
+#elif MIN_VERSION_ghc(9, 2, 0)
+  { sGhcNameVersion=ghcNameVersion
+  , sFileSettings=fileSettings
+  , sTargetPlatform=platform
+  , sToolSettings=toolSettings
+  , sPlatformMisc=platformMisc
   }
 #elif MIN_VERSION_ghc(8, 10, 0)
   { sGhcNameVersion=ghcNameVersion

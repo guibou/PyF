@@ -31,14 +31,14 @@ library
     PyF.Internal.QQ
 
   build-depends:
-    , base              >=4.12   && <4.22
+    , base              >=4.12   && <4.23
     , bytestring        >=0.10.8 && <0.13
     , ghc               >=8.6.1
     , mtl               >=2.2.2  && <2.4
     , parsec            >=3.1.13 && <3.2
-    , template-haskell  >=2.14.0 && <2.24
+    , template-haskell  >=2.14.0 && <2.25
     , text              >=1.2.3  && <2.2
-    , time              >=1.8.0  && <1.15
+    , time              >=1.8.0  && <1.16
 
   if impl(ghc <9.2.1)
     build-depends: ghc-boot >=8.6.1 && <9.7
