@@ -1,5 +1,9 @@
 # Revision history for PyF
 
+## 0.11.5.0 -- 2025-12-01
+
+- Release with support for GHC 9.14 (tested with -rc1)
+
 ## 0.11.4.0 -- 2025-01-03
 
 - Fix indentation in `fmtTrim` when line break was escaped (bug https://github.com/guibou/PyF/issues/141).
