@@ -53,9 +53,6 @@
       rec {
         checks = {
           inherit (packages)
-            pyf_810
-            pyf_90
-            pyf_92
             pyf_94
             pyf_96
             pyf_98
@@ -68,11 +65,8 @@
 
         packages = {
           # GHC 8.6 is tested with stack, I'm stopping the testing with nix.
-          # GHC 8.8 is not in nixpkgs anymore.
+          # GHC 8.6..9.2 are not in nixpkgs anymore.
 
-          pyf_810 = pyfBuilder haskell.packages.ghc810;
-          pyf_90 = pyfBuilder haskell.packages.ghc90;
-          pyf_92 = pyfBuilder haskell.packages.ghc92;
           pyf_94 = pyfBuilder haskell.packages.ghc94;
           pyf_96 = pyfBuilder haskell.packages.ghc96;
           pyf_98 = pkgs.haskell.lib.dontCheck (pyfBuilder haskell.packages.ghc98);
