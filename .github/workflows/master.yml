@@ -8,12 +8,12 @@ jobs:
   nix_matrix:
     strategy:
       matrix:
-        ghc: [90, 92, 94, 96, 98, 910, 912]
+        ghc: [94, 96, 98, 910, 912, 914]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: cachix/install-nix-action@v21
-      - uses: cachix/cachix-action@v12
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v15
         with:
           name: guibou
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -23,7 +23,8 @@ jobs:
   stack_build:
     strategy:
       matrix:
-        resolver: [lts-14.27, # 8.6
+        resolver: [
+          lts-14.27, # 8.6
           lts-16.31, # 8.8
           lts-17.1, # 8.10
           lts-19.1, # 9.0

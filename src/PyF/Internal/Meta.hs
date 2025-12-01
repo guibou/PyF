@@ -6,6 +6,8 @@
 
 module PyF.Internal.Meta (toExp, baseDynFlags, toName) where
 
+import qualified Data.List.NonEmpty as NE
+
 #if MIN_VERSION_ghc(9,2,0)
 import GHC.Hs.Type (HsWildCardBndrs (..), HsType (..), HsSigType(HsSig), sig_body)
 #elif MIN_VERSION_ghc(9,0,0)
@@ -95,8 +97,13 @@ toLit (HsIntPrim _ i) = TH.IntPrimL i
 toLit (HsWordPrim _ i) = TH.WordPrimL i
 toLit (HsInt64Prim _ i) = TH.IntegerL i
 toLit (HsWord64Prim _ i) = TH.WordPrimL i
-toLit (HsInteger _ i _) = TH.IntegerL i
+#if MIN_VERSION_ghc(9,13,0)
+-- toLit (HsRat _ f _) = TH.FloatPrimL (fl_value f)
+-- toLit (HsInteger _ i _) = TH.IntegerL i
+#else
 toLit (HsRat _ f _) = TH.FloatPrimL (fl_value f)
+toLit (HsInteger _ i _) = TH.IntegerL i
+#endif
 toLit (HsFloatPrim _ f) = TH.FloatPrimL (fl_value f)
 toLit (HsDoublePrim _ f) = TH.DoublePrimL (fl_value f)
 #if MIN_VERSION_ghc(9,7,0)
@@ -150,13 +157,16 @@ toExp _ (Expr.HsVar _ n) =
    in if isRdrDataCon n'
         then TH.ConE (toName n')
         else TH.VarE (toName n')
-#if MIN_VERSION_ghc(9,6,0)
+#if MIN_VERSION_ghc(9, 13, 0)
+
+#elif MIN_VERSION_ghc(9,6,0)
 toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString . rdrNameOcc $ n)
 #elif MIN_VERSION_ghc(9,0,0)
 toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString $ n)
 #else
 toExp _ (Expr.HsUnboundVar _ n)              = TH.UnboundVarE (TH.mkName . occNameString . Expr.unboundVarOcc $ n)
 #endif
+
 toExp _ Expr.HsIPVar {} = noTH "toExp" "HsIPVar"
 toExp _ (Expr.HsLit _ l) = TH.LitE (toLit l)
 toExp _ (Expr.HsOverLit _ OverLit {ol_val}) = TH.LitE (toLit' ol_val)
@@ -179,8 +189,10 @@ toExp d (Expr.ExprWithTySig HsWC{hswc_body=HsIB{hsib_body}} e) = TH.SigE (toExp 
 #endif
 toExp d (Expr.OpApp _ e1 o e2) = TH.UInfixE (toExp d . unLoc $ e1) (toExp d . unLoc $ o) (toExp d . unLoc $ e2)
 toExp d (Expr.NegApp _ e _) = TH.AppE (TH.VarE 'negate) (toExp d . unLoc $ e)
+#if MIN_VERSION_ghc(9,13,0)
+toExp d (Expr.HsLam _ _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (unLoc -> map unLoc -> ps) (Expr.GRHSs _ (NE.toList -> [unLoc -> Expr.GRHS _ _ (unLoc -> e)]) _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
+#elif MIN_VERSION_ghc(9,12,0)
 -- NOTE: for lambda, there is only one match
-#if MIN_VERSION_ghc(9,12,0)
 toExp d (Expr.HsLam _ _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (unLoc -> map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)
 #elif MIN_VERSION_ghc(9,10,0)
 toExp d (Expr.HsLam _ _ (Expr.MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (map unLoc -> ps) (Expr.GRHSs _ [unLoc -> Expr.GRHS _ _ (unLoc -> e)] _)])))) = TH.LamE (fmap (toPat d) ps) (toExp d e)

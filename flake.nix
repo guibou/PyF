@@ -2,7 +2,7 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/haskell-updates";
+  inputs.nixpkgs.url = "github:guibou/nixpkgs/ghc-914";
   inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
 
   nixConfig.extra-substituters = [ "https://guibou.cachix.org" ];
@@ -53,9 +53,6 @@
       rec {
         checks = {
           inherit (packages)
-            pyf_810
-            pyf_90
-            pyf_92
             pyf_94
             pyf_96
             pyf_98
@@ -68,17 +65,15 @@
 
         packages = {
           # GHC 8.6 is tested with stack, I'm stopping the testing with nix.
-          # GHC 8.8 is not in nixpkgs anymore.
+          # GHC 8.6..9.2 are not in nixpkgs anymore.
 
-          pyf_810 = pyfBuilder haskell.packages.ghc810;
-          pyf_90 = pyfBuilder haskell.packages.ghc90;
-          pyf_92 = pyfBuilder haskell.packages.ghc92;
           pyf_94 = pyfBuilder haskell.packages.ghc94;
           pyf_96 = pyfBuilder haskell.packages.ghc96;
           pyf_98 = pkgs.haskell.lib.dontCheck (pyfBuilder haskell.packages.ghc98);
 
           pyf_910 = pyfBuilder haskell.packages.ghc910;
           pyf_912 = pyfBuilder haskell.packages.ghc912;
+          pyf_914 = pyfBuilder haskell.packages.ghc914;
 
           default = pyfBuilder haskellPackages;
         };

@@ -27,6 +27,8 @@ module PyF.Internal.QQ
   )
 where
 
+import qualified Data.List.NonEmpty as NE
+
 import Control.Monad.Reader
 import Data.Data (Data (gmapQ), Typeable, cast)
 import Data.Kind
@@ -196,7 +198,13 @@ findFreeVariables item = allNames
       Just (HsVar _ l) -> [l]
 #endif
 
-#if MIN_VERSION_ghc(9,12,0)
+#if MIN_VERSION_ghc(9,13,0)
+      Just (HsLam _ _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (unLoc -> map unLoc -> ps) (GRHSs _ (NE.toList -> [unLoc -> GRHS _ _ (unLoc -> e)]) _)])))) -> filter keepVar subVars
+        where
+          keepVar (L _ n) = n `notElem` subPats
+          subVars = concat $ gmapQ f [e]
+          subPats = concat $ gmapQ findPats ps
+#elif MIN_VERSION_ghc(9,12,0)
       Just (HsLam _ _ (MG _ (unLoc -> (map unLoc -> [Expr.Match _ _ (unLoc -> map unLoc -> ps) (GRHSs _ [unLoc -> GRHS _ _ (unLoc -> e)] _)])))) -> filter keepVar subVars
         where
           keepVar (L _ n) = n `notElem` subPats
@@ -273,7 +281,10 @@ unsafeRunTcM m = Q (unsafeCoerce m)
 reportErrorAt :: SrcSpan -> String -> Q ()
 reportErrorAt loc msg = unsafeRunTcM $ addErrAt loc msg'
   where
-#if MIN_VERSION_ghc(9,7,0)
+#if MIN_VERSION_ghc(9,13,0)
+    -- TODO: maybe leverage the "hint" logic to add additionnal hints here?
+    msg' = TcRnUnknownMessage (UnknownDiagnostic (const NoDiagnosticOpts) (\x -> x) (mkPlainError noHints (text msg)))
+#elif MIN_VERSION_ghc(9,7,0)
     msg' = TcRnUnknownMessage (UnknownDiagnostic (const NoDiagnosticOpts) (mkPlainError noHints (text msg)))
 #elif MIN_VERSION_ghc(9,6,0)
     msg' = TcRnUnknownMessage (UnknownDiagnostic $ mkPlainError noHints $
