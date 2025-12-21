@@ -2,7 +2,7 @@
   description = "PyF";
 
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:guibou/nixpkgs/ghc-914";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs";
   inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
 
   nixConfig.extra-substituters = [ "https://guibou.cachix.org" ];
@@ -11,12 +11,11 @@
   ];
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      flake-utils,
-      treefmt-nix,
-      ...
+    { self
+    , nixpkgs
+    , flake-utils
+    , treefmt-nix
+    , ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
@@ -73,22 +72,27 @@
 
           pyf_910 = pyfBuilder haskell.packages.ghc910;
           pyf_912 = pyfBuilder haskell.packages.ghc912;
-          pyf_914 = pyfBuilder haskell.packages.ghc914;
+          pyf_914 = pyfBuilder
+            (haskell.packages.ghc914.override {
+              overrides = self: super:
+              {
+                call-stack = haskell.lib.dontCheck super.call-stack;
+              };});
 
-          default = pyfBuilder haskellPackages;
-        };
+              default = pyfBuilder haskellPackages;
+            };
 
-        formatter = treefmtEval.config.build.wrapper;
+            formatter = treefmtEval.config.build.wrapper;
 
-        devShells = (builtins.mapAttrs (name: value: value.shell) packages) // {
-          treesitter = pkgs.mkShell {
-            buildInputs = [
-              pkgs.tree-sitter
-              pkgs.nodejs
-            ];
+          devShells = (builtins.mapAttrs (name: value: value.shell) packages) // {
+            treesitter = pkgs.mkShell {
+              buildInputs = [
+                pkgs.tree-sitter
+                pkgs.nodejs
+              ];
+            };
+            default = packages.default.shell_hls;
           };
-          default = packages.default.shell_hls;
-        };
+        }
+          );
       }
-    );
-}
