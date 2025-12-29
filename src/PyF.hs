@@ -2,11 +2,14 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs #-}
 
 -- | A lot of quasiquoters to format and interpolate string expressions.
 module PyF
   ( fmt,
     fmtTrim,
+    int,
     str,
     strTrim,
     raw,
@@ -29,12 +32,22 @@ import Data.Char (isSpace)
 import Data.List (intercalate)
 import Language.Haskell.TH.Quote (QuasiQuoter (..))
 import PyF.Class
-import PyF.Internal.QQ (Config (..), expQQ, toExp, wrapFromString)
+import PyF.Internal.QQ (Config (..), expQQ, toExp, toExpPlain, wrapFromString, toExpPlain')
+import Language.Haskell.TH (pprint, runQ, extsEnabled, Loc (..))
+import Language.Haskell.TH.Syntax (location)
+import qualified Language.Haskell.TH.Syntax as TH
+import Language.Haskell.TH (Code(..))
+import Language.Haskell.TH (liftCode)
+import Language.Haskell.TH (listE)
 
 -- | Generic formatter, can format an expression to any @t@ as long as
 --   @t@ is an instance of 'IsString'.
 fmt :: QuasiQuoter
 fmt = mkFormatter "fmt" fmtConfig
+
+-- | like fmt, but will only interpolate, no number formatting.
+int :: QuasiQuoter
+int = mkFormatterPlain "int" fmtConfig
 
 -- | Format with whitespace trimming.
 fmtTrim :: QuasiQuoter
@@ -125,3 +138,9 @@ addFormatting delims c = c {delimiters = Just delims}
 -- 'fmtConfig' and 'strConfig' for examples.
 mkFormatter :: String -> Config -> QuasiQuoter
 mkFormatter name config = expQQ name (toExp config)
+
+-- | Build a formatter. See the 'Config' type for details, as well as
+-- 'fmtConfig' and 'strConfig' for examples.
+mkFormatterPlain :: String -> Config -> QuasiQuoter
+mkFormatterPlain name config = expQQ name (toExpPlain config)
+

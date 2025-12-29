@@ -21,6 +21,7 @@ extra-source-files:
 
 library
   exposed-modules:
+    Test
     PyF
     PyF.Class
     PyF.Formatters
